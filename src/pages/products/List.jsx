@@ -4,7 +4,7 @@ import Navbar from '../../components/Navbar'
 const ProductList = () => {
   return (
     <section>
-      <h1>Product Page</h1>
+      <h1>Product Pagesssssssss</h1>
     </section>
   )
 }
