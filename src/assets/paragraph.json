@@ -1,0 +1,39 @@
+{
+  "paragraphs": [
+    {
+      "id": 0,
+      "text": "This is the first paragraph.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 1,
+      "text": "This is the second paragraph.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 2,
+      "text": "This is the third paragraph.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 3,
+      "text": "This is the fourth paragraph.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "text": "This is the fifth paragraph.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 5,
+      "text": "This is the fifth paragraph.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 6,
+      "text": "This is the sixth paragraph.",
+      "difficulty": "hard"
+    }
+  ]
+}
