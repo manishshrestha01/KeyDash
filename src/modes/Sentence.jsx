@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import sentenceData from "../assets/sentence.json"
+import sentenceData from "../assets/english/sentence.json"
 import { useNavigate } from "react-router-dom"
 
 const getRandomSentence = () => {
@@ -30,10 +30,11 @@ const Sentence = () => {
     const inputWords = input.trim().split(/\s+/).filter(Boolean)
     const targetWords = target.trim().split(/\s+/).filter(Boolean)
     if (
-      inputWords.length >= targetWords.length &&
+      (inputWords.length > targetWords.length) ||
+      (inputWords.length >= targetWords.length &&
       target.length > 0 &&
       inputWords.length > 0 &&
-      inputWords[inputWords.length - 1].endsWith(".")
+      inputWords[inputWords.length - 1].endsWith("."))
     ) {
       setTimeout(() => navigate("/contact"), 500)
     }
