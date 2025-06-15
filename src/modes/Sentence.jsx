@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react"
-import paragraphData from "../assets/paragraph.json"
+import sentenceData from "../assets/sentence.json"
 import { useNavigate } from "react-router-dom"
 
-const getRandomParagraph = () => {
-  const arr = paragraphData.paragraphs
+const getRandomSentence = () => {
+  const arr = sentenceData.sentence
   return arr[Math.floor(Math.random() * arr.length)].text
 }
 
-const Paragraph = () => {
+const Sentence = () => {
   const [target, setTarget] = useState("")
   const [input, setInput] = useState("")
   const [startTime, setStartTime] = useState(null)
@@ -21,7 +21,7 @@ const Paragraph = () => {
   const [currentWordIdx, setCurrentWordIdx] = useState(0)
 
   useEffect(() => {
-    setTarget(getRandomParagraph())
+    setTarget(getRandomSentence())
   }, [])
 
   useEffect(() => {
@@ -133,4 +133,4 @@ const Paragraph = () => {
   )
 }
 
-export default Paragraph
+export default Sentence
