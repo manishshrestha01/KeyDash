@@ -1,4 +1,3 @@
-import Navbar from "../components/Navbar"
 import ModesButton from "../components/ModesButton"
 import { useState } from "react"
 import Timed from "../modes/Timed"
