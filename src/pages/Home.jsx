@@ -1,16 +1,20 @@
 import ModesButton from "../components/ModesButton"
 import { useState } from "react"
 import Timed from "../modes/Timed"
+<<<<<<< HEAD
 import Paragraph from "../modes/Sentence"
+=======
+import Sentence from "../modes/Sentence"
+>>>>>>> origin/main
 
-const modes = ["Paragraph", "Timed"]
+const modes = ["Sentence", "Timed"]
 
 const Home = () => {
-  const [selectedMode, setSelectedMode] = useState("Paragraph")
+  const [selectedMode, setSelectedMode] = useState("Sentence")
 
   let ModeComponent = null
   if (selectedMode === "Timed") ModeComponent = <Timed />
-  if (selectedMode === "Paragraph") ModeComponent = <Paragraph />
+  if (selectedMode === "Sentence") ModeComponent = <Sentence />
 
   return (
     <>
