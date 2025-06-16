@@ -1,17 +1,9 @@
 import React, { useEffect, useRef, useState } from "react"
-<<<<<<< HEAD
 import sentenceData from "../assets/english/english.json"
 import { useNavigate } from "react-router-dom"
 
 const getRandomSentence = () => {
   const arr = sentenceData.quotes
-=======
-import sentenceData from "../assets/english/sentence.json"
-import { useNavigate } from "react-router-dom"
-
-const getRandomSentence = () => {
-  const arr = sentenceData.sentence
->>>>>>> origin/main
   return arr[Math.floor(Math.random() * arr.length)].text
 }
 
