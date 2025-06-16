@@ -1,10 +1,8 @@
 const Login = () => {
   return (
     <div className="bg-gray-50">
-  <div className="min-h-screen flex flex-col items-center justify-center py-6 px-4">
+  <div className="flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
     <div className="max-w-[480px] w-full">
-      <a href="javascript:void(0)"><img src="https://readymadeui.com/readymadeui.svg" alt="logo" className="w-40 mb-8 mx-auto block" />
-      </a>
       <div className="p-6 sm:p-8 rounded-2xl bg-white border border-gray-200 shadow-sm">
         <h1 className="text-slate-900 text-center text-3xl font-semibold">Sign in</h1>
         <form className="mt-12 space-y-6">
@@ -45,7 +43,7 @@ const Login = () => {
               Sign in
             </button>
           </div>
-          <p className="text-slate-900 text-sm !mt-6 text-center">Don't have an account? <a href="javascript:void(0);" className="text-blue-600 hover:underline ml-1 whitespace-nowrap font-semibold">Register here</a></p>
+          <p className="text-slate-900 text-sm !mt-6 text-center">Don't have an account? <a href="/register" className="text-blue-600 hover:underline ml-1 whitespace-nowrap font-semibold">Register here</a></p>
         </form>
       </div>
     </div>

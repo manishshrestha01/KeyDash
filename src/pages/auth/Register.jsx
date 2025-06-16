@@ -3,8 +3,6 @@ const Register = () => {
     <div className="flex flex-col justify-center sm:h-screen p-4">
   <div className="max-w-md w-full mx-auto border border-gray-300 rounded-2xl p-8">
     <div className="text-center mb-12">
-      <a href="javascript:void(0)"><img src="https://readymadeui.com/readymadeui.svg" alt="logo" className="w-40 inline-block" />
-      </a>
     </div>
     <form>
       <div className="space-y-6">
@@ -32,7 +30,7 @@ const Register = () => {
           Create an account
         </button>
       </div>
-      <p className="text-slate-600 text-sm mt-6 text-center">Already have an account? <a href="javascript:void(0);" className="text-blue-600 font-medium hover:underline ml-1">Login here</a></p>
+      <p className="text-slate-600 text-sm mt-6 text-center">Already have an account? <a href="/login" className="text-blue-600 font-medium hover:underline ml-1">Login here</a></p>
     </form>
   </div>
 </div>

@@ -1,7 +1,7 @@
 import ModesButton from "../components/ModesButton"
 import { useState } from "react"
 import Timed from "../modes/Timed"
-import Paragraph from "../modes/Paragraph"
+import Paragraph from "../modes/Sentence"
 
 const modes = ["Paragraph", "Timed"]
 
