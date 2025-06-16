@@ -14,7 +14,7 @@ const Navbar = () => {
           <img
             src="images/logo.svg"
             className="h-8"
-            alt="Flowbite Logo"
+            alt="logo"
           />
           <span className="self-center text-2xl font-semibold whitespace-nowrap text-black">
             KeyDash
