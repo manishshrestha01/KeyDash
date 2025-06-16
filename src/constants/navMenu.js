@@ -7,11 +7,11 @@ const navMenu = [
     },
     {
         route: LOGIN_ROUTE,
-        label: 'Login',
+        label: '',
     },
     {
         route: REGISTER_ROUTE,
-        label: 'Register',
+        label: '',
     },
 ];
 export default navMenu
