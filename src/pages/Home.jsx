@@ -1,11 +1,7 @@
 import ModesButton from "../components/ModesButton"
 import { useState } from "react"
 import Timed from "../modes/Timed"
-<<<<<<< HEAD
-import Paragraph from "../modes/Sentence"
-=======
 import Sentence from "../modes/Sentence"
->>>>>>> origin/main
 
 const modes = ["Sentence", "Timed"]
 
