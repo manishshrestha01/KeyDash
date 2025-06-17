@@ -1,1 +1,40 @@
 @import "tailwindcss";
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+:root {
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --foreground: #1f2937;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --caret: #facc15;
+  --correct: #22c55e;
+  --error: #ef4444;
+  --muted: #9ca3af;
+}
+.dark {
+  --surface: #1e1e2e;
+  --border: #2e2e3e;
+  --foreground: #f8fafc;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --caret: #facc15;
+  --correct: #22c55e;
+  --error: #ef4444;
+  --muted: #6b7280;
+}
+.bg-surface { background-color: var(--surface); }
+.border-border { border-color: var(--border); }
+.text-foreground { color: var(--foreground); }
+.bg-primary { background-color: var(--primary); }
+.hover\:bg-primary-hover:hover { background-color: var(--primary-hover); }
+.bg-caret { background-color: var(--caret); }
+.text-correct { color: var(--correct); }
+.text-error { color: var(--error); }
+.text-muted { color: var(--muted); }

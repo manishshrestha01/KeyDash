@@ -15,8 +15,7 @@ const Home = () => {
   return (
     <>
     <section>
-      
-      <h1>Home Page</h1>
+     
     </section>
 
     <div className='flex flex-row'>

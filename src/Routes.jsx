@@ -1,10 +1,11 @@
 import { createBrowserRouter, createRoutesFromElements, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import { RouterProvider } from "react-router-dom";
-import {LOGIN_ROUTE, REGISTER_ROUTE } from "./constants/route";
+import {LOGIN_ROUTE, REGISTER_ROUTE, RESULT_ROUTE} from "./constants/route";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Results from "./modes/Results";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
@@ -12,6 +13,7 @@ const Routes = () => {
             <Route index element={<Home />} />
             <Route path={LOGIN_ROUTE} element={<Login/>} />
             <Route path={REGISTER_ROUTE} element={<Register />} />
+            <Route path={RESULT_ROUTE} element={<Results />} />
         </Route>
     ));
   return (

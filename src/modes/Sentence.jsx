@@ -11,125 +11,80 @@ const Sentence = () => {
   const [target, setTarget] = useState("")
   const [input, setInput] = useState("")
   const [startTime, setStartTime] = useState(null)
-  const [wpm, setWpm] = useState(0)
-  const [accuracy, setAccuracy] = useState(100)
-  const [errors, setErrors] = useState(0)
+  const [restartCount, setRestartCount] = useState(0)
+  const [currentCharIdx, setCurrentCharIdx] = useState(0)
   const textareaRef = useRef(null)
+  const containerRef = useRef(null)
   const navigate = useNavigate()
 
-  // Track current word index for highlighting
-  const [currentWordIdx, setCurrentWordIdx] = useState(0)
-
   useEffect(() => {
-    setTarget(getRandomSentence())
-  }, [])
+    const sentence = getRandomSentence()
+    setTarget(sentence)
+    setInput("")
+    setStartTime(null)
+    setCurrentCharIdx(0)
+  }, [restartCount])
 
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now())
-    // Navigate if word count matches or exceeds and last word ends with '.'
-    const inputWords = input.trim().split(/\s+/).filter(Boolean)
-    const targetWords = target.trim().split(/\s+/).filter(Boolean)
-    if (
-      (inputWords.length > targetWords.length) ||
-      (inputWords.length >= targetWords.length &&
-      target.length > 0 &&
-      inputWords.length > 0 &&
-      inputWords[inputWords.length - 1].endsWith("."))
-    ) {
-      setTimeout(() => navigate("/contact"), 500)
-    }
-    // Calculate stats
-    const correctChars = input
-      .split("")
-      .filter((ch, i) => ch === target[i]).length
-    const totalErrors = input.length - correctChars
-    setErrors(totalErrors)
-    setAccuracy(input.length ? (correctChars / input.length) * 100 : 100)
-    const wordsTyped = input.trim().split(/\s+/).length
-    const elapsed = startTime ? (Date.now() - startTime) / 1000 / 60 : 1
-    setWpm(startTime && input.length ? Math.round(wordsTyped / elapsed) : 0)
+    setCurrentCharIdx(input.length)
 
-    // Update current word index
-    setCurrentWordIdx(input.split(/\s+/).length - 1)
-  }, [input, target, startTime, navigate])
-
-  // Focus textarea on mount
-  useEffect(() => {
-    textareaRef.current && textareaRef.current.focus()
-  }, [target])
+    // Scroll caret into view
+    const caretSpan = containerRef.current?.querySelector(".caret")
+    caretSpan?.scrollIntoView({ inline: "nearest" })
+  }, [input, startTime])
 
   const handleInput = (e) => {
-    // Move to next word on spacebar (allow input to continue)
-    setInput(e.target.value)
+    const val = e.target.value
+    // If finished, navigate to results
+    if (val.length > target.length ||
+        (val.trimEnd().endsWith(".") && val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)) {
+      const durationSec = (Date.now() - startTime) / 1000
+      navigate("/results", { state: { target, input: val, durationSec } })
+      return
+    }
+    setInput(val)
   }
 
-  // Render logic for coloring only typed chars in each word
-  const renderColoredText = () => {
-    const targetWords = target.split(" ")
-    const inputWords = input.split(" ")
-    return targetWords.map((word, wIdx) => {
-      const inputWord = inputWords[wIdx] || ""
+  const handleRestart = () => setRestartCount(c => c + 1)
+
+  const renderColoredText = () =>
+    target.split("").map((c, i) => {
+      let cls = "text-muted"
+      if (i < input.length) {
+        cls = input[i] === c ? "text-correct" : "text-error underline underline-offset-2"
+      }
+      const isCaret = i === currentCharIdx
       return (
-        <span key={wIdx} className="mr-2">
-          {word.split("").map((char, cIdx) => {
-            if (inputWord.length > cIdx) {
-              return (
-                <span
-                  key={cIdx}
-                  className={
-                    inputWord[cIdx] === char
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }
-                >
-                  {char}
-                </span>
-              )
-            } else {
-              return (
-                <span key={cIdx} className="">
-                  {char}
-                </span>
-              )
-            }
-          })}
+        <span key={i} className={`relative ${cls}`}>
+          {c}
+          {isCaret && <span className="caret absolute top-0 left-0 w-[2px] h-6 bg-caret animate-blink" />}
         </span>
       )
     })
-  }
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto mt-8">
+    <div className="flex flex-col items-center p-6">
       <div
-        className="whitespace-pre-wrap text-lg font-mono select-none"
-        style={{ position: "relative", zIndex: 1, minHeight: 80 }}
-        onClick={() => textareaRef.current && textareaRef.current.focus()}
+        ref={containerRef}
+        className="relative w-full max-w-3xl p-4 border border-border bg-surface rounded shadow overflow-auto whitespace-pre-wrap break-words cursor-text"
+        style={{ minHeight: "140px", fontFamily: `"Fira Code","JetBrains Mono",monospace`, fontSize: "1.4rem", lineHeight: 1.6 }}
+        onClick={() => textareaRef.current?.focus()}
       >
         {renderColoredText()}
+        {/* caret if at end */}
+        {currentCharIdx >= target.length && <span className="caret inline-block w-[2px] h-6 bg-caret animate-blink ml-1" />}
+        <textarea
+          ref={textareaRef}
+          className="absolute inset-0 opacity-0 resize-none"
+          value={input}
+          onChange={handleInput}
+          spellCheck="false"
+          autoFocus
+        />
       </div>
-      {/* Invisible textarea overlays the text */}
-      <textarea
-        ref={textareaRef}
-        value={input}
-        onChange={handleInput}
-        className="absolute top-0 left-0 w-full h-full opacity-0 resize-none"
-        style={{ zIndex: 2, minHeight: 80 }}
-        spellCheck={false}
-        autoFocus
-      />
-      <div className="mt-6 flex gap-8 text-lg">
-        <div>
-          WPM:{" "}
-          <span className="font-bold">{wpm}</span>
-        </div>
-        <div>
-          Accuracy:{" "}
-          <span className="font-bold">{accuracy.toFixed(1)}%</span>
-        </div>
-        <div>
-          Errors: <span className="font-bold">{errors}</span>
-        </div>
-      </div>
+
+      <button onClick={handleRestart} className="mt-4 px-5 py-2 bg-primary text-white rounded hover:bg-primary-hover">Restart</button>
     </div>
   )
 }
