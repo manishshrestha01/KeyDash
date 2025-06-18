@@ -1,4 +1,7 @@
 @import "tailwindcss";
+body {
+  @apply bg-[#323437] text-white;
+}
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -8,13 +11,13 @@
 }
 
 :root {
-  --surface: #ffffff;
-  --border: #e5e7eb;
+  --surface: #323437;
+  --border: #ffffff;
   --foreground: #1f2937;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --caret: #facc15;
-  --correct: #22c55e;
+  --correct: #ffffff;
   --error: #ef4444;
   --muted: #9ca3af;
 }

@@ -1,4 +1,4 @@
-import {HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, RESULT_ROUTE} from "./route";
+import {HOME_ROUTE, LOGIN_ROUTE, RESULT_ROUTE} from "./route";
 
 const navMenu = [
     {
@@ -7,10 +7,6 @@ const navMenu = [
     },
     {
         route: LOGIN_ROUTE,
-        label: '',
-    },
-    {
-        route: REGISTER_ROUTE,
         label: '',
     },
     {

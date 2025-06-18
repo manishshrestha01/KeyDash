@@ -1,8 +1,6 @@
 import { useForm } from "react-hook-form";
-import { auth } from "../../firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-const LoginForm = () => {
+const Log = () => {
   const {
     register,
     handleSubmit,
@@ -10,20 +8,7 @@ const LoginForm = () => {
   } = useForm();
 
   const onSubmit = (data) => {
-    console.log("Email Login Data:", data);
-    // TODO: Handle email login
-  };
-
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log("Google User:", user);
-      // TODO: Redirect to home or save user info
-    } catch (error) {
-      console.error("Google login error:", error);
-    }
+    console.log(data); // do login
   };
 
   return (
@@ -80,7 +65,6 @@ const LoginForm = () => {
             {/* Google Button */}
             <button
               type="button"
-              onClick={handleGoogleLogin}
               className="w-full flex items-center justify-center border border-gray-300 rounded-lg py-3 hover:bg-gray-100 transition cursor-pointer"
             >
               <img
@@ -97,4 +81,4 @@ const LoginForm = () => {
   );
 };
 
-export default LoginForm;
+export default Log;
