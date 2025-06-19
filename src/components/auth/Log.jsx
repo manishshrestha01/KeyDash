@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
-
+// Login Form Ui only
+// This component is a simple login form with email input and Google sign-in option.
 const Log = () => {
   const {
     register,
