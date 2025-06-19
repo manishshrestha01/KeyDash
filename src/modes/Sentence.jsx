@@ -83,8 +83,41 @@ const Sentence = () => {
           autoFocus
         />
       </div>
-
-      <button onClick={handleRestart} className="mt-4 px-5 py-2 bg-primary text-white rounded hover:bg-primary-hover">Restart</button>
+      <button
+  onClick={handleRestart}
+  className="p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
+  aria-label="Restart"
+>
+  {/* Restart Icon */}
+  <svg
+    viewBox="-13.44 -13.44 50.88 50.88"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-12 h-12 rotate-90"
+  >
+    <g clipPath="url(#clip0)">
+      <path
+        d="M12 2.99982C16.9706 2.99982 21 7.02925 21 11.9998C21 16.9704 16.9706 20.9998 12 20.9998C7.02944 20.9998 3 16.9704 3 11.9998C3 9.17255 4.30367 6.64977 6.34267 4.99982"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 4.49982H7V8.49982"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+    <defs>
+      <clipPath id="clip0">
+        <rect width="24" height="24" fill="white" />
+      </clipPath>
+    </defs>
+  </svg>
+</button>
     </div>
   )
 }
