@@ -64,7 +64,7 @@ const Sentence = () => {
   })
 
   return (
-    <div className="flex flex-col items-center pt-8">
+    <div className="flex flex-col items-center pt-8 mt-10">
       {/* Word Counter */}
       <div className="text-yellow-300 text-4xl font-medium mb-4 mr-293">
         <span>
