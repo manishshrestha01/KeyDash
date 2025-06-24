@@ -3,7 +3,7 @@ import {HOME_ROUTE, LOGIN_ROUTE, RESULT_ROUTE} from "./route";
 const navMenu = [
     {
         route: HOME_ROUTE,
-        label: 'Home',
+        label: '',
     },
     {
         route: LOGIN_ROUTE,
