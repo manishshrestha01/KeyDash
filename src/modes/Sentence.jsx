@@ -66,7 +66,7 @@ const Sentence = () => {
   return (
     <div className="flex flex-col items-center pt-8 mt-10">
       {/* Word Counter */}
-      <div className="text-yellow-300 text-4xl font-medium mb-4 mr-293">
+      <div className="text-[var(--word-counter)] text-4xl font-medium mb-4 mr-293">
         <span>
           {input.trim().split(/\s+/).filter(Boolean).length} / {target.trim().split(/\s+/).length}
         </span>
