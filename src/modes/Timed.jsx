@@ -7,11 +7,12 @@ const getRandomSentence = () => {
   return arr[Math.floor(Math.random() * arr.length)].text
 }
 
-const Timed = ({ time }) => {
+const CHARS_PER_LINE = 50
+
+const Timed = () => {
   const [target, setTarget] = useState("")
   const [input, setInput] = useState("")
   const [startTime, setStartTime] = useState(null)
-  const [remainingTime, setRemainingTime] = useState(time)
   const [restartCount, setRestartCount] = useState(0)
   const [currentCharIdx, setCurrentCharIdx] = useState(0)
   const textareaRef = useRef(null)
@@ -23,82 +24,166 @@ const Timed = ({ time }) => {
     setTarget(sentence)
     setInput("")
     setStartTime(null)
-    setRemainingTime(time)
     setCurrentCharIdx(0)
-  }, [restartCount, time])
-
-  useEffect(() => {
-    if (!startTime || remainingTime <= 0) return
-
-    const interval = setInterval(() => {
-      const secondsPassed = Math.floor((Date.now() - startTime) / 1000)
-      const newRemaining = Math.max(time - secondsPassed, 0)
-      setRemainingTime(newRemaining)
-
-      if (newRemaining <= 0) {
-        clearInterval(interval)
-        // Go to results page
-        const durationSec = time
-        navigate("/results", { state: { target, input, durationSec } })
-      }
-    }, 200)
-
-    return () => clearInterval(interval)
-  }, [startTime, remainingTime, time, navigate, input, target])
+  }, [restartCount])
 
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now())
     setCurrentCharIdx(input.length)
-
-    const caretSpan = containerRef.current?.querySelector(".caret")
-    caretSpan?.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" })
   }, [input, startTime])
 
   const handleInput = (e) => {
     const val = e.target.value
+
+    if (
+      val.length > target.length ||
+      (val.trimEnd().endsWith(".") &&
+        val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
+    ) {
+      const durationSec = (Date.now() - startTime) / 1000
+
+      // Calculate stats for results page
+      let correctChars = 0
+      for (let i = 0; i < val.length; i++) {
+        if (val[i] === target[i]) correctChars++
+      }
+      const totalTyped = val.length
+      const wpm = durationSec > 0 ? ((correctChars / 5) / (durationSec / 60)).toFixed(0) : 0
+      const acc = totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0"
+      const mistakes = totalTyped - correctChars
+
+      navigate("/results", {
+        state: {
+          target,
+          input: val,
+          durationSec,
+          wpm,
+          acc,
+          mistakes,
+        }
+      })
+      return
+    }
+
     setInput(val)
   }
 
   const handleRestart = () => setRestartCount(c => c + 1)
 
-  const renderColoredText = () =>
-    target.split("").map((c, i) => {
-      let cls = "text-muted"
-      if (i < input.length) {
-        cls = input[i] === c ? "text-correct" : "text-error underline underline-offset-2"
-      }
-      const isCaret = i === currentCharIdx
-      return (
-        <span key={i} className={`relative ${cls}`}>
-          {c}
-          {isCaret && <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />}
+  const getCorrectWordCount = () => {
+    const targetWords = target.trim().split(/\s+/)
+    const inputWords = input.trim().split(/\s+/)
+
+    let attempted;
+    if (
+      input.trim() === target.trim() // User finished all words (no trailing space)
+    ) {
+      attempted = targetWords.length
+    } else if (input.endsWith(" ")) {
+      // User finished a word with space
+      attempted = Math.min(inputWords.length, targetWords.length)
+    } else {
+      // User is typing the last word, don't count it yet
+      attempted = Math.max(0, inputWords.length - 1)
+      attempted = Math.min(attempted, targetWords.length)
+    }
+
+    return `${attempted} / ${targetWords.length}`
+  }
+
+  const renderColoredText = () => {
+    const words = target.split(" ")
+    const lines = []
+    let line = []
+    let charIndex = 0
+
+    words.forEach((word, wIdx) => {
+      const wordChars = word.split("").map((c, i) => {
+        let cls = "text-muted"
+
+        if (charIndex < input.length) {
+          cls = input[charIndex] === c
+            ? "text-correct"
+            : "text-error underline underline-offset-2"
+        }
+
+        const isCaret = charIndex === currentCharIdx
+
+        const charSpan = (
+          <span key={`${wIdx}-${i}`} className={`relative ${cls}`}>
+            {c}
+            {isCaret && (
+              <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+            )}
+          </span>
+        )
+
+        charIndex++
+        return charSpan
+      })
+
+      const isSpaceCaret = charIndex === currentCharIdx
+      const spaceCorrect = input[charIndex] === " "
+      const spaceClass = charIndex < input.length
+        ? (spaceCorrect ? "text-correct" : "text-error underline underline-offset-2")
+        : "text-muted"
+
+      wordChars.push(
+        <span key={`${wIdx}-space`} className={`relative ${spaceClass}`}>
+          {" "}
+          {isSpaceCaret && (
+            <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+          )}
         </span>
       )
+      charIndex++
+
+      line.push(...wordChars)
+
+      if (line.length >= CHARS_PER_LINE) {
+        lines.push(
+          <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
+            {line}
+          </div>
+        )
+        line = []
+      }
     })
+
+    if (line.length > 0) {
+      lines.push(
+        <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
+          {line}
+        </div>
+      )
+    }
+
+    return lines
+  }
 
   return (
     <div className="flex flex-col items-center pt-8 mt-10">
-      {/* Timer Counter */}
-      <div className="text-yellow-300 text-4xl font-medium mb-4 -ml-300">
-        <span>{remainingTime}s</span>
+      <div className="text-yellow-300 text-4xl font-medium mb-4">
+        {getCorrectWordCount()}
       </div>
 
-      {/* Typing Box */}
       <div
         ref={containerRef}
-        className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text text-left"
+        className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
         style={{
           fontFamily: `"Fira Code","JetBrains Mono",monospace`,
-          fontSize: "2rem",
+          fontSize: "2.3rem",
           lineHeight: "3.5rem",
         }}
         onClick={() => textareaRef.current?.focus()}
       >
-        <div className="absolute inset-0 overflow-y-auto px-2 py-1">
-          <div className="whitespace-pre-wrap break-words">
-            {renderColoredText()}
-            {currentCharIdx >= target.length && <span className="caret inline-block w-[2px] h-[1.4em] bg-caret animate-blink ml-1" />}
-          </div>
+        <div
+          className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
+          style={{
+            transform: `translateY(-${Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5}rem)`
+          }}
+        >
+          {renderColoredText()}
         </div>
 
         <textarea
@@ -106,12 +191,12 @@ const Timed = ({ time }) => {
           className="absolute inset-0 opacity-0 resize-none text-2xl"
           value={input}
           onChange={handleInput}
+          onPaste={e => e.preventDefault()}
           spellCheck="false"
           autoFocus
         />
       </div>
 
-      {/* Restart Button */}
       <button
         onClick={handleRestart}
         className="mt-6 p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"

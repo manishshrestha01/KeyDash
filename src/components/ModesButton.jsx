@@ -1,14 +1,27 @@
-import React from 'react'
+import React from "react"
+import { twMerge } from "tailwind-merge"
 
-const ModesButton = ({ children, active, ...props }) => {
+const ModesButton = ({ children, onClick, active, icon, theme = "dark" }) => {
+  const baseClasses = `
+    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all border
+  `
+
+  const themeClasses = {
+    dark: active
+      ? "bg-yellow-400 text-black border-yellow-400 shadow"
+      : "bg-transparent text-white border-gray-600 hover:bg-gray-700",
+    light: active
+      ? "bg-yellow-400 text-black border-yellow-400 shadow"
+      : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100",
+  }
+
   return (
     <button
-      className={`px-5 py-2.5 text-base font-semibold rounded-lg cursor-pointer 
-        ${active ? "bg-blue-700 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}
-      `}
-      {...props}
+      onClick={onClick}
+      className={twMerge(baseClasses, themeClasses[theme])}
     >
-      {children}
+      {icon && <span className="text-lg">{icon}</span>}
+      <span>{children}</span>
     </button>
   )
 }

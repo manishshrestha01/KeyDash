@@ -3,16 +3,16 @@ import navMenu from "../constants/navMenu";
 import React, { useState } from "react";
 
 const Navbar = () => {
-  const navLinkClass = ({ isActive }) => (isActive ? "text-blue-700 " : "");
+  // const navLinkClass = ({ isActive }) => (isActive ? "text-blue-700 " : "");
 
-  const [isMobileMenuHidden, setIsMobileMenuHidden] = useState(true);
+  // const [isMobileMenuHidden, setIsMobileMenuHidden] = useState(true);
 
   return (
     <nav className="bg-[#323437] text-white sticky top-0 z-50 border-b border-white/10">
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <img
-            src="https://raw.githubusercontent.com/manishshrestha01/KeyDash/f6f460d46f51ff3b215b59a0fffb2b5a6533644b/src/images/logo.svg"
+            src="src/images/logo.svg"
             className="h-10"
             alt="logo"
           />
@@ -30,7 +30,7 @@ const Navbar = () => {
             </NavLink>
           </button>
         </div>
-        <div
+        {/* <div
           className={`items-center justify-between w-full md:flex md:w-auto md:order-1 ${
             isMobileMenuHidden ? "hidden" : ""
           }`}
@@ -44,7 +44,7 @@ const Navbar = () => {
               </li>
             ))}
           </ul>
-        </div>
+        </div> */}
       </div>
     </nav>
   );
