@@ -12,7 +12,7 @@ const Navbar = () => {
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <img
-            src="https://raw.githubusercontent.com/manishshrestha01/KeyDash/f6f460d46f51ff3b215b59a0fffb2b5a6533644b/src/images/logo.svg"
+            src="public/logo.svg"
             className="h-10"
             alt="logo"
           />
