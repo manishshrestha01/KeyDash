@@ -19,18 +19,41 @@ const Sentence = () => {
   const containerRef = useRef(null)
   const navigate = useNavigate()
 
+  // Real-time stats
+  const [wpm, setWpm] = useState(0)
+  const [accuracy, setAccuracy] = useState(100)
+  const [mistakes, setMistakes] = useState(0)
+
   useEffect(() => {
     const sentence = getRandomSentence()
     setTarget(sentence)
     setInput("")
     setStartTime(null)
     setCurrentCharIdx(0)
+    setWpm(0)
+    setAccuracy(100)
+    setMistakes(0)
   }, [restartCount])
 
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now())
     setCurrentCharIdx(input.length)
-  }, [input, startTime])
+
+    // Calculate real-time stats
+    let correct = 0
+    for (let i = 0; i < input.length; i++) {
+      if (input[i] === target[i]) correct++
+    }
+    const totalTyped = input.length
+    const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0
+    const wpmVal = durationSec > 0 ? ((correct / 5) / (durationSec / 60)) : 0
+    const accVal = totalTyped > 0 ? (correct / totalTyped) * 100 : 100
+    const mistakesVal = totalTyped - correct
+
+    setWpm(Math.round(wpmVal))
+    setAccuracy(accVal)
+    setMistakes(mistakesVal)
+  }, [input, startTime, target])
 
   const handleInput = (e) => {
     const val = e.target.value
@@ -166,7 +189,6 @@ const Sentence = () => {
       <div className="text-yellow-300 text-4xl font-medium mb-4">
         {getCorrectWordCount()}
       </div>
-
       <div
         ref={containerRef}
         className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
@@ -196,7 +218,6 @@ const Sentence = () => {
           autoFocus
         />
       </div>
-
       <button
         onClick={handleRestart}
         className="mt-6 p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
@@ -231,6 +252,12 @@ const Sentence = () => {
           </defs>
         </svg>
       </button>
+      {/* Floating real-time stats box OUTSIDE the typing area */}
+      <div className="-ml-260 -mt-18 bg-black/80 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
+  <div>WPM = {wpm}</div>
+  <div>Acc = {accuracy.toFixed(1)}%</div>
+  <div>Error = {mistakes}</div>
+</div>
     </div>
   )
 }
