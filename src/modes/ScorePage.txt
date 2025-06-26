@@ -1,3 +1,5 @@
+//before ScorePage
+
 import { useLocation, useNavigate } from "react-router-dom"
 import { Line } from "react-chartjs-2"
 import {
@@ -96,38 +98,15 @@ const ScorePage = () => {
 
   const errorData = cumulativeMistakes
 
-  // Set pointRadius at start, end, and some middle points of each continuous segment
-  const getSegmentEdgePointRadius = (arr) => {
-    if (arr.length === 0) return []
-    const radius = Array(arr.length).fill(0)
-    let start = 0
-    for (let i = 1; i <= arr.length; i++) {
-      if (arr[i] !== arr[start] || i === arr.length) {
-        const end = i - 1
-        radius[start] = 4
-        radius[end] = 4
-        const segLen = end - start + 1
-        if (segLen > 3) {
-          const mid1 = start + Math.floor(segLen / 3)
-          const mid2 = start + Math.floor(2 * segLen / 3)
-          if (mid1 !== start && mid1 !== end) radius[mid1] = 3
-          if (mid2 !== start && mid2 !== end && mid2 !== mid1) radius[mid2] = 3
-        }
-        start = i
-      }
-    }
-    return radius
-  }
-
   const datasets = [
     {
       label: "WPM",
       data: wpmData,
       borderColor: "#facc15",
       backgroundColor: "#facc15",
-      pointRadius: getSegmentEdgePointRadius(wpmData),
-      pointHoverRadius: getSegmentEdgePointRadius(wpmData),
-      borderWidth: 4,
+      pointRadius: 4, // Point adder in graph
+      pointHoverRadius: 4,
+      borderWidth: 2,
       tension: 0.5,
       fill: false,
       yAxisID: "y",
@@ -136,11 +115,11 @@ const ScorePage = () => {
     {
       label: "Mistakes",
       data: errorData,
-      borderColor: "#b91c1c",
+      borderColor: "#b91c1c", // dark red
       backgroundColor: "#b91c1c",
-      pointRadius: getSegmentEdgePointRadius(errorData),
+      pointRadius: 4, // Point adder in graph
       pointBackgroundColor: "#b91c1c",
-      borderWidth: 4,
+      borderWidth: 2,
       tension: 0.5,
       fill: false,
       yAxisID: "y",
