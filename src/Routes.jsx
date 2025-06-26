@@ -5,6 +5,7 @@ import {LOGIN_ROUTE, RESULT_ROUTE} from "./constants/route";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
 import ScorePage from "./modes/ScorePage";
+import Account from "./pages/Account";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
@@ -12,6 +13,7 @@ const Routes = () => {
             <Route index element={<Home />} />
             <Route path={LOGIN_ROUTE} element={<Login/>} />
             <Route path={RESULT_ROUTE} element={<ScorePage />} />
+            <Route path="/account" element={<Account />} />
         </Route>
     ));
   return (
