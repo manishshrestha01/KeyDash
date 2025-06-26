@@ -52,22 +52,49 @@ const ScorePage = () => {
   // Chart data generation (fluctuating demo, ends at real values)
   const seconds = Math.max(1, Math.ceil(durationSec || 1))
   const timeLabels = Array.from({ length: seconds }, (_, i) => (i + 1).toString())
+  if (seconds > 1 && durationSec % 1 !== 0) {
+    timeLabels[seconds - 1] = durationSec.toFixed(1)
+  }
 
-  // Fluctuating WPM demo data, ends at real wpm (rounded)
-  const wpmData = Array.from({ length: seconds }, (_, i) => {
-    if (i === seconds - 1) return wpmInt
-    return Math.max(0, wpmInt + Math.round((Math.random() - 0.5) * 10))
+  // Exact cumulative correct chars at each second
+  let cumulativeCorrect = Array(seconds).fill(0)
+  if (target && input && input.length > 0) {
+    for (let i = 0; i < input.length; i++) {
+      const charTime = ((i + 1) * durationSec) / input.length
+      const secIdx = Math.min(Math.floor(charTime), seconds - 1)
+      if (input[i] === target[i]) {
+        cumulativeCorrect[secIdx] += 1
+      }
+    }
+    // Make cumulative
+    for (let i = 1; i < seconds; i++) {
+      cumulativeCorrect[i] += cumulativeCorrect[i - 1]
+    }
+  }
+
+  // Exact WPM at each second
+  const wpmData = cumulativeCorrect.map((correctSoFar, i) => {
+    const timeMin = (i + 1) / 60
+    return timeMin > 0 ? Math.round((correctSoFar / 5) / timeMin) : 0
   })
 
-  // Fluctuating cumulative mistakes demo data, ends at real mistakes
-  const errorData = Array.from({ length: seconds }, (_, i) => {
-    if (i === 0) return 0
-    if (i === seconds - 1) return mistakes
-    return Math.min(
-      mistakes,
-      Math.round((mistakes * (i + Math.random() * 0.7)) / seconds)
-    )
-  })
+  // Exact cumulative mistakes at each second
+  let cumulativeMistakes = Array(seconds).fill(0)
+  if (target && input && input.length > 0) {
+    for (let i = 0; i < input.length; i++) {
+      const charTime = ((i + 1) * durationSec) / input.length
+      const secIdx = Math.min(Math.floor(charTime), seconds - 1)
+      if (input[i] !== target[i]) {
+        cumulativeMistakes[secIdx] += 1
+      }
+    }
+    // Make cumulative
+    for (let i = 1; i < seconds; i++) {
+      cumulativeMistakes[i] += cumulativeMistakes[i - 1]
+    }
+  }
+
+  const errorData = cumulativeMistakes
 
   const datasets = [
     {
@@ -167,7 +194,7 @@ const ScorePage = () => {
           </div>
           <div>
             <div className="uppercase text-gray-400 text-lg">time</div>
-            <div className="text-4xl font-bold text-[#facc15]">{durationSec?.toFixed(1)}s</div>
+            <div className="text-4xl font-bold text-[#facc15]">{Math.round(durationSec)}s</div>
           </div>
         </div>
         <div className="bg-[#23242a] rounded-lg p-4">
