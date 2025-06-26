@@ -171,6 +171,10 @@ const Timed = ({ time }) => {
     }, 0);
   };
 
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [restartCount, time]);
+
   const renderColoredText = () => {
     const words = target.split(" ");
     const lines = [];

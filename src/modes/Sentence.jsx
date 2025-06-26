@@ -50,6 +50,10 @@ const Sentence = ({ difficulty = "easy" }) => {
     setMistakes(0);
   }, [restartCount, difficulty]);
 
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [restartCount, difficulty]);
+
   // Update stats and character index when user types
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
