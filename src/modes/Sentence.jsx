@@ -3,14 +3,25 @@ import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
 
 // Get a random sentence from the dataset
-const getRandomSentence = () => {
-  const arr = sentenceData.quotes;
-  return arr[Math.floor(Math.random() * arr.length)].text;
+const getRandomSentence = (difficulty = "easy") => {
+  const groups = {
+    easy: [0, 100],
+    medium: [101, 300],
+    hard: [301, 600],
+    extreme: [601, 9999],
+  };
+  const [minLen, maxLen] = groups[difficulty.toLowerCase()] || groups.easy;
+  const allQuotes = sentenceData.quotes;
+  const filtered = allQuotes.filter(
+    (q) => q.length >= minLen && q.length <= maxLen
+  );
+  if (filtered.length === 0) return "No sentence found for this difficulty.";
+  return filtered[Math.floor(Math.random() * filtered.length)].text;
 };
 
 const CHARS_PER_LINE = 50; // Controls line wrapping for display
 
-const Sentence = () => {
+const Sentence = ({ difficulty = "easy" }) => {
   // State management
   const [target, setTarget] = useState(""); // Target sentence to type
   const [input, setInput] = useState(""); // User input
@@ -29,7 +40,7 @@ const Sentence = () => {
 
   // Load new sentence on mount or restart
   useEffect(() => {
-    const sentence = getRandomSentence();
+    const sentence = getRandomSentence(difficulty);
     setTarget(sentence);
     setInput("");
     setStartTime(null);
@@ -37,7 +48,7 @@ const Sentence = () => {
     setWpm(0);
     setAccuracy(100);
     setMistakes(0);
-  }, [restartCount]);
+  }, [restartCount, difficulty]);
 
   // Update stats and character index when user types
   useEffect(() => {
@@ -211,7 +222,7 @@ const Sentence = () => {
   };
 
   return (
-    <div className="flex flex-col items-center pt-8 mt-10">
+    <div className="flex flex-col items-center pt-8 -mt-6">
       {/* Word progress display */}
       <div className="text-yellow-300 text-4xl font-medium mb-4">
         {getCorrectWordCount()}
