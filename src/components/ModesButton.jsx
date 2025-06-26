@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge"
 
 const ModesButton = ({ children, onClick, active, icon, theme = "dark" }) => {
   const baseClasses = `
-    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all border
+    flex items-center gap-2 px-4 py-2 rounded-full text-xl font-semibold transition-all border
   `
 
   const themeClasses = {
