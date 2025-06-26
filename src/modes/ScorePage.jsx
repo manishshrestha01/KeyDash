@@ -105,7 +105,7 @@ const ScorePage = () => {
       pointRadius: 4, // Point adder in graph
       pointHoverRadius: 4,
       borderWidth: 2,
-      tension: 0.4,
+      tension: 0.5,
       fill: false,
       yAxisID: "y",
       order: 1,
@@ -118,7 +118,7 @@ const ScorePage = () => {
       pointRadius: 4, // Point adder in graph
       pointBackgroundColor: "#b91c1c",
       borderWidth: 2,
-      tension: 0.4,
+      tension: 0.5,
       fill: false,
       yAxisID: "y",
       order: 2,
