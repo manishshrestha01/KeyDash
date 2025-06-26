@@ -2,28 +2,32 @@ import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
 
+// Get a random sentence from the dataset
 const getRandomSentence = () => {
   const arr = sentenceData.quotes;
   return arr[Math.floor(Math.random() * arr.length)].text;
 };
 
-const CHARS_PER_LINE = 50;
+const CHARS_PER_LINE = 50; // Controls line wrapping for display
 
 const Sentence = () => {
-  const [target, setTarget] = useState("");
-  const [input, setInput] = useState("");
-  const [startTime, setStartTime] = useState(null);
-  const [restartCount, setRestartCount] = useState(0);
-  const [currentCharIdx, setCurrentCharIdx] = useState(0);
-  const textareaRef = useRef(null);
-  const containerRef = useRef(null);
-  const navigate = useNavigate();
+  // State management
+  const [target, setTarget] = useState(""); // Target sentence to type
+  const [input, setInput] = useState(""); // User input
+  const [startTime, setStartTime] = useState(null); // Typing start time
+  const [restartCount, setRestartCount] = useState(0); // Used to force restart
+  const [currentCharIdx, setCurrentCharIdx] = useState(0); // Tracks current typing position
 
-  // Real-time stats
+  const textareaRef = useRef(null); // Ref to invisible textarea
+  const containerRef = useRef(null); // Ref to text display container
+  const navigate = useNavigate(); // Used to redirect to results page
+
+  // Real-time performance stats
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [mistakes, setMistakes] = useState(0);
 
+  // Load new sentence on mount or restart
   useEffect(() => {
     const sentence = getRandomSentence();
     setTarget(sentence);
@@ -35,15 +39,17 @@ const Sentence = () => {
     setMistakes(0);
   }, [restartCount]);
 
+  // Update stats and character index when user types
   useEffect(() => {
-    if (input.length === 1 && !startTime) setStartTime(Date.now()); // Start timer on first keystroke
+    if (input.length === 1 && !startTime) setStartTime(Date.now());
+
     setCurrentCharIdx(input.length);
 
-    // Calculate real-time stats
     let correct = 0;
     for (let i = 0; i < input.length; i++) {
       if (input[i] === target[i]) correct++;
     }
+
     const totalTyped = input.length;
     const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
     const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
@@ -55,9 +61,11 @@ const Sentence = () => {
     setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
+  // Handle typing logic
   const handleInput = (e) => {
     const val = e.target.value;
 
+    // If user completes the sentence or ends it with a ".", go to result page
     if (
       val.length > target.length ||
       (val.trimEnd().endsWith(".") &&
@@ -65,11 +73,11 @@ const Sentence = () => {
     ) {
       const durationSec = (Date.now() - startTime) / 1000;
 
-      // Calculate stats for results page
       let correctChars = 0;
       for (let i = 0; i < val.length; i++) {
         if (val[i] === target[i]) correctChars++;
       }
+
       const totalTyped = val.length;
       const wpm =
         durationSec > 0
@@ -95,22 +103,25 @@ const Sentence = () => {
     setInput(val);
   };
 
-  const handleRestart = () => setRestartCount((c) => c + 1);
+  // Restart handler
+  const handleRestart = () => {
+    setRestartCount((c) => c + 1);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  };
 
+  // Display attempted word count in real-time
   const getCorrectWordCount = () => {
     const targetWords = target.trim().split(/\s+/);
     const inputWords = input.trim().split(/\s+/);
 
     let attempted;
-    if (
-      input.trim() === target.trim() // User finished all words (no trailing space)
-    ) {
+    if (input.trim() === target.trim()) {
       attempted = targetWords.length;
     } else if (input.endsWith(" ")) {
-      // User finished a word with space
       attempted = Math.min(inputWords.length, targetWords.length);
     } else {
-      // User is typing the last word, don't count it yet
       attempted = Math.max(0, inputWords.length - 1);
       attempted = Math.min(attempted, targetWords.length);
     }
@@ -118,6 +129,7 @@ const Sentence = () => {
     return `${attempted} / ${targetWords.length}`;
   };
 
+  // Render target text with live character coloring and caret
   const renderColoredText = () => {
     const words = target.split(" ");
     const lines = [];
@@ -150,6 +162,7 @@ const Sentence = () => {
         return charSpan;
       });
 
+      // Space after word
       const isSpaceCaret = charIndex === currentCharIdx;
       const spaceCorrect = input[charIndex] === " ";
       const spaceClass =
@@ -171,6 +184,7 @@ const Sentence = () => {
 
       line.push(...wordChars);
 
+      // Push line if exceeds line char limit
       if (line.length >= CHARS_PER_LINE) {
         lines.push(
           <div
@@ -184,6 +198,7 @@ const Sentence = () => {
       }
     });
 
+    // Push remaining characters
     if (line.length > 0) {
       lines.push(
         <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
@@ -197,9 +212,12 @@ const Sentence = () => {
 
   return (
     <div className="flex flex-col items-center pt-8 mt-10">
+      {/* Word progress display */}
       <div className="text-yellow-300 text-4xl font-medium mb-4">
         {getCorrectWordCount()}
       </div>
+
+      {/* Typing area */}
       <div
         ref={containerRef}
         className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
@@ -210,6 +228,7 @@ const Sentence = () => {
         }}
         onClick={() => textareaRef.current?.focus()}
       >
+        {/* Display target sentence with coloring */}
         <div
           className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
           style={{
@@ -221,21 +240,28 @@ const Sentence = () => {
           {renderColoredText()}
         </div>
 
+        {/* Invisible textarea for typing */}
         <textarea
           ref={textareaRef}
           className="absolute inset-0 opacity-0 resize-none text-2xl"
           value={input}
           onChange={handleInput}
-          onPaste={(e) => e.preventDefault()}
+          onPaste={(e) => e.preventDefault()} // Disables paste
+          onKeyDown={(e) => {
+            if (e.key === "Tab") e.preventDefault(); // Disables Tab key
+          }}
           spellCheck="false"
           autoFocus
         />
       </div>
+
+      {/* Restart button */}
       <button
         onClick={handleRestart}
         className="mt-6 p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
         aria-label="Restart"
       >
+        {/* Restart Icon */}
         <svg
           viewBox="-13.44 -13.44 50.88 50.88"
           fill="none"
@@ -265,7 +291,8 @@ const Sentence = () => {
           </defs>
         </svg>
       </button>
-      {/* Floating real-time stats box OUTSIDE the typing area */}
+
+      {/* Live stats display */}
       <div className="-ml-260 -mt-18 bg-black/80 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
