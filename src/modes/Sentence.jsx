@@ -1,79 +1,83 @@
-import React, { useEffect, useRef, useState } from "react"
-import sentenceData from "../assets/english/english.json"
-import { useNavigate } from "react-router-dom"
+import React, { useEffect, useRef, useState } from "react";
+import sentenceData from "../assets/english/english.json";
+import { useNavigate } from "react-router-dom";
 
 const getRandomSentence = () => {
-  const arr = sentenceData.quotes
-  return arr[Math.floor(Math.random() * arr.length)].text
-}
+  const arr = sentenceData.quotes;
+  return arr[Math.floor(Math.random() * arr.length)].text;
+};
 
-const CHARS_PER_LINE = 50
+const CHARS_PER_LINE = 50;
 
 const Sentence = () => {
-  const [target, setTarget] = useState("")
-  const [input, setInput] = useState("")
-  const [startTime, setStartTime] = useState(null)
-  const [restartCount, setRestartCount] = useState(0)
-  const [currentCharIdx, setCurrentCharIdx] = useState(0)
-  const textareaRef = useRef(null)
-  const containerRef = useRef(null)
-  const navigate = useNavigate()
+  const [target, setTarget] = useState("");
+  const [input, setInput] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [restartCount, setRestartCount] = useState(0);
+  const [currentCharIdx, setCurrentCharIdx] = useState(0);
+  const textareaRef = useRef(null);
+  const containerRef = useRef(null);
+  const navigate = useNavigate();
 
   // Real-time stats
-  const [wpm, setWpm] = useState(0)
-  const [accuracy, setAccuracy] = useState(100)
-  const [mistakes, setMistakes] = useState(0)
+  const [wpm, setWpm] = useState(0);
+  const [accuracy, setAccuracy] = useState(100);
+  const [mistakes, setMistakes] = useState(0);
 
   useEffect(() => {
-    const sentence = getRandomSentence()
-    setTarget(sentence)
-    setInput("")
-    setStartTime(null)
-    setCurrentCharIdx(0)
-    setWpm(0)
-    setAccuracy(100)
-    setMistakes(0)
-  }, [restartCount])
+    const sentence = getRandomSentence();
+    setTarget(sentence);
+    setInput("");
+    setStartTime(null);
+    setCurrentCharIdx(0);
+    setWpm(0);
+    setAccuracy(100);
+    setMistakes(0);
+  }, [restartCount]);
 
   useEffect(() => {
-    if (input.length === 1 && !startTime) setStartTime(Date.now())
-    setCurrentCharIdx(input.length)
+    if (input.length === 1 && !startTime) setStartTime(Date.now()); // Start timer on first keystroke
+    setCurrentCharIdx(input.length);
 
     // Calculate real-time stats
-    let correct = 0
+    let correct = 0;
     for (let i = 0; i < input.length; i++) {
-      if (input[i] === target[i]) correct++
+      if (input[i] === target[i]) correct++;
     }
-    const totalTyped = input.length
-    const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0
-    const wpmVal = durationSec > 0 ? ((correct / 5) / (durationSec / 60)) : 0
-    const accVal = totalTyped > 0 ? (correct / totalTyped) * 100 : 100
-    const mistakesVal = totalTyped - correct
+    const totalTyped = input.length;
+    const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
+    const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
+    const accVal = totalTyped > 0 ? (correct / totalTyped) * 100 : 100;
+    const mistakesVal = totalTyped - correct;
 
-    setWpm(Math.round(wpmVal))
-    setAccuracy(accVal)
-    setMistakes(mistakesVal)
-  }, [input, startTime, target])
+    setWpm(Math.round(wpmVal));
+    setAccuracy(accVal);
+    setMistakes(mistakesVal);
+  }, [input, startTime, target]);
 
   const handleInput = (e) => {
-    const val = e.target.value
+    const val = e.target.value;
 
     if (
       val.length > target.length ||
       (val.trimEnd().endsWith(".") &&
         val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
     ) {
-      const durationSec = (Date.now() - startTime) / 1000
+      const durationSec = (Date.now() - startTime) / 1000;
 
       // Calculate stats for results page
-      let correctChars = 0
+      let correctChars = 0;
       for (let i = 0; i < val.length; i++) {
-        if (val[i] === target[i]) correctChars++
+        if (val[i] === target[i]) correctChars++;
       }
-      const totalTyped = val.length
-      const wpm = durationSec > 0 ? ((correctChars / 5) / (durationSec / 60)).toFixed(0) : 0
-      const acc = totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0"
-      const mistakes = totalTyped - correctChars
+      const totalTyped = val.length;
+      const wpm =
+        durationSec > 0
+          ? (correctChars / 5 / (durationSec / 60)).toFixed(0)
+          : 0;
+      const acc =
+        totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0";
+      const mistakes = totalTyped - correctChars;
 
       navigate("/results", {
         state: {
@@ -83,54 +87,55 @@ const Sentence = () => {
           wpm,
           acc,
           mistakes,
-        }
-      })
-      return
+        },
+      });
+      return;
     }
 
-    setInput(val)
-  }
+    setInput(val);
+  };
 
-  const handleRestart = () => setRestartCount(c => c + 1)
+  const handleRestart = () => setRestartCount((c) => c + 1);
 
   const getCorrectWordCount = () => {
-    const targetWords = target.trim().split(/\s+/)
-    const inputWords = input.trim().split(/\s+/)
+    const targetWords = target.trim().split(/\s+/);
+    const inputWords = input.trim().split(/\s+/);
 
     let attempted;
     if (
       input.trim() === target.trim() // User finished all words (no trailing space)
     ) {
-      attempted = targetWords.length
+      attempted = targetWords.length;
     } else if (input.endsWith(" ")) {
       // User finished a word with space
-      attempted = Math.min(inputWords.length, targetWords.length)
+      attempted = Math.min(inputWords.length, targetWords.length);
     } else {
       // User is typing the last word, don't count it yet
-      attempted = Math.max(0, inputWords.length - 1)
-      attempted = Math.min(attempted, targetWords.length)
+      attempted = Math.max(0, inputWords.length - 1);
+      attempted = Math.min(attempted, targetWords.length);
     }
 
-    return `${attempted} / ${targetWords.length}`
-  }
+    return `${attempted} / ${targetWords.length}`;
+  };
 
   const renderColoredText = () => {
-    const words = target.split(" ")
-    const lines = []
-    let line = []
-    let charIndex = 0
+    const words = target.split(" ");
+    const lines = [];
+    let line = [];
+    let charIndex = 0;
 
     words.forEach((word, wIdx) => {
       const wordChars = word.split("").map((c, i) => {
-        let cls = "text-muted"
+        let cls = "text-muted";
 
         if (charIndex < input.length) {
-          cls = input[charIndex] === c
-            ? "text-correct"
-            : "text-error underline underline-offset-2"
+          cls =
+            input[charIndex] === c
+              ? "text-correct"
+              : "text-error underline underline-offset-2";
         }
 
-        const isCaret = charIndex === currentCharIdx
+        const isCaret = charIndex === currentCharIdx;
 
         const charSpan = (
           <span key={`${wIdx}-${i}`} className={`relative ${cls}`}>
@@ -139,17 +144,20 @@ const Sentence = () => {
               <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
             )}
           </span>
-        )
+        );
 
-        charIndex++
-        return charSpan
-      })
+        charIndex++;
+        return charSpan;
+      });
 
-      const isSpaceCaret = charIndex === currentCharIdx
-      const spaceCorrect = input[charIndex] === " "
-      const spaceClass = charIndex < input.length
-        ? (spaceCorrect ? "text-correct" : "text-error underline underline-offset-2")
-        : "text-muted"
+      const isSpaceCaret = charIndex === currentCharIdx;
+      const spaceCorrect = input[charIndex] === " ";
+      const spaceClass =
+        charIndex < input.length
+          ? spaceCorrect
+            ? "text-correct"
+            : "text-error underline underline-offset-2"
+          : "text-muted";
 
       wordChars.push(
         <span key={`${wIdx}-space`} className={`relative ${spaceClass}`}>
@@ -158,31 +166,34 @@ const Sentence = () => {
             <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
           )}
         </span>
-      )
-      charIndex++
+      );
+      charIndex++;
 
-      line.push(...wordChars)
+      line.push(...wordChars);
 
       if (line.length >= CHARS_PER_LINE) {
         lines.push(
-          <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
+          <div
+            key={`line-${lines.length}`}
+            style={{ scrollSnapAlign: "start" }}
+          >
             {line}
           </div>
-        )
-        line = []
+        );
+        line = [];
       }
-    })
+    });
 
     if (line.length > 0) {
       lines.push(
         <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
           {line}
         </div>
-      )
+      );
     }
 
-    return lines
-  }
+    return lines;
+  };
 
   return (
     <div className="flex flex-col items-center pt-8 mt-10">
@@ -202,7 +213,9 @@ const Sentence = () => {
         <div
           className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
           style={{
-            transform: `translateY(-${Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5}rem)`
+            transform: `translateY(-${
+              Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5
+            }rem)`,
           }}
         >
           {renderColoredText()}
@@ -213,7 +226,7 @@ const Sentence = () => {
           className="absolute inset-0 opacity-0 resize-none text-2xl"
           value={input}
           onChange={handleInput}
-          onPaste={e => e.preventDefault()}
+          onPaste={(e) => e.preventDefault()}
           spellCheck="false"
           autoFocus
         />
@@ -254,12 +267,12 @@ const Sentence = () => {
       </button>
       {/* Floating real-time stats box OUTSIDE the typing area */}
       <div className="-ml-260 -mt-18 bg-black/80 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
-  <div>WPM = {wpm}</div>
-  <div>Acc = {accuracy.toFixed(1)}%</div>
-  <div>Error = {mistakes}</div>
-</div>
+        <div>WPM = {wpm}</div>
+        <div>Acc = {accuracy.toFixed(1)}%</div>
+        <div>Error = {mistakes}</div>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default Sentence
+export default Sentence;
