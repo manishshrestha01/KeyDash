@@ -143,7 +143,7 @@ const ScorePage = () => {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#323437] text-gray-100">
-      <h1 className="text-4xl font-extrabold mb-6 text-[#facc15]">Your Score</h1>
+      <h1 className="text-4xl font-extrabold -mt-5 mb-4 text-[#facc15]">Your Score</h1>
 
       <div className="w-full max-w-5xl bg-[#23242a] p-6 rounded-xl space-y-8 ">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
