@@ -86,7 +86,7 @@ const Navbar = () => {
                 <div className="absolute right-0 mt-2 w-64 bg-white text-black rounded-lg shadow-lg z-50">
                   <NavLink
                     to="/profile"
-                    className="flex items-center px-4 py-3 hover:bg-gray-100"
+                    className="group flex items-center px-4 py-3 rounded-lg hover:bg-gray-100"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -107,26 +107,18 @@ const Navbar = () => {
                     View Profile
                   </NavLink>
                   <NavLink
-                    to="/create-challenge"
+                    to="/leaderboard"
                     className="flex items-center px-4 py-3 hover:bg-gray-100"
                   >
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
+                      fill="currentColor"
                       viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                      data-slot="icon"
-                      class="mr-2 h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="mr-2 h-5 w-5"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 4.5v15m7.5-7.5h-15"
-                      ></path>
+                      <path d="M22,7H16.333V4a1,1,0,0,0-1-1H8.667a1,1,0,0,0-1,1v7H2a1,1,0,0,0-1,1v8a1,1,0,0,0,1,1H22a1,1,0,0,0,1-1V8A1,1,0,0,0,22,7ZM7.667,19H3V13H7.667Zm6.666,0H9.667V5h4.666ZM21,19H16.333V9H21Z" />
                     </svg>
-                    Create a Challenge
+                    Leaderboard
                   </NavLink>
                   <NavLink
                     to="/settings"
@@ -151,7 +143,7 @@ const Navbar = () => {
                   </NavLink>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-3 hover:bg-gray-100"
+                    className="group flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 w-full cursor-pointer"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -167,7 +159,7 @@ const Navbar = () => {
                         clip-rule="evenodd"
                       ></path>
                     </svg>
-                    Sign out
+                    Log Out
                   </button>
                 </div>
               )}
