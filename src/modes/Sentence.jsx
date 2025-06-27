@@ -151,6 +151,8 @@ const Sentence = ({ difficulty = "easy" }) => {
     let line = [];
     let charIndex = 0;
 
+
+    // Renders colors for each correct or incorrect character
     words.forEach((word, wIdx) => {
       const wordChars = word.split("").map((c, i) => {
         let cls = "text-muted";
