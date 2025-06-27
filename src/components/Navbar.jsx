@@ -30,12 +30,12 @@ const Navbar = () => {
   return (
     <nav className="bg-[#101826] text-white sticky top-0 z-50 border-b border-white/10">
       <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
-        <NavLink to="/" className="flex items-center space-x-3 -ml-15">
+        <NavLink to="/" className="flex items-center space-x-3">
           <img src="/logo.svg" className="h-10" alt="logo" />
           <span className="text-3xl font-semibold">KeyDash</span>
         </NavLink>
 
-        <div className="relative -mr-15">
+        <div className="relative">
           {!user ? (
             <NavLink
               to="/login"
