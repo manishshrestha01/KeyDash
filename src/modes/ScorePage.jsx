@@ -54,9 +54,6 @@ const ScorePage = () => {
   // Chart data generation (fluctuating demo, ends at real values)
   const seconds = Math.max(1, Math.ceil(durationSec || 1))
   const timeLabels = Array.from({ length: seconds }, (_, i) => (i + 1).toString())
-  if (seconds > 1 && durationSec % 1 !== 0) {
-    timeLabels[seconds - 1] = durationSec.toFixed(1)
-  }
 
   // Exact cumulative correct chars at each second
   let cumulativeCorrect = Array(seconds).fill(0)
@@ -171,7 +168,7 @@ const ScorePage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#323437] text-gray-100">
+    <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#101826] text-gray-100">
       <h1 className="text-4xl font-extrabold -mt-5 mb-4 text-[#facc15]">Your Score</h1>
 
       <div className="w-full max-w-5xl bg-[#23242a] p-6 rounded-xl space-y-8 ">

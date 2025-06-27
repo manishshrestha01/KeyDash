@@ -1,6 +1,6 @@
 @import "tailwindcss";
 body {
-  @apply bg-[#323437] text-white;
+  @apply bg-[#101826] text-white;
 }
 @keyframes blink {
   0%, 100% { opacity: 1; }
