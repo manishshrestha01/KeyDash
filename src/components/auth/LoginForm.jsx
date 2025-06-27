@@ -1,6 +1,4 @@
 import { useForm } from "react-hook-form";
-import { auth } from "../../firebase";
-import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useState } from "react";
 
 const LoginForm = () => {
@@ -13,35 +11,14 @@ const LoginForm = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const actionCodeSettings = {
-    url: "https://keydash.shresthamanish.info.np/",
-    handleCodeInApp: true
-  };
-
   const onSubmit = async (data) => {
-    setMessage("");
-    setError("");
-    try {
-      await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", data.email);
-      setMessage("Success! Check your email for the login link.");
-    } catch (err) {
-      console.error("Error sending sign-in link:", err);
-      setError("Error sending sign-in link. Please try again.");
-    }
+    setMessage("Replace this with Supabase login logic");
+    console.log("Email submitted:", data.email);
   };
 
   const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log("Google User:", user);
-      window.location.href = "/";
-    } catch (err) {
-      console.error("Google login error:", err);
-      setError("Google login failed. Please try again.");
-    }
+    setError("Replace this with Supabase Google login logic");
+    console.log("Google login clicked");
   };
 
   return (
