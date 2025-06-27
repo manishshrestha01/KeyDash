@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import sentenceData from "../assets/english/english.json";
+import sentenceData from "../assets/english/sentence.json";
 import { useNavigate } from "react-router-dom";
 
 // Get a random sentence from the dataset
@@ -11,7 +11,7 @@ const getRandomSentence = (difficulty = "easy") => {
     extreme: [601, 9999],
   };
   const [minLen, maxLen] = groups[difficulty.toLowerCase()] || groups.easy;
-  const allQuotes = sentenceData.quotes;
+  const allQuotes = sentenceData.sentences;
   const filtered = allQuotes.filter(
     (q) => q.length >= minLen && q.length <= maxLen
   );

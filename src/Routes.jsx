@@ -1,7 +1,6 @@
 import { createBrowserRouter, createRoutesFromElements, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import { RouterProvider } from "react-router-dom";
-import {LOGIN_ROUTE, RESULT_ROUTE} from "./constants/route";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
 import ScorePage from "./modes/ScorePage";
