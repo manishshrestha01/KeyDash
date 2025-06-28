@@ -123,7 +123,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         // Update scores array in profiles
         const { data: profile } = await supabase
           .from("profiles")
-          .select("scores")
+          .select("scores, best_wpm")
           .eq("id", user.id)
           .maybeSingle();
         let scoresArr = [];
@@ -132,10 +132,43 @@ const Sentence = ({ difficulty = "easy" }) => {
         }
         scoresArr.unshift(scoreObj); // Add new score at the start
         if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
+
+        // Update best_wpm if this is higher
+        let bestWpm = profile?.best_wpm || 0;
+        if (Number(wpm) > bestWpm || bestWpm === 0) {
+          bestWpm = Number(wpm);
+        }
+
         await supabase
           .from("profiles")
-          .update({ scores: scoresArr })
+          .update({ scores: scoresArr, best_wpm: bestWpm })
           .eq("id", user.id);
+
+        // Upsert into leaderboard
+        // First, fetch existing leaderboard row for this user/mode/difficulty
+        const { data: lbRow } = await supabase
+          .from("leaderboard")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("mode", "Sentence")
+          .eq("difficulty", difficulty)
+          .maybeSingle();
+
+        if (!lbRow || Number(wpm) > (lbRow.wpm || 0)) {
+          // Insert or update with new high score
+          await supabase.from("leaderboard").upsert(
+            {
+              user_id: user.id,
+              mode: "Sentence",
+              difficulty: difficulty,
+              wpm: Number(wpm),
+              accuracy: Number(acc),
+              time: durationSec,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,mode,difficulty" }
+          );
+        }
       }
 
       navigate("/results", {
