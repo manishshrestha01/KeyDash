@@ -48,9 +48,17 @@ const Profile = () => {
     <div className="max-w-4xl mx-auto px-6 py-10 text-white">
       {/* User Info */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="bg-yellow-400 text-black font-bold rounded-full w-14 h-14 flex items-center justify-center text-xl">
-          {profile.display_name?.charAt(0).toUpperCase() || "U"}
-        </div>
+        {profile.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt="Avatar"
+            className="w-14 h-14 rounded-full object-cover border-2 border-yellow-400"
+          />
+        ) : (
+          <div className="bg-yellow-400 text-black font-bold rounded-full w-14 h-14 flex items-center justify-center text-xl">
+            {profile.display_name?.charAt(0).toUpperCase() || "U"}
+          </div>
+        )}
         <div>
           <h2 className="text-2xl font-semibold">Hello, {profile.display_name || "User"}</h2>
           <p className="text-gray-400">Welcome back to your typing dashboard</p>
