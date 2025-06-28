@@ -4,7 +4,7 @@ import { RouterProvider } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
 import ScorePage from "./modes/ScorePage";
-import Account from "./pages/Account";
+import Profile from "./pages/Profile";
 import Settings from "./components/auth/Settings";
 
 const Routes = () => {
@@ -13,7 +13,7 @@ const Routes = () => {
             <Route index element={<Home />} />
             <Route path="/login" element={<Login/>} />
             <Route path="/results" element={<ScorePage />} />
-            <Route path="/account" element={<Account />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
 
         </Route>

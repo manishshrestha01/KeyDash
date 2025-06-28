@@ -1,7 +1,7 @@
 import React from "react"
 import { Link } from "react-router-dom"
-<Link to="/account" className="text-yellow-400 hover:underline">
-  Account
+<Link to="/profile" className="text-yellow-400 hover:underline">
+  Profile
 </Link>
 const mockUser = {
   username: "manish",
@@ -26,7 +26,7 @@ const mockUser = {
   ]
 }
 
-const Account = () => {
+const Profile = () => {
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 text-white">
       {/* User Info */}
@@ -90,4 +90,5 @@ const Account = () => {
   )
 }
 
-export default Account
+export default Profile
+
