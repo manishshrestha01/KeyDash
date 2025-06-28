@@ -122,7 +122,7 @@ const Navbar = () => {
                 <div className="absolute right-0 mt-2 w-64 bg-white text-black rounded-lg shadow-lg z-50">
                   <NavLink
                     to="/profile"
-                    className="group flex items-center px-4 py-3 hover:bg-gray-100"
+                    className="group flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg"
                   >
                     {/* Profile SVG */}
                     <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +164,7 @@ const Navbar = () => {
                   </NavLink>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center px-4 py-3 hover:bg-gray-100 w-full"
+                    className="flex items-center px-4 py-3 hover:bg-gray-100  w-full"
                   >
                     {/* Logout SVG */}
                     <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
