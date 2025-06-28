@@ -13,7 +13,8 @@ const LoginForm = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const redirectUrl = "https://keydash.shresthamanish.info.np/";
+  // const redirectUrl = "https://keydash.shresthamanish.info.np/";
+  const redirectUrl = "http://localhost:5173/";
 
 
   const onSubmit = async (data) => {
