@@ -151,7 +151,6 @@ const Sentence = ({ difficulty = "easy" }) => {
     let line = [];
     let charIndex = 0;
 
-
     // Renders colors for each correct or incorrect character
     words.forEach((word, wIdx) => {
       const wordChars = word.split("").map((c, i) => {
@@ -310,7 +309,7 @@ const Sentence = ({ difficulty = "easy" }) => {
       </button>
 
       {/* Live stats display */}
-      <div className="-ml-260 -mt-18 bg-black/80 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
+      <div className="-mr-260 -mt-118 bg-sky-500 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
         <div>Error = {mistakes}</div>

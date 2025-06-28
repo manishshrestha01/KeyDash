@@ -326,7 +326,7 @@ const Timed = ({ time }) => {
       </button>
 
       {/* Stats display */}
-      <div className="-ml-260 -mt-18 bg-black/80 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
+      <div className="-mr-260 -mt-118 bg-sky-500 rounded-2xl px-7 py-5 text-white text-2xl font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
         <div>Error = {mistakes}</div>
