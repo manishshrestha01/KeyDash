@@ -55,7 +55,7 @@ const Navbar = () => {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
-    navigate("/login");
+    navigate("/");
   };
 
   const avatarUrl = profile?.avatar_url;
@@ -206,7 +206,7 @@ const Navbar = () => {
                   </NavLink>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg  w-full"
+                    className="flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg  w-full cursor-pointer"
                   >
                     {/* Logout SVG */}
                     <svg
