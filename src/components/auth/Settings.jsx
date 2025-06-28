@@ -178,7 +178,9 @@ const Settings = () => {
     if (error) {
       if (
         error.message &&
-        error.message.includes('duplicate key value violates unique constraint "profiles_display_name_key"')
+        error.message.includes(
+          'duplicate key value violates unique constraint "profiles_display_name_key"'
+        )
       ) {
         setMessage("UserName Already Exist");
       } else {
@@ -301,7 +303,13 @@ const Settings = () => {
                 />
               ) : (
                 <div className="w-full h-full bg-gray-600 flex items-center justify-center text-2xl text-white rounded-full">
-                  {formData.display_name?.[0]?.toUpperCase() || "U"}
+                  <svg
+                    className="h-full w-full text-gray-300"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                  </svg>
                 </div>
               )}
             </div>
@@ -428,7 +436,11 @@ const Settings = () => {
             strokeWidth="2"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
           </svg>
           <span>{message}</span>
         </div>
@@ -448,7 +460,9 @@ const InputField = ({
   error,
 }) => (
   <div>
-    <label className="block mb-1 text-lg text-gray-300 font-semibold">{label}</label>
+    <label className="block mb-1 text-lg text-gray-300 font-semibold">
+      {label}
+    </label>
     <div className="flex items-center bg-gray-800 border border-gray-700 rounded-lg px-5 py-3 focus-within:ring-2 focus-within:ring-blue-500">
       {icon && <span className="mr-3 text-gray-400 text-lg">{icon}</span>}
       <input
@@ -469,7 +483,9 @@ const InputField = ({
 
 const TextAreaField = ({ label, name, value, onChange }) => (
   <div>
-    <label className="block mb-1 text-lg text-gray-300 font-bold">{label}</label>
+    <label className="block mb-1 text-lg text-gray-300 font-bold">
+      {label}
+    </label>
     <textarea
       name={name}
       value={value}

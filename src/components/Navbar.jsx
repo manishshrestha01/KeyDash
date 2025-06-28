@@ -103,8 +103,11 @@ const Navbar = () => {
                     className="w-8 h-8 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white">
-                    {displayName?.[0]?.toUpperCase()}
+                  <div className="w-9 h-9 rounded-lg bg-[#47506B] flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="#6B768A" viewBox="0 0 24 24">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 18c0-2.21 3.582-4 8-4s8 1.79 8 4v2H4v-2z" />
+                    </svg>
                   </div>
                 )}
                 <span className="font-medium whitespace-nowrap">

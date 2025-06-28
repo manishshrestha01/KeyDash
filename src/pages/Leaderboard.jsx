@@ -1,5 +1,3 @@
-// src/pages/Leaderboard.jsx
-
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Link } from "react-router-dom";
@@ -36,17 +34,18 @@ const Leaderboard = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLoading(true);
-
       let query = supabase
         .from("leaderboard")
-        .select(`
-          user_id, wpm, accuracy, mode,
+        .select(
+          `
+          user_id, wpm, accuracy, time, mode,
           profiles!inner(
             display_name, avatar_url,
             twitter, github, linkedin,
             instagram, youtube, twitch
           )
-        `)
+        `
+        )
         .eq("mode", mode);
 
       if (mode === "Sentence") query = query.eq("difficulty", difficulty);
@@ -60,6 +59,7 @@ const Leaderboard = () => {
         console.error("Leaderboard fetch error:", error);
         setScores([]);
       } else {
+        console.log("Leaderboard data:", data);
         setScores(data || []);
       }
 
@@ -68,9 +68,6 @@ const Leaderboard = () => {
 
     fetchLeaderboard();
   }, [mode, difficulty, time]);
-
-  const topThree = scores.slice(0, 3);
-  const others = scores.slice(3);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 text-white">
@@ -122,43 +119,6 @@ const Leaderboard = () => {
         </div>
       )}
 
-      {/* Podium */}
-      <div className="flex justify-center items-end gap-6 mb-10">
-        {[1, 0, 2].map((i, rank) => {
-          const user = topThree[i];
-          if (!user)
-            return <div key={rank} className="w-24 h-24" />;
-          const heights = [40, 56, 32];
-          const bg = ["#b0b0b0", "#facc15", "#cd7f32"];
-
-          return (
-            <div
-              key={rank}
-              className="flex flex-col items-center justify-end"
-              style={{ minWidth: 100 }}
-            >
-              <img
-                src={user.profiles.avatar_url || ""}
-                alt="avatar"
-                className="w-16 h-16 rounded-full border-2 border-white mb-2 object-cover"
-              />
-              <Link
-                to={`/users/${user.user_id}`}
-                className="hover:underline text-sm font-semibold"
-              >
-                {user.profiles.display_name || "Anonymous"}
-              </Link>
-              <div
-                className="mt-2 w-full text-center rounded-t-md font-bold text-black"
-                style={{ backgroundColor: bg[rank], height: `${heights[rank]}px` }}
-              >
-                {user.wpm} WPM
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {/* Leaderboard Table */}
       <div className="bg-[#2f3133] rounded-lg overflow-hidden">
         <table className="w-full text-sm table-auto">
@@ -168,13 +128,14 @@ const Leaderboard = () => {
               <th className="px-4 py-2">User</th>
               <th className="px-4 py-2">WPM</th>
               <th className="px-4 py-2">Accuracy</th>
+              {mode === "Sentence" && <th className="px-4 py-2">Time</th>}
               <th className="px-4 py-2">Social</th>
             </tr>
           </thead>
           <tbody>
             {scores.length === 0 && !loading && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   No entries yet.
                 </td>
               </tr>
@@ -187,11 +148,29 @@ const Leaderboard = () => {
               >
                 <td className="px-4 py-2">{i + 1}</td>
                 <td className="px-4 py-2 flex items-center gap-3">
-                  <img
-                    src={u.profiles.avatar_url || ""}
-                    alt="avatar"
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
+                  {u.profiles.avatar_url ? (
+                    <img
+                      src={u.profiles.avatar_url}
+                      alt="avatar"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%23D1D5DB' viewBox='0 0 24 24'><path d='M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z'/></svg>";
+                      }}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div class=" bg-gray-600 flex items-center justify-center text-2xl text-white rounded-full">
+                      <svg
+                        class="w-8 h-8 rounded-full object-cover"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                      </svg>{" "}
+                    </div>
+                  )}
+
                   <Link
                     to={`/users/${u.user_id}`}
                     className="hover:underline font-medium"
@@ -201,6 +180,11 @@ const Leaderboard = () => {
                 </td>
                 <td className="px-4 py-2 font-semibold">{u.wpm}</td>
                 <td className="px-4 py-2">{u.accuracy?.toFixed(1) ?? "-"}%</td>
+                {mode === "Sentence" && (
+                  <td className="px-4 py-2">
+                    {u.time ? u.time.toFixed(2) + "s" : "-"}
+                  </td>
+                )}
                 <td className="px-4 py-2 flex gap-2 text-xl">
                   {Object.entries(socialIcons).map(([key, IconComp]) => {
                     const url = u.profiles[key];
@@ -225,7 +209,9 @@ const Leaderboard = () => {
         </table>
 
         {loading && (
-          <div className="py-4 text-center text-yellow-300 font-mono">Loading...</div>
+          <div className="py-4 text-center text-yellow-300 font-mono">
+            Loading...
+          </div>
         )}
       </div>
     </div>
