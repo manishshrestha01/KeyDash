@@ -3,6 +3,7 @@ import sentenceData from "../assets/english/english.json";
 import timedData from "../assets/english/timed.json";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import RealTimeStats from "../components/RealTimeStats";
 
 const getRandomSentence = () => {
   const arr = timedData.words;
@@ -375,11 +376,12 @@ const Timed = ({ time, difficulty = "-" }) => {
       </button>
 
       {/* Stats display */}
-      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
-        <div>WPM = {wpm}</div>
-        <div>Acc = {accuracy.toFixed(1)}%</div>
-        <div>Error = {mistakes}</div>
-      </div>
+      <RealTimeStats
+        wpm={wpm}
+        accuracy={accuracy}
+        mistakes={mistakes}
+      />
+
     </div>
   );
 };

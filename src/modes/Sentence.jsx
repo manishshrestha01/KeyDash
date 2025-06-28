@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import RealTimeStats from "../components/RealTimeStats";
 
 // Get a random sentence from the dataset
 const getRandomSentence = (difficulty = "easy") => {
@@ -344,11 +345,12 @@ const Sentence = ({ difficulty = "easy" }) => {
       </button>
 
       {/* Live stats display */}
-      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
-        <div>WPM = {wpm}</div>
-        <div>Acc = {accuracy.toFixed(1)}%</div>
-        <div>Error = {mistakes}</div>
-      </div>
+      <RealTimeStats
+        wpm={wpm}
+        accuracy={accuracy}
+        mistakes={mistakes}
+      />
+
     </div>
   );
 };
