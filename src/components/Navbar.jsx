@@ -132,6 +132,7 @@ const Navbar = () => {
                 <div className="absolute right-0 mt-2 w-64 bg-white text-black rounded-lg shadow-lg z-50">
                   <NavLink
                     to="/"
+                    onClick={() => setMenuOpen(false)}
                     className="group flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg"
                   >
                     {/* Home SVG*/}
@@ -153,6 +154,7 @@ const Navbar = () => {
                   </NavLink>
                   <NavLink
                     to="/profile"
+                    onClick={() => setMenuOpen(false)}
                     className="group flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg"
                   >
                     {/* Profile SVG */}
@@ -173,6 +175,7 @@ const Navbar = () => {
                   </NavLink>
                   <NavLink
                     to="/leaderboard"
+                    onClick={() => setMenuOpen(false)}
                     className="flex items-center px-4 py-3 hover:bg-gray-100"
                   >
                     {/* Leaderboard SVG */}
@@ -187,6 +190,7 @@ const Navbar = () => {
                   </NavLink>
                   <NavLink
                     to="/settings"
+                    onClick={() => setMenuOpen(false)}
                     className="flex items-center px-4 py-3 hover:bg-gray-100"
                   >
                     {/* Settings SVG */}

@@ -7,6 +7,7 @@ import ScorePage from "./modes/ScorePage";
 import Profile from "./pages/Profile";
 import Settings from "./components/auth/Settings";
 import Leaderboard from "./pages/Leaderboard";
+import UserProfile from "./pages/UserProfile";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
@@ -17,6 +18,8 @@ const Routes = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/users/:userId" element={<UserProfile />} />
+
 
         </Route>
     ));
