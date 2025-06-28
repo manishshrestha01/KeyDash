@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 const getRandomSentence = () => {
   const arr = sentenceData.quotes;
@@ -9,7 +10,7 @@ const getRandomSentence = () => {
 
 const CHARS_PER_LINE = 50;
 
-const Timed = ({ time }) => {
+const Timed = ({ time, difficulty = "Medium" }) => {
   const [target, setTarget] = useState("");
   const [input, setInput] = useState("");
   const [startTime, setStartTime] = useState(null);
@@ -29,6 +30,14 @@ const Timed = ({ time }) => {
 
   const inputRef = useRef(input);
   const startTimeRef = useRef(startTime);
+
+  // Add user state
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Get current user
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+  }, []);
 
   useEffect(() => {
     const sentence = getRandomSentence();
@@ -122,7 +131,7 @@ const Timed = ({ time }) => {
     setInput(val);
   };
 
-  const handleFinish = (
+  const handleFinish = async (
     finalInput = inputRef.current,
     finishStartTime = startTimeRef.current,
     forcedTimeUp = false
@@ -151,6 +160,35 @@ const Timed = ({ time }) => {
         ? ((correctChars / totalTyped) * 100).toFixed(1)
         : "0.0";
     const mistakes = totalTyped - correctChars;
+
+    // Save score to Supabase
+    if (user) {
+      const scoreObj = {
+        mode: "Timed",
+        difficulty,
+        time: durationSec,
+        wpm: Number(wpm),
+        accuracy: Number(acc),
+        date: new Date().toISOString(),
+      };
+      // Update scores array in profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("scores")
+        .eq("id", user.id)
+        .maybeSingle();
+      let scoresArr = [];
+      if (profile && profile.scores) {
+        scoresArr = Array.isArray(profile.scores) ? profile.scores : [];
+      }
+      scoresArr.unshift(scoreObj); // Add new score at the start
+      // Optionally limit to last N scores
+      if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
+      await supabase
+        .from("profiles")
+        .update({ scores: scoresArr })
+        .eq("id", user.id);
+    }
 
     navigate("/results", {
       state: {

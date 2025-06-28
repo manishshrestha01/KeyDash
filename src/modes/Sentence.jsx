@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 // Get a random sentence from the dataset
 const getRandomSentence = (difficulty = "easy") => {
@@ -28,6 +29,7 @@ const Sentence = ({ difficulty = "easy" }) => {
   const [startTime, setStartTime] = useState(null); // Typing start time
   const [restartCount, setRestartCount] = useState(0); // Used to force restart
   const [currentCharIdx, setCurrentCharIdx] = useState(0); // Tracks current typing position
+  const [user, setUser] = useState(null);
 
   const textareaRef = useRef(null); // Ref to invisible textarea
   const containerRef = useRef(null); // Ref to text display container
@@ -54,6 +56,11 @@ const Sentence = ({ difficulty = "easy" }) => {
     textareaRef.current?.focus();
   }, [restartCount, difficulty]);
 
+  // Get current user
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+  }, []);
+
   // Update stats and character index when user types
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
@@ -77,7 +84,7 @@ const Sentence = ({ difficulty = "easy" }) => {
   }, [input, startTime, target]);
 
   // Handle typing logic
-  const handleInput = (e) => {
+  const handleInput = async (e) => {
     const val = e.target.value;
 
     // If user completes the sentence or ends it with a ".", go to result page
@@ -101,6 +108,34 @@ const Sentence = ({ difficulty = "easy" }) => {
       const acc =
         totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0";
       const mistakes = totalTyped - correctChars;
+
+      // Save score to Supabase
+      if (user) {
+        const scoreObj = {
+          mode: "Sentence",
+          difficulty,
+          time: durationSec,
+          wpm: Number(wpm),
+          accuracy: Number(acc),
+          date: new Date().toISOString(),
+        };
+        // Update scores array in profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("scores")
+          .eq("id", user.id)
+          .maybeSingle();
+        let scoresArr = [];
+        if (profile && profile.scores) {
+          scoresArr = Array.isArray(profile.scores) ? profile.scores : [];
+        }
+        scoresArr.unshift(scoreObj); // Add new score at the start
+        if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
+        await supabase
+          .from("profiles")
+          .update({ scores: scoresArr })
+          .eq("id", user.id);
+      }
 
       navigate("/results", {
         state: {
