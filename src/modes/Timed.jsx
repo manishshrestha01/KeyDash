@@ -1,16 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
+import timedData from "../assets/english/timed.json";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 const getRandomSentence = () => {
-  const arr = sentenceData.quotes;
-  return arr[Math.floor(Math.random() * arr.length)].text;
+  const arr = timedData.words;
+  const words = []
+
+  for (let i = 0; i < 100; i++) {
+    const randomIndex = Math.floor(Math.random() * arr.length);
+    const word = arr[randomIndex];
+
+    // Ensure the word is not too long
+    words.push(word);
+  }
+
+  return words.join(" ");
 };
 
 const CHARS_PER_LINE = 50;
 
-const Timed = ({ time, difficulty = "Medium" }) => {
+const Timed = ({ time, difficulty = "-" }) => {
   const [target, setTarget] = useState("");
   const [input, setInput] = useState("");
   const [startTime, setStartTime] = useState(null);
