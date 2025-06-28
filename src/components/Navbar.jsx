@@ -107,26 +107,64 @@ const Navbar = () => {
                     {displayName?.[0]?.toUpperCase()}
                   </div>
                 )}
-                <span className="font-medium whitespace-nowrap">{displayName}</span>
+                <span className="font-medium whitespace-nowrap">
+                  {displayName}
+                </span>
                 <svg
                   className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white text-black rounded-lg shadow-lg z-50">
                   <NavLink
+                    to="/"
+                    className="group flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg"
+                  >
+                    {/* Home SVG*/}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="mr-2 h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 12l9-9 9 9M4.5 10.5V21a1.5 1.5 0 001.5 1.5h3.75a.75.75 0 00.75-.75v-4.5a.75.75 0 01.75-.75h2.25a.75.75 0 01.75.75v4.5a.75.75 0 00.75.75H18a1.5 1.5 0 001.5-1.5V10.5"
+                      />
+                    </svg>
+                    Home
+                  </NavLink>
+                  <NavLink
                     to="/profile"
                     className="group flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg"
                   >
                     {/* Profile SVG */}
-                    <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.118a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.675 0-5.215-.584-7.5-1.632Z" />
+                    <svg
+                      className="mr-2 h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.5"
+                        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.118a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.675 0-5.215-.584-7.5-1.632Z"
+                      />
                     </svg>
                     View Profile
                   </NavLink>
@@ -135,7 +173,11 @@ const Navbar = () => {
                     className="flex items-center px-4 py-3 hover:bg-gray-100"
                   >
                     {/* Leaderboard SVG */}
-                    <svg fill="currentColor" viewBox="0 0 24 24" className="mr-2 h-5 w-5">
+                    <svg
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                      className="mr-2 h-5 w-5"
+                    >
                       <path d="M22,7H16.333V4a1,1,0,0,0-1-1H8.667a1,1,0,0,0-1,1v7H2a1,1,0,0,0-1,1v8a1,1,0,0,0,1,1H22a1,1,0,0,0,1-1V8A1,1,0,0,0,22,7ZM7.667,19H3V13H7.667Zm6.666,0H9.667V5h4.666ZM21,19H16.333V9H21Z" />
                     </svg>
                     Leaderboard
@@ -167,7 +209,11 @@ const Navbar = () => {
                     className="flex items-center px-4 py-3 hover:bg-gray-100 hover:rounded-lg  w-full"
                   >
                     {/* Logout SVG */}
-                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="mr-2 h-5 w-5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         fillRule="evenodd"
                         clipRule="evenodd"
