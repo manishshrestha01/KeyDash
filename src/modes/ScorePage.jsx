@@ -1,5 +1,3 @@
-//before ScorePage
-
 import { useLocation, useNavigate } from "react-router-dom"
 import { Line } from "react-chartjs-2"
 import {
@@ -54,6 +52,9 @@ const ScorePage = () => {
   // Chart data generation (fluctuating demo, ends at real values)
   const seconds = Math.max(1, Math.ceil(durationSec || 1))
   const timeLabels = Array.from({ length: seconds }, (_, i) => (i + 1).toString())
+  if (seconds > 1 && durationSec % 1 !== 0) {
+    timeLabels[seconds - 1] = durationSec.toFixed(1)
+  }
 
   // Exact cumulative correct chars at each second
   let cumulativeCorrect = Array(seconds).fill(0)
@@ -71,11 +72,20 @@ const ScorePage = () => {
     }
   }
 
-  // Exact WPM at each second
-  const wpmData = cumulativeCorrect.map((correctSoFar, i) => {
-    const timeMin = (i + 1) / 60
-    return timeMin > 0 ? Math.round((correctSoFar / 5) / timeMin) : 0
+  // WPM at each time point, using float for last point and ensuring last matches main WPM
+  let wpmData = cumulativeCorrect.map((correctSoFar, i) => {
+    let elapsedSec = i + 1
+    if (i === seconds - 1 && durationSec % 1 !== 0) {
+      elapsedSec = durationSec
+      correctSoFar = correct // use total correct chars for last point
+    }
+    const timeMin = elapsedSec / 60
+    return timeMin > 0 ? Math.round((correctSoFar / 5) / timeMin) : 0 // round to integer
   })
+  // Ensure last value matches main WPM exactly
+  if (wpmData.length > 0) {
+    wpmData[wpmData.length - 1] = wpmInt
+  }
 
   // Exact cumulative mistakes at each second
   let cumulativeMistakes = Array(seconds).fill(0)
@@ -168,7 +178,7 @@ const ScorePage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#101826] text-gray-100">
+    <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#0f1826] text-gray-100">
       <h1 className="text-4xl font-extrabold -mt-5 mb-4 text-[#facc15]">Your Score</h1>
 
       <div className="w-full max-w-5xl bg-[#23242a] p-6 rounded-xl space-y-8 ">
@@ -193,7 +203,7 @@ const ScorePage = () => {
           </div>
           <div>
             <div className="uppercase text-gray-400 text-lg">time</div>
-            <div className="text-4xl font-bold text-[#facc15]">{Math.round(durationSec)}s</div>
+            <div className="text-4xl font-bold text-[#facc15]">{durationSec.toFixed(1)}s</div>
           </div>
         </div>
         <div className="bg-[#23242a] rounded-lg p-4">

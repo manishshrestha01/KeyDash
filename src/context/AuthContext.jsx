@@ -7,16 +7,17 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Get initial session
-    const session = supabase.auth.getSession().then(({ data: { session } }) => {
+    // Fetch initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
-    // Listen for auth changes
+    // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
+    // Cleanup subscription on unmount
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -29,7 +30,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the AuthContext easily
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+// Custom hook for convenient context access
+export const useAuth = () => useContext(AuthContext);
