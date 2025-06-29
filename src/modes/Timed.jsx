@@ -198,7 +198,7 @@ const Timed = ({ time, difficulty = "-" }) => {
 
       // Update best_wpm if this is higher
       let bestWpm = profile?.best_wpm || 0;
-      if (Number(wpm) > bestWpm || bestWpm === 0) {
+      if (Number(wpm) > bestWpm) {
         bestWpm = Number(wpm);
       }
 
