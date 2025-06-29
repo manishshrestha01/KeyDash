@@ -125,7 +125,11 @@ const UserProfile = () => {
     { url: profile.twitter, icon: XIcon, label: "X" },
     { url: profile.github, icon: <Github size={20} />, label: "GitHub" },
     { url: profile.linkedin, icon: <Linkedin size={20} />, label: "LinkedIn" },
-    { url: profile.instagram, icon: <Instagram size={20} />, label: "Instagram" },
+    {
+      url: profile.instagram,
+      icon: <Instagram size={20} />,
+      label: "Instagram",
+    },
     { url: profile.youtube, icon: <Youtube size={20} />, label: "YouTube" },
     { url: profile.twitch, icon: <Twitch size={20} />, label: "Twitch" },
   ];
@@ -144,7 +148,13 @@ const UserProfile = () => {
           ) : (
             <div className="w-20 h-20 rounded-full overflow-hidden mb-2">
               <div className="w-full h-full bg-gray-600 flex items-center justify-center text-2xl text-white rounded-full">
-                <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg
+                  className="h-full w-full text-gray-300"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
               </div>
             </div>
           )}
@@ -168,9 +178,7 @@ const UserProfile = () => {
                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 whitespace-nowrap">
                       {label}
                     </span>
-                    <div className="hover:text-blue-400 transition">
-                      {icon}
-                    </div>
+                    <div className="hover:text-blue-400 transition">{icon}</div>
                   </a>
                 )
             )}
@@ -185,11 +193,7 @@ const UserProfile = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10 text-center">
-          <div className="bg-[#1F2937] p-6 rounded-xl">
-            <p className="text-gray-400 text-sm">Global Rank</p>
-            <h3 className="text-3xl font-bold mt-2">{rank}</h3>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-10 text-center">
           <div className="bg-[#1F2937] p-6 rounded-xl">
             <p className="text-gray-400 text-sm">Best WPM</p>
             <h3 className="text-3xl font-bold mt-2">{bestWpm}</h3>
