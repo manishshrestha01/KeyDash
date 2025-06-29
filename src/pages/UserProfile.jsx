@@ -53,13 +53,51 @@ const UserProfile = () => {
         .select("wpm, accuracy, difficulty, time, created_at")
         .eq("user_id", userId);
 
+      // Combine & normalize
       const combined = [
-        ...(timedScores || []),
-        ...(sentenceScores || []),
+        ...(timedScores || []).map((s) => ({
+          mode: "Timed",
+          wpm: s.wpm,
+          accuracy: s.accuracy,
+          time: s.time,
+          difficulty: "-",
+          date: s.created_at,
+        })),
+        ...(sentenceScores || []).map((s) => ({
+          mode: "Sentence",
+          wpm: s.wpm,
+          accuracy: s.accuracy,
+          time: s.time,
+          difficulty: s.difficulty,
+          date: s.created_at,
+        })),
       ];
 
-      setScores(combined);
-      setRank(2); // You can replace this with actual rank logic
+      // Deduplicate
+      const uniqueScores = [];
+      const seen = new Set();
+
+      for (const score of combined) {
+        const key = [
+          score.mode,
+          score.wpm,
+          score.accuracy,
+          score.time,
+          score.difficulty,
+          new Date(score.date).getTime(),
+        ].join("|");
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueScores.push(score);
+        }
+      }
+
+      // Sort by newest
+      uniqueScores.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setScores(uniqueScores);
+      setRank(2); // You can update this with actual ranking logic
       setLoading(false);
     };
 
@@ -74,6 +112,7 @@ const UserProfile = () => {
 
   const bestWpm =
     scores.length > 0 ? Math.max(...scores.map((s) => s.wpm || 0)) : 0;
+
   const avgAccuracy =
     scores.length > 0
       ? (
