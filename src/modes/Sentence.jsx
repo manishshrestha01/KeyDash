@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import RealTimeStats from "../components/RealTimeStats";
 
 // Get a random sentence from the dataset
 const getRandomSentence = (difficulty = "easy") => {
@@ -30,7 +28,6 @@ const Sentence = ({ difficulty = "easy" }) => {
   const [startTime, setStartTime] = useState(null); // Typing start time
   const [restartCount, setRestartCount] = useState(0); // Used to force restart
   const [currentCharIdx, setCurrentCharIdx] = useState(0); // Tracks current typing position
-  const [user, setUser] = useState(null);
 
   const textareaRef = useRef(null); // Ref to invisible textarea
   const containerRef = useRef(null); // Ref to text display container
@@ -57,11 +54,6 @@ const Sentence = ({ difficulty = "easy" }) => {
     textareaRef.current?.focus();
   }, [restartCount, difficulty]);
 
-  // Get current user
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-  }, []);
-
   // Update stats and character index when user types
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
@@ -85,7 +77,7 @@ const Sentence = ({ difficulty = "easy" }) => {
   }, [input, startTime, target]);
 
   // Handle typing logic
-  const handleInput = async (e) => {
+  const handleInput = (e) => {
     const val = e.target.value;
 
     // If user completes the sentence or ends it with a ".", go to result page
@@ -109,67 +101,6 @@ const Sentence = ({ difficulty = "easy" }) => {
       const acc =
         totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0";
       const mistakes = totalTyped - correctChars;
-
-      // Save score to Supabase
-      if (user) {
-        const scoreObj = {
-          mode: "Sentence",
-          difficulty,
-          time: durationSec,
-          wpm: Number(wpm),
-          accuracy: Number(acc),
-          date: new Date().toISOString(),
-        };
-        // Update scores array in profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("scores, best_wpm")
-          .eq("id", user.id)
-          .maybeSingle();
-        let scoresArr = [];
-        if (profile && profile.scores) {
-          scoresArr = Array.isArray(profile.scores) ? profile.scores : [];
-        }
-        scoresArr.unshift(scoreObj); // Add new score at the start
-        if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
-
-        // Update best_wpm if this is higher
-        let bestWpm = profile?.best_wpm || 0;
-        if (Number(wpm) > bestWpm) {
-          bestWpm = Number(wpm);
-        }
-
-        await supabase
-          .from("profiles")
-          .update({ scores: scoresArr, best_wpm: bestWpm })
-          .eq("id", user.id);
-
-        // Upsert into leaderboard
-        // First, fetch existing leaderboard row for this user/mode/difficulty
-        const { data: lbRow } = await supabase
-          .from("leaderboard")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("mode", "Sentence")
-          .eq("difficulty", difficulty)
-          .maybeSingle();
-
-        if (!lbRow || Number(wpm) > (lbRow.wpm || 0)) {
-          // Insert or update with new high score
-          await supabase.from("leaderboard").upsert(
-            {
-              user_id: user.id,
-              mode: "Sentence",
-              difficulty: difficulty,
-              wpm: Number(wpm),
-              accuracy: Number(acc),
-              time: durationSec,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,mode,difficulty" }
-          );
-        }
-      }
 
       navigate("/results", {
         state: {
@@ -378,12 +309,11 @@ const Sentence = ({ difficulty = "easy" }) => {
       </button>
 
       {/* Live stats display */}
-      <RealTimeStats
-        wpm={wpm}
-        accuracy={accuracy}
-        mistakes={mistakes}
-      />
-
+      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
+        <div>WPM = {wpm}</div>
+        <div>Acc = {accuracy.toFixed(1)}%</div>
+        <div>Error = {mistakes}</div>
+      </div>
     </div>
   );
 };

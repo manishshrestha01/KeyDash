@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import sentenceData from "../assets/english/english.json";
 import timedData from "../assets/english/timed.json";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import RealTimeStats from "../components/RealTimeStats";
 
 const getRandomSentence = () => {
   const arr = timedData.words;
@@ -186,7 +184,7 @@ const Timed = ({ time, difficulty = "-" }) => {
       // Update scores array in profiles
       const { data: profile } = await supabase
         .from("profiles")
-        .select("scores, best_wpm")
+        .select("scores")
         .eq("id", user.id)
         .maybeSingle();
       let scoresArr = [];
@@ -194,41 +192,12 @@ const Timed = ({ time, difficulty = "-" }) => {
         scoresArr = Array.isArray(profile.scores) ? profile.scores : [];
       }
       scoresArr.unshift(scoreObj); // Add new score at the start
+      // Optionally limit to last N scores
       if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
-
-      // Update best_wpm if this is higher
-      let bestWpm = profile?.best_wpm || 0;
-      if (Number(wpm) > bestWpm) {
-        bestWpm = Number(wpm);
-      }
-
       await supabase
         .from("profiles")
-        .update({ scores: scoresArr, best_wpm: bestWpm })
+        .update({ scores: scoresArr })
         .eq("id", user.id);
-
-      // Upsert into leaderboard
-      // First, fetch existing leaderboard row for this user/mode/time
-      const { data: lbRow } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("mode", "Timed")
-        .eq("time", time)
-        .maybeSingle();
-
-      if (!lbRow || Number(wpm) > (lbRow.wpm || 0)) {
-        // Insert or update with new high score
-        await supabase.from("leaderboard").upsert({
-          user_id: user.id,
-          mode: "Timed",
-          time: time,
-          wpm: Number(wpm),
-          accuracy: Number(acc),
-          // Optionally add more fields as needed
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id,mode,time" });
-      }
     }
 
     navigate("/results", {
@@ -405,12 +374,11 @@ const Timed = ({ time, difficulty = "-" }) => {
       </button>
 
       {/* Stats display */}
-      <RealTimeStats
-        wpm={wpm}
-        accuracy={accuracy}
-        mistakes={mistakes}
-      />
-
+      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
+        <div>WPM = {wpm}</div>
+        <div>Acc = {accuracy.toFixed(1)}%</div>
+        <div>Error = {mistakes}</div>
+      </div>
     </div>
   );
 };
