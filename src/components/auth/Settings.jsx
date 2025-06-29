@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import {
-  FaUser,
-  FaEnvelope,
-  FaGlobe,
-  FaTwitter,
-  FaGithub,
-  FaLinkedin,
-  FaInstagram,
-  FaYoutube,
-  FaTwitch,
-} from "react-icons/fa";
+  User,
+  Mail,
+  Globe,
+  Twitter,
+  Github,
+  Linkedin,
+  Instagram,
+  Youtube,
+  Twitch,
+  Check,
+} from "lucide-react";
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -109,7 +110,6 @@ const Settings = () => {
 
     setLoading(true);
 
-    // Check if display_name is unique
     const { data: existing, error: checkError } = await supabase
       .from("profiles")
       .select("id")
@@ -131,7 +131,6 @@ const Settings = () => {
       return;
     }
 
-    // Prevent save if there are validation errors
     const urlFields = [
       "website",
       "twitter",
@@ -210,7 +209,6 @@ const Settings = () => {
     const fileName = `${user.id}.${fileExt}`;
     const filePath = fileName;
 
-    // Upload to Supabase Storage (avatars bucket)
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(filePath, file, { upsert: true });
@@ -222,11 +220,9 @@ const Settings = () => {
       return;
     }
 
-    // Get public URL for avatar
     const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
     const publicUrl = data.publicUrl;
 
-    // Update avatar_url in profile table
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: publicUrl })
@@ -247,7 +243,7 @@ const Settings = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Validate URL fields in real-time
+
     if (
       [
         "website",
@@ -280,6 +276,18 @@ const Settings = () => {
     );
   }
 
+  // Custom X (Twitter) icon
+  const XIcon = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-5 h-5"
+    >
+      <path d="M20.39 3H16.9L12.75 9.25 8.59 3H3.25L9.88 12.4 3 21h3.49l4.57-6.59L16.1 21h5.4l-7.05-9.65L20.39 3z" />
+    </svg>
+  );
+
   return (
     <div className="flex flex-col items-center mt-8">
       <h2 className="text-4xl font-bold mb-2 mt-4 text-center">
@@ -288,10 +296,7 @@ const Settings = () => {
       <p className="mb-8 text-center text-xl text-gray-400">
         Manage your account.
       </p>
-      <div
-        className="max-w-3xl w-full mx-auto mt-10 p-10 bg-[#172133] text-white rounded-xl shadow-lg border"
-        style={{ borderColor: "#324154" }}
-      >
+      <div className="max-w-3xl w-full mx-auto mt-10 p-10 bg-[#172133] text-white rounded-xl shadow-lg border" style={{ borderColor: "#324154" }}>
         <div className="flex flex-col mb-6">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full overflow-hidden mb-2">
@@ -303,13 +308,7 @@ const Settings = () => {
                 />
               ) : (
                 <div className="w-full h-full bg-gray-600 flex items-center justify-center text-2xl text-white rounded-full">
-                  <svg
-                    className="h-full w-full text-gray-300"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                  </svg>
+                  <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                 </div>
               )}
             </div>
@@ -326,122 +325,32 @@ const Settings = () => {
         </div>
 
         <div className="space-y-4">
-          <InputField
-            label="Display Name *"
-            name="display_name"
-            value={formData.display_name}
-            onChange={handleChange}
-            icon={<FaUser />}
-          />
-          <InputField
-            label="Email"
-            name="email"
-            value={user?.email || ""}
-            onChange={() => {}}
-            readOnly
-            icon={<FaEnvelope />}
-          />
-          <TextAreaField
-            label="Bio"
-            name="bio"
-            value={formData.bio}
-            onChange={handleChange}
-          />
-          <InputField
-            label="Website URL"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-            placeholder="https://www.example.com"
-            icon={<FaGlobe />}
-            error={errors.website}
-          />
+          <InputField label="Display Name *" name="display_name" value={formData.display_name} onChange={handleChange} icon={<User size={18} />} />
+          <InputField label="Email" name="email" value={user?.email || ""} onChange={() => {}} readOnly icon={<Mail size={18} />} />
+          <TextAreaField label="Bio" name="bio" value={formData.bio} onChange={handleChange} />
+          <InputField label="Website URL" name="website" value={formData.website} onChange={handleChange} placeholder="https://www.example.com" icon={<Globe size={18} />} error={errors.website} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-4">
-              <InputField
-                label="Twitter URL"
-                name="twitter"
-                value={formData.twitter}
-                onChange={handleChange}
-                placeholder="https://www.twitter.com/yourhandle"
-                icon={<FaTwitter />}
-                error={errors.twitter}
-              />
-              <InputField
-                label="Github URL"
-                name="github"
-                value={formData.github}
-                onChange={handleChange}
-                placeholder="https://www.github.com/yourhandle"
-                icon={<FaGithub />}
-                error={errors.github}
-              />
-              <InputField
-                label="LinkedIn URL"
-                name="linkedin"
-                value={formData.linkedin}
-                onChange={handleChange}
-                placeholder="https://www.linkedin.com/in/yourhandle"
-                icon={<FaLinkedin />}
-                error={errors.linkedin}
-              />
+              <InputField label="X URL" name="twitter" value={formData.twitter} onChange={handleChange} placeholder="https://www.x.com/yourhandle" icon={XIcon} error={errors.twitter} />
+              <InputField label="Github URL" name="github" value={formData.github} onChange={handleChange} placeholder="https://www.github.com/yourhandle" icon={<Github size={18} />} error={errors.github} />
+              <InputField label="LinkedIn URL" name="linkedin" value={formData.linkedin} onChange={handleChange} placeholder="https://www.linkedin.com/in/yourhandle" icon={<Linkedin size={18} />} error={errors.linkedin} />
             </div>
             <div className="space-y-4">
-              <InputField
-                label="Instagram URL"
-                name="instagram"
-                value={formData.instagram}
-                onChange={handleChange}
-                placeholder="https://www.instagram.com/yourhandle"
-                icon={<FaInstagram />}
-                error={errors.instagram}
-              />
-              <InputField
-                label="Youtube Channel URL"
-                name="youtube"
-                value={formData.youtube}
-                onChange={handleChange}
-                placeholder="https://www.youtube.com/yourchannel"
-                icon={<FaYoutube />}
-                error={errors.youtube}
-              />
-              <InputField
-                label="Twitch URL"
-                name="twitch"
-                value={formData.twitch}
-                onChange={handleChange}
-                placeholder="https://www.twitch.tv/yourchannel"
-                icon={<FaTwitch />}
-                error={errors.twitch}
-              />
+              <InputField label="Instagram URL" name="instagram" value={formData.instagram} onChange={handleChange} placeholder="https://www.instagram.com/yourhandle" icon={<Instagram size={18} />} error={errors.instagram} />
+              <InputField label="Youtube Channel URL" name="youtube" value={formData.youtube} onChange={handleChange} placeholder="https://www.youtube.com/yourchannel" icon={<Youtube size={18} />} error={errors.youtube} />
+              <InputField label="Twitch URL" name="twitch" value={formData.twitch} onChange={handleChange} placeholder="https://www.twitch.tv/yourchannel" icon={<Twitch size={18} />} error={errors.twitch} />
             </div>
           </div>
         </div>
 
-        <button
-          onClick={updateProfile}
-          className="mt-8 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded shadow"
-          disabled={loading}
-        >
+        <button onClick={updateProfile} className="mt-8 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded shadow" disabled={loading}>
           {loading ? "Saving..." : "Update Profile"}
         </button>
       </div>
 
       {showPopup && (
         <div className="fixed bottom-6 right-6 bg-white text-green-700 px-6 py-3 rounded shadow-lg flex items-center gap-2 z-50">
-          <svg
-            className="w-5 h-5 text-green-500"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+          <Check className="w-5 h-5 text-green-500" />
           <span>{message}</span>
         </div>
       )}
