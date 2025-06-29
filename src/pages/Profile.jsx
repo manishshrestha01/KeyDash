@@ -1,57 +1,94 @@
-import React, { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { supabase } from "../supabaseClient"
-import { useAuth } from "../context/AuthContext"
+import React, { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
 const Profile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-      const { data, error } = await supabase
+    if (!user) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+
+      // 1. Fetch basic profile info
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url, scores")
+        .select("display_name, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
-      setProfile(data || null);
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        setLoading(false);
+        return;
+      }
+      setProfile(profileData);
+
+      // 2. Fetch timed mode scores from leaderboard_timed
+      const { data: timedScores, error: timedError } = await supabase
+        .from("leaderboard_timed")
+        .select("wpm, accuracy, time, created_at")
+        .eq("user_id", user.id);
+
+      if (timedError) {
+        console.error("Error fetching timed scores:", timedError);
+      }
+
+      // 3. Fetch sentence mode scores from leaderboard_sentence
+      const { data: sentenceScores, error: sentenceError } = await supabase
+        .from("leaderboard_sentence")
+        .select("wpm, accuracy, difficulty, time, created_at")
+        .eq("user_id", user.id);
+
+      if (sentenceError) {
+        console.error("Error fetching sentence scores:", sentenceError);
+      }
+
+      // 4. Combine, normalize fields, and sort by created_at desc
+      const combinedScores = [
+        ...(timedScores || []).map((s) => ({
+          mode: "Timed",
+          wpm: s.wpm,
+          accuracy: s.accuracy,
+          time: s.time,
+          difficulty: "-", // no difficulty for timed mode
+          date: s.created_at,
+        })),
+        ...(sentenceScores || []).map((s) => ({
+          mode: "Sentence",
+          wpm: s.wpm,
+          accuracy: s.accuracy,
+          time: s.time,
+          difficulty: s.difficulty,
+          date: s.created_at,
+        })),
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setScores(combinedScores);
       setLoading(false);
     };
-    fetchProfile();
+
+    fetchData();
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center mt-8">
-        <h2 className="text-4xl font-bold mb-2 mt-4 text-center">
-          Profile
-        </h2>
-        <p className="mb-8 text-center text-xl text-gray-400">
-          Loading your profile...
-        </p>
-        <div className="max-w-3xl w-full mx-auto p-10 bg-[#172133] text-white rounded-xl shadow-lg border border-[#324154] flex flex-col items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white mb-6"></div>
-          <div className="text-lg text-gray-200">Fetching profile...</div>
-        </div>
-      </div>
-    );
+    return <div className="text-white p-8">Loading profile...</div>;
   }
 
   if (!profile) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-10 text-white">
-        <div className="text-2xl">Profile not found.</div>
-      </div>
-    );
+    return <div className="text-white p-8">Profile not found.</div>;
   }
 
-  const scores = Array.isArray(profile.scores) ? profile.scores : [];
-  const bestWpm = scores.length > 0 ? Math.max(...scores.map(s => s.wpm || 0)) : 0;
-  const avgAccuracy = scores.length > 0
-    ? (scores.reduce((sum, s) => sum + (s.accuracy || 0), 0) / scores.length)
-    : 0;
+  // Compute best WPM and average accuracy from combined scores
+  const bestWpm = scores.length > 0 ? Math.max(...scores.map((s) => s.wpm || 0)) : 0;
+  const avgAccuracy =
+    scores.length > 0
+      ? scores.reduce((sum, s) => sum + (s.accuracy || 0), 0) / scores.length
+      : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 text-white">
@@ -106,16 +143,6 @@ const Profile = () => {
               </tr>
             </thead>
             <tbody>
-              {scores.map((s, idx) => (
-                <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
-                  <td className="px-4 py-2">{s.date ? new Date(s.date).toLocaleString() : "-"}</td>
-                  <td className="px-4 py-2">{s.mode || "-"}</td>
-                  <td className="px-4 py-2">{s.difficulty || "-"}</td>
-                  <td className="px-4 py-2">{s.time ? `${s.time.toFixed(1)}s` : "-"}</td>
-                  <td className="px-4 py-2 font-semibold">{s.wpm ?? "-"}</td>
-                  <td className="px-4 py-2">{s.accuracy != null ? `${s.accuracy}%` : "-"}</td>
-                </tr>
-              ))}
               {scores.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
@@ -123,13 +150,22 @@ const Profile = () => {
                   </td>
                 </tr>
               )}
+              {scores.map((s, idx) => (
+                <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
+                  <td className="px-4 py-2">{s.date ? new Date(s.date).toLocaleString() : "-"}</td>
+                  <td className="px-4 py-2">{s.mode || "-"}</td>
+                  <td className="px-4 py-2">{s.difficulty || "-"}</td>
+                  <td className="px-4 py-2">{s.time ? `${parseFloat(s.time).toFixed(1)}s` : "-"}</td>
+                  <td className="px-4 py-2 font-semibold">{s.wpm ?? "-"}</td>
+                  <td className="px-4 py-2">{s.accuracy != null ? `${parseFloat(s.accuracy).toFixed(1)}%` : "-"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Profile
-
+export default Profile;

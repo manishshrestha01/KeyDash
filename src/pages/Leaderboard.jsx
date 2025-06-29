@@ -3,12 +3,7 @@ import { supabase } from "../supabaseClient";
 import { Link } from "react-router-dom";
 import ModesButton from "../components/ModesButton";
 import {
-  FaTwitter,
-  FaGithub,
-  FaLinkedin,
-  FaInstagram,
-  FaYoutube,
-  FaTwitch,
+  FaTwitter, FaGithub, FaLinkedin, FaInstagram, FaYoutube, FaTwitch
 } from "react-icons/fa";
 
 const modes = ["Sentence", "Timed"];
@@ -16,12 +11,8 @@ const difficulties = ["easy", "medium", "hard", "extreme"];
 const times = [15, 30, 60, 120];
 
 const socialIcons = {
-  twitter: FaTwitter,
-  github: FaGithub,
-  linkedin: FaLinkedin,
-  instagram: FaInstagram,
-  youtube: FaYoutube,
-  twitch: FaTwitch,
+  twitter: FaTwitter, github: FaGithub, linkedin: FaLinkedin,
+  instagram: FaInstagram, youtube: FaYoutube, twitch: FaTwitch,
 };
 
 const Leaderboard = () => {
@@ -34,22 +25,21 @@ const Leaderboard = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setLoading(true);
-      let query = supabase
-        .from("leaderboard")
-        .select(
-          `
-          user_id, wpm, accuracy, time, mode,
-          profiles!inner(
-            display_name, avatar_url,
-            twitter, github, linkedin,
-            instagram, youtube, twitch
-          )
-        `
-        )
-        .eq("mode", mode);
 
-      if (mode === "Sentence") query = query.eq("difficulty", difficulty);
-      if (mode === "Timed") query = query.eq("time", time);
+      const table = mode === "Sentence" ? "best_sentence_scores" : "best_timed_scores";
+      
+      let query = supabase
+        .from(table)
+        .select(`
+          user_id, wpm, accuracy, ${mode === "Timed" ? "time" : "difficulty"},
+          profiles!inner(display_name, avatar_url, twitter, github, linkedin, instagram, youtube, twitch)
+        `);
+
+      if (mode === "Sentence") {
+        query = query.eq("difficulty", difficulty);
+      } else {
+        query = query.eq("time", time);
+      }
 
       query = query.order("wpm", { ascending: false }).limit(100);
 
@@ -75,12 +65,7 @@ const Leaderboard = () => {
       {/* Mode Selector */}
       <div className="flex gap-4 mb-4 justify-center">
         {modes.map((m) => (
-          <ModesButton
-            key={m}
-            onClick={() => setMode(m)}
-            active={mode === m}
-            theme="dark"
-          >
+          <ModesButton key={m} onClick={() => setMode(m)} active={mode === m} theme="dark">
             {m}
           </ModesButton>
         ))}
@@ -90,12 +75,7 @@ const Leaderboard = () => {
       {mode === "Sentence" && (
         <div className="flex gap-2 justify-center mb-6">
           {difficulties.map((d) => (
-            <ModesButton
-              key={d}
-              onClick={() => setDifficulty(d)}
-              active={difficulty === d}
-              theme="dark"
-            >
+            <ModesButton key={d} onClick={() => setDifficulty(d)} active={difficulty === d} theme="dark">
               {d.charAt(0).toUpperCase() + d.slice(1)}
             </ModesButton>
           ))}
@@ -106,12 +86,7 @@ const Leaderboard = () => {
       {mode === "Timed" && (
         <div className="flex gap-2 justify-center mb-6">
           {times.map((t) => (
-            <ModesButton
-              key={t}
-              onClick={() => setTime(t)}
-              active={time === t}
-              theme="dark"
-            >
+            <ModesButton key={t} onClick={() => setTime(t)} active={time === t} theme="dark">
               {t}s
             </ModesButton>
           ))}
@@ -127,24 +102,21 @@ const Leaderboard = () => {
               <th className="px-4 py-2">User</th>
               <th className="px-4 py-2">WPM</th>
               <th className="px-4 py-2">Accuracy</th>
-              {mode === "Sentence" && <th className="px-4 py-2">Time</th>}
-              <th className="px-4 py-2">Social</th>
+              {mode === "Timed" && <th className="px-4 py-2">Time</th>}
+              {mode === "Sentence" && <th className="px-4 py-2">Difficulty</th>}
             </tr>
           </thead>
           <tbody>
             {scores.length === 0 && !loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
                   No entries yet.
                 </td>
               </tr>
             )}
 
             {scores.map((u, i) => (
-              <tr
-                key={u.user_id + "-" + i}
-                className="border-b border-gray-700 hover:bg-[#3a3d3f]"
-              >
+              <tr key={u.user_id + "-" + i} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
                 <td className="px-4 py-2">{i + 1}</td>
                 <td className="px-4 py-2 flex items-center gap-3">
                   {u.profiles.avatar_url ? (
@@ -160,57 +132,27 @@ const Leaderboard = () => {
                     />
                   ) : (
                     <div className="w-8 h-8 bg-gray-600 flex items-center justify-center rounded-full">
-                      <svg
-                        className="w-8 h-8 rounded-full object-cover"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                      <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                       </svg>
                     </div>
                   )}
 
-                  <Link
-                    to={`/users/${u.user_id}`}
-                    className="hover:underline font-medium"
-                  >
+                  <Link to={`/users/${u.user_id}`} className="hover:underline font-medium">
                     {u.profiles.display_name || "Anonymous"}
                   </Link>
                 </td>
                 <td className="px-4 py-2 font-semibold">{u.wpm}</td>
                 <td className="px-4 py-2">{u.accuracy?.toFixed(1) ?? "-"}%</td>
-                {mode === "Sentence" && (
-                  <td className="px-4 py-2">
-                    {u.time ? u.time.toFixed(2) + "s" : "-"}
-                  </td>
-                )}
-                <td className="px-4 py-2 flex gap-2 text-xl">
-                  {Object.entries(socialIcons).map(([key, IconComp]) => {
-                    const url = u.profiles[key];
-                    if (!url) return null;
-                    return (
-                      <a
-                        key={key}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={key}
-                        className="hover:text-yellow-400"
-                      >
-                        <IconComp />
-                      </a>
-                    );
-                  })}
-                </td>
+                {mode === "Timed" && <td className="px-4 py-2">{u.time}s</td>}
+                {mode === "Sentence" && <td className="px-4 py-2 capitalize">{u.difficulty}</td>}
               </tr>
             ))}
           </tbody>
         </table>
 
         {loading && (
-          <div className="py-4 text-center text-yellow-300 font-mono">
-            Loading...
-          </div>
+          <div className="py-4 text-center text-yellow-300 font-mono">Loading...</div>
         )}
       </div>
     </div>

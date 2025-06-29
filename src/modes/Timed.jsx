@@ -5,13 +5,13 @@ import { supabase } from "../supabaseClient";
 
 const getRandomSentence = () => {
   const arr = timedData.words;
-  const words = []
+  const words = [];
 
   for (let i = 0; i < 100; i++) {
     const randomIndex = Math.floor(Math.random() * arr.length);
     const word = arr[randomIndex];
 
-    // Ensure the word is not too long
+    // You can add filters here if you want to exclude too long words
     words.push(word);
   }
 
@@ -20,7 +20,7 @@ const getRandomSentence = () => {
 
 const CHARS_PER_LINE = 50;
 
-const Timed = ({ time, difficulty = "-" }) => {
+const Timed = ({ time }) => {
   const [target, setTarget] = useState("");
   const [input, setInput] = useState("");
   const [startTime, setStartTime] = useState(null);
@@ -32,7 +32,7 @@ const Timed = ({ time, difficulty = "-" }) => {
   const textareaRef = useRef(null);
   const containerRef = useRef(null);
   const navigate = useNavigate();
-  const intervalRef = useRef(null); // Add this line
+  const intervalRef = useRef(null);
 
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
@@ -41,14 +41,14 @@ const Timed = ({ time, difficulty = "-" }) => {
   const inputRef = useRef(input);
   const startTimeRef = useRef(startTime);
 
-  // Add user state
+  // Get current logged-in user
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
   }, []);
 
+  // Reset on restart or time change
   useEffect(() => {
     const sentence = getRandomSentence();
     setTarget(sentence);
@@ -69,12 +69,13 @@ const Timed = ({ time, difficulty = "-" }) => {
   useEffect(() => {
     inputRef.current = input;
   }, [input]);
+
   useEffect(() => {
     startTimeRef.current = startTime;
   }, [startTime]);
 
+  // Timer logic
   useEffect(() => {
-    // Start timer when startTime is set
     if (startTime && !intervalRef.current) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -82,7 +83,6 @@ const Timed = ({ time, difficulty = "-" }) => {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
             setIsTimeUp(true);
-            // Always use latest input and startTime from refs
             handleFinish(inputRef.current, startTimeRef.current, true);
             return 0;
           }
@@ -90,7 +90,6 @@ const Timed = ({ time, difficulty = "-" }) => {
         });
       }, 1000);
     }
-    // Cleanup on unmount
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -99,6 +98,7 @@ const Timed = ({ time, difficulty = "-" }) => {
     };
   }, [startTime]);
 
+  // Update stats when input changes
   useEffect(() => {
     setCurrentCharIdx(input.length);
 
@@ -118,11 +118,11 @@ const Timed = ({ time, difficulty = "-" }) => {
     setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
+  // Handle typing input
   const handleInput = (e) => {
     if (isTimeUp) return;
     const val = e.target.value;
 
-    // Start timer on first input
     if (val.length > 0 && !startTime) {
       setStartTime(Date.now());
     }
@@ -139,14 +139,14 @@ const Timed = ({ time, difficulty = "-" }) => {
     setInput(val);
   };
 
+  // Save score and navigate to results
   const handleFinish = async (
     finalInput = inputRef.current,
     finishStartTime = startTimeRef.current,
     forcedTimeUp = false
   ) => {
-    if (!finishStartTime) return; // Guard against missing startTime
+    if (!finishStartTime) return;
 
-    // Use full time if time is up, else use elapsed time
     let durationSec;
     if (forcedTimeUp || isTimeUp) {
       durationSec = time;
@@ -159,43 +159,25 @@ const Timed = ({ time, difficulty = "-" }) => {
       if (finalInput[i] === target[i]) correctChars++;
     }
     const totalTyped = finalInput.length;
-    const wpm =
-      durationSec > 0
-        ? (correctChars / 5 / (durationSec / 60)).toFixed(0)
-        : 0;
-    const acc =
-      totalTyped > 0
-        ? ((correctChars / totalTyped) * 100).toFixed(1)
-        : "0.0";
-    const mistakes = totalTyped - correctChars;
+    const wpmVal =
+      durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
+    const accVal =
+      totalTyped > 0 ? (correctChars / totalTyped) * 100 : 0;
+    const mistakesVal = totalTyped - correctChars;
 
-    // Save score to Supabase
-    if (user) {
-      const scoreObj = {
-        mode: "Timed",
-        difficulty,
-        time: durationSec,
-        wpm: Number(wpm),
-        accuracy: Number(acc),
-        date: new Date().toISOString(),
-      };
-      // Update scores array in profiles
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("scores")
-        .eq("id", user.id)
-        .maybeSingle();
-      let scoresArr = [];
-      if (profile && profile.scores) {
-        scoresArr = Array.isArray(profile.scores) ? profile.scores : [];
+    // Insert into leaderboard_timed table
+    if (user && user.id) {
+      const { error } = await supabase.from("leaderboard_timed").insert([
+        {
+          user_id: user.id,
+          wpm: Math.round(wpmVal),
+          accuracy: accVal,
+          time: durationSec,
+        },
+      ]);
+      if (error) {
+        console.error("Error saving score:", error);
       }
-      scoresArr.unshift(scoreObj); // Add new score at the start
-      // Optionally limit to last N scores
-      if (scoresArr.length > 50) scoresArr = scoresArr.slice(0, 50);
-      await supabase
-        .from("profiles")
-        .update({ scores: scoresArr })
-        .eq("id", user.id);
     }
 
     navigate("/results", {
@@ -203,9 +185,9 @@ const Timed = ({ time, difficulty = "-" }) => {
         target,
         input: finalInput,
         durationSec,
-        wpm,
-        acc,
-        mistakes,
+        wpm: Math.round(wpmVal),
+        acc: accVal.toFixed(1),
+        mistakes: mistakesVal,
       },
     });
   };
@@ -221,6 +203,7 @@ const Timed = ({ time, difficulty = "-" }) => {
     textareaRef.current?.focus();
   }, [restartCount, time]);
 
+  // Render colored text with caret and error highlights
   const renderColoredText = () => {
     const words = target.split(" ");
     const lines = [];
@@ -232,9 +215,10 @@ const Timed = ({ time, difficulty = "-" }) => {
         let cls = "text-muted";
 
         if (charIndex < input.length) {
-          cls = input[charIndex] === c
-            ? "text-correct"
-            : "text-error underline underline-offset-2";
+          cls =
+            input[charIndex] === c
+              ? "text-correct"
+              : "text-error underline underline-offset-2";
         }
 
         const isCaret = charIndex === currentCharIdx;
@@ -296,10 +280,8 @@ const Timed = ({ time, difficulty = "-" }) => {
 
   return (
     <div className="flex flex-col items-center pt-8 -mt-6">
-      {/* Timer display (in place of word count) */}
-      <div className="text-yellow-300 text-4xl font-medium mb-4">
-        {timeLeft}
-      </div>
+      {/* Timer display */}
+      <div className="text-yellow-300 text-4xl font-medium mb-4">{timeLeft}</div>
 
       {/* Typing area */}
       <div
@@ -317,7 +299,7 @@ const Timed = ({ time, difficulty = "-" }) => {
           style={{
             transform: `translateY(-${
               Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5
-            }rem)`
+            }rem)`,
           }}
         >
           {renderColoredText()}

@@ -4,17 +4,17 @@ import Timed from "../modes/Timed"
 import Sentence from "../modes/Sentence"
 
 const modes = [
-  { name: "Sentence", icon: "✏️" },
-  { name: "Timed", icon: "⏱️" }
+  { name: "Sentence" },
+  { name: "Timed" }
 ]
 
 const timedModeTypes = [15, 30, 60, 120]
 
 const sentenceDifficulties = [
-  { name: "Easy", key: "easy", icon: "🌱" },
-  { name: "Medium", key: "medium", icon: "🌿" },
-  { name: "Hard", key: "hard", icon: "🌳" },
-  { name: "Extreme", key: "extreme", icon: "🌋" }
+  { name: "Easy", key: "easy" },
+  { name: "Medium", key: "medium" },
+  { name: "Hard", key: "hard" },
+  { name: "Extreme", key: "extreme" }
 ]
 
 const Home = () => {
@@ -32,12 +32,11 @@ const Home = () => {
       <section className="mb-8 mt-6 mx-auto max-w-4xl">
         {/* Mode Selector */}
         <div className="flex justify-center flex-wrap gap-3 mb-4">
-          {modes.map(({ name, icon }) => (
+          {modes.map(({ name }) => (
             <ModesButton
               key={name}
               onClick={() => setSelectedMode(name)}
               active={selectedMode === name}
-              icon={icon}
               theme="dark"
             >
               {name}
@@ -48,12 +47,11 @@ const Home = () => {
         {/* Sentence Mode Difficulty Selector */}
         {selectedMode === "Sentence" && (
           <div className="flex justify-center flex-wrap gap-2 mb-4">
-            {sentenceDifficulties.map(({ name, key, icon }) => (
+            {sentenceDifficulties.map(({ name, key }) => (
               <ModesButton
                 key={key}
                 onClick={() => setSentenceDifficulty(key)}
                 active={sentenceDifficulty === key}
-                icon={icon}
                 theme="dark"
               >
                 {name}

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import sentenceData from "../assets/english/english.json";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
-// Get a random sentence from the dataset
+// Get a random sentence from the dataset based on difficulty
 const getRandomSentence = (difficulty = "easy") => {
   const groups = {
     easy: [0, 100],
@@ -19,26 +20,32 @@ const getRandomSentence = (difficulty = "easy") => {
   return filtered[Math.floor(Math.random() * filtered.length)].text;
 };
 
-const CHARS_PER_LINE = 50; // Controls line wrapping for display
+const CHARS_PER_LINE = 50;
 
 const Sentence = ({ difficulty = "easy" }) => {
-  // State management
-  const [target, setTarget] = useState(""); // Target sentence to type
-  const [input, setInput] = useState(""); // User input
-  const [startTime, setStartTime] = useState(null); // Typing start time
-  const [restartCount, setRestartCount] = useState(0); // Used to force restart
-  const [currentCharIdx, setCurrentCharIdx] = useState(0); // Tracks current typing position
+  const [target, setTarget] = useState("");
+  const [input, setInput] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [restartCount, setRestartCount] = useState(0);
+  const [currentCharIdx, setCurrentCharIdx] = useState(0);
 
-  const textareaRef = useRef(null); // Ref to invisible textarea
-  const containerRef = useRef(null); // Ref to text display container
-  const navigate = useNavigate(); // Used to redirect to results page
+  const textareaRef = useRef(null);
+  const containerRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Real-time performance stats
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [mistakes, setMistakes] = useState(0);
 
-  // Load new sentence on mount or restart
+  const [user, setUser] = useState(null);
+
+  // Fetch logged in user info on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+  }, []);
+
   useEffect(() => {
     const sentence = getRandomSentence(difficulty);
     setTarget(sentence);
@@ -54,7 +61,6 @@ const Sentence = ({ difficulty = "easy" }) => {
     textareaRef.current?.focus();
   }, [restartCount, difficulty]);
 
-  // Update stats and character index when user types
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
 
@@ -76,49 +82,67 @@ const Sentence = ({ difficulty = "easy" }) => {
     setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
-  // Handle typing logic
+  // Save score to Supabase leaderboard_sentence and navigate to results page
+  const handleFinish = async (finalInput) => {
+    if (!startTime) return; // no start time, no finish
+
+    const durationSec = (Date.now() - startTime) / 1000;
+
+    let correctChars = 0;
+    for (let i = 0; i < finalInput.length; i++) {
+      if (finalInput[i] === target[i]) correctChars++;
+    }
+    const totalTyped = finalInput.length;
+    const wpmCalc = durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
+    const wpmRounded = Math.round(wpmCalc);
+    const accCalc = totalTyped > 0 ? (correctChars / totalTyped) * 100 : 0;
+    const accRounded = parseFloat(accCalc.toFixed(1));
+    const mistakesCalc = totalTyped - correctChars;
+
+    // Save to leaderboard_sentence table
+    if (user) {
+      const { error } = await supabase.from("leaderboard_sentence").insert({
+        user_id: user.id,
+        difficulty: difficulty,
+        time: durationSec,
+        wpm: wpmRounded,
+        accuracy: accRounded,
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.error("Failed to insert sentence leaderboard score:", error);
+      }
+    }
+
+    navigate("/results", {
+      state: {
+        target,
+        input: finalInput,
+        durationSec,
+        wpm: wpmRounded,
+        acc: accRounded,
+        mistakes: mistakesCalc,
+      },
+    });
+  };
+
   const handleInput = (e) => {
     const val = e.target.value;
 
-    // If user completes the sentence or ends it with a ".", go to result page
+    // Sentence complete conditions
     if (
       val.length > target.length ||
       (val.trimEnd().endsWith(".") &&
         val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
     ) {
-      const durationSec = (Date.now() - startTime) / 1000;
-
-      let correctChars = 0;
-      for (let i = 0; i < val.length; i++) {
-        if (val[i] === target[i]) correctChars++;
-      }
-
-      const totalTyped = val.length;
-      const wpm =
-        durationSec > 0
-          ? (correctChars / 5 / (durationSec / 60)).toFixed(0)
-          : 0;
-      const acc =
-        totalTyped > 0 ? ((correctChars / totalTyped) * 100).toFixed(1) : "0.0";
-      const mistakes = totalTyped - correctChars;
-
-      navigate("/results", {
-        state: {
-          target,
-          input: val,
-          durationSec,
-          wpm,
-          acc,
-          mistakes,
-        },
-      });
+      handleFinish(val);
       return;
     }
 
     setInput(val);
   };
 
-  // Restart handler
   const handleRestart = () => {
     setRestartCount((c) => c + 1);
     setTimeout(() => {
@@ -126,7 +150,6 @@ const Sentence = ({ difficulty = "easy" }) => {
     }, 0);
   };
 
-  // Display attempted word count in real-time
   const getCorrectWordCount = () => {
     const targetWords = target.trim().split(/\s+/);
     const inputWords = input.trim().split(/\s+/);
@@ -144,14 +167,12 @@ const Sentence = ({ difficulty = "easy" }) => {
     return `${attempted} / ${targetWords.length}`;
   };
 
-  // Render target text with live character coloring and caret
   const renderColoredText = () => {
     const words = target.split(" ");
     const lines = [];
     let line = [];
     let charIndex = 0;
 
-    // Renders colors for each correct or incorrect character
     words.forEach((word, wIdx) => {
       const wordChars = word.split("").map((c, i) => {
         let cls = "text-muted";
@@ -178,7 +199,6 @@ const Sentence = ({ difficulty = "easy" }) => {
         return charSpan;
       });
 
-      // Space after word
       const isSpaceCaret = charIndex === currentCharIdx;
       const spaceCorrect = input[charIndex] === " ";
       const spaceClass =
@@ -200,13 +220,9 @@ const Sentence = ({ difficulty = "easy" }) => {
 
       line.push(...wordChars);
 
-      // Push line if exceeds line char limit
       if (line.length >= CHARS_PER_LINE) {
         lines.push(
-          <div
-            key={`line-${lines.length}`}
-            style={{ scrollSnapAlign: "start" }}
-          >
+          <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
             {line}
           </div>
         );
@@ -214,7 +230,6 @@ const Sentence = ({ difficulty = "easy" }) => {
       }
     });
 
-    // Push remaining characters
     if (line.length > 0) {
       lines.push(
         <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
@@ -228,12 +243,10 @@ const Sentence = ({ difficulty = "easy" }) => {
 
   return (
     <div className="flex flex-col items-center pt-8 -mt-6">
-      {/* Word progress display */}
       <div className="text-yellow-300 text-4xl font-medium mb-4">
         {getCorrectWordCount()}
       </div>
 
-      {/* Typing area */}
       <div
         ref={containerRef}
         className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
@@ -244,7 +257,6 @@ const Sentence = ({ difficulty = "easy" }) => {
         }}
         onClick={() => textareaRef.current?.focus()}
       >
-        {/* Display target sentence with coloring */}
         <div
           className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
           style={{
@@ -256,28 +268,23 @@ const Sentence = ({ difficulty = "easy" }) => {
           {renderColoredText()}
         </div>
 
-        {/* Invisible textarea for typing */}
         <textarea
           ref={textareaRef}
           className="absolute inset-0 opacity-0 resize-none text-2xl"
           value={input}
           onChange={handleInput}
-          onPaste={(e) => e.preventDefault()} // Disables paste
-          onKeyDown={(e) => {
-            if (e.key === "Tab") e.preventDefault(); // Disables Tab key
-          }}
+          onPaste={(e) => e.preventDefault()}
+          onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
           spellCheck="false"
           autoFocus
         />
       </div>
 
-      {/* Restart button */}
       <button
         onClick={handleRestart}
         className="mt-6 p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
         aria-label="Restart"
       >
-        {/* Restart Icon */}
         <svg
           viewBox="-13.44 -13.44 50.88 50.88"
           fill="none"
@@ -308,7 +315,6 @@ const Sentence = ({ difficulty = "easy" }) => {
         </svg>
       </button>
 
-      {/* Live stats display */}
       <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
