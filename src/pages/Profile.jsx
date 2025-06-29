@@ -95,7 +95,20 @@ const Profile = () => {
   }, [user]);
 
   if (loading) {
-    return <div className="text-white p-8">Loading profile...</div>;
+    return (
+      <div className="flex flex-col items-center mt-8">
+        <h2 className="text-4xl font-bold mb-2 mt-4 text-center">
+          Profile
+        </h2>
+        <p className="mb-8 text-center text-xl text-gray-400">
+          View your profile and stats.
+        </p>
+        <div className="max-w-3xl w-full mx-auto p-10 bg-[#172133] text-white rounded-xl shadow-lg border border-[#324154] flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white mb-6"></div>
+          <div className="text-lg text-gray-200">Fetching profile...</div>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {
