@@ -60,8 +60,6 @@ const Timed = ({ time, difficulty = "-" }) => {
     setMistakes(0);
     setIsTimeUp(false);
     setTimeLeft(time);
-
-    // Clear any running interval on restart/time change
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
