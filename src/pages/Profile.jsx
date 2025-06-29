@@ -106,7 +106,7 @@ const Profile = () => {
               </tr>
             </thead>
             <tbody>
-              {scores.slice(0, 10).map((s, idx) => (
+              {scores.map((s, idx) => (
                 <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
                   <td className="px-4 py-2">{s.date ? new Date(s.date).toLocaleString() : "-"}</td>
                   <td className="px-4 py-2">{s.mode || "-"}</td>
