@@ -146,7 +146,7 @@ const UserProfile = () => {
               className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full overflow-hidden mb-2">
+            <div className="w-40 h-40 rounded-full overflow-hidden mb-3">
               <div className="w-full h-full bg-gray-600 flex items-center justify-center text-2xl text-white rounded-full">
                 <svg
                   className="h-full w-full text-gray-300"
@@ -159,12 +159,12 @@ const UserProfile = () => {
             </div>
           )}
 
-          <h2 className="text-3xl font-bold mb-2">
+          <h2 className="text-4xl font-bold mb-2">
             {profile?.display_name || "User"}
           </h2>
 
           {/* Social Icons */}
-          <div className="flex flex-wrap gap-4 text-gray-400 mt-3 justify-center">
+          <div className="flex flex-wrap gap-4 text-gray-400 mt-3 justify-center ">
             {socialLinks.map(
               ({ url, icon, label }) =>
                 url && (
@@ -186,7 +186,7 @@ const UserProfile = () => {
 
           {/* Bio */}
           {profile?.bio && (
-            <p className="text-sm text-gray-300 text-center mt-4 max-w-xl">
+            <p className="text-lg text-gray-300 text-center mt-4 max-w-xl">
               {profile.bio}
             </p>
           )}
