@@ -14,7 +14,7 @@ const Profile = () => {
     const fetchData = async () => {
       setLoading(true);
 
-      // 1. Fetch basic profile info
+      // 1. Profile info
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("display_name, avatar_url")
@@ -28,34 +28,30 @@ const Profile = () => {
       }
       setProfile(profileData);
 
-      // 2. Fetch timed mode scores from leaderboard_timed
+      // 2. Timed scores
       const { data: timedScores, error: timedError } = await supabase
         .from("leaderboard_timed")
         .select("wpm, accuracy, time, created_at")
         .eq("user_id", user.id);
 
-      if (timedError) {
-        console.error("Error fetching timed scores:", timedError);
-      }
+      if (timedError) console.error("Timed error:", timedError);
 
-      // 3. Fetch sentence mode scores from leaderboard_sentence
+      // 3. Sentence scores
       const { data: sentenceScores, error: sentenceError } = await supabase
         .from("leaderboard_sentence")
         .select("wpm, accuracy, difficulty, time, created_at")
         .eq("user_id", user.id);
 
-      if (sentenceError) {
-        console.error("Error fetching sentence scores:", sentenceError);
-      }
+      if (sentenceError) console.error("Sentence error:", sentenceError);
 
-      // 4. Combine, normalize fields, and sort by created_at desc
-      const combinedScores = [
+      // 4. Normalize + combine
+      const combined = [
         ...(timedScores || []).map((s) => ({
           mode: "Timed",
           wpm: s.wpm,
           accuracy: s.accuracy,
           time: s.time,
-          difficulty: "-", // no difficulty for timed mode
+          difficulty: "-",
           date: s.created_at,
         })),
         ...(sentenceScores || []).map((s) => ({
@@ -66,9 +62,32 @@ const Profile = () => {
           difficulty: s.difficulty,
           date: s.created_at,
         })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      ];
 
-      setScores(combinedScores);
+      // 5. Remove duplicates (keep only the first of each identical entry)
+      const uniqueScores = [];
+      const seen = new Set();
+
+      for (const score of combined) {
+        const key = [
+          score.mode,
+          score.wpm,
+          score.accuracy,
+          score.time,
+          score.difficulty,
+          new Date(score.date).getTime(), // round to second
+        ].join("|");
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueScores.push(score);
+        }
+      }
+
+      // 6. Sort by newest first
+      uniqueScores.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setScores(uniqueScores);
       setLoading(false);
     };
 
@@ -83,12 +102,10 @@ const Profile = () => {
     return <div className="text-white p-8">Profile not found.</div>;
   }
 
-  // Compute best WPM and average accuracy from combined scores
   const bestWpm = scores.length > 0 ? Math.max(...scores.map((s) => s.wpm || 0)) : 0;
-  const avgAccuracy =
-    scores.length > 0
-      ? scores.reduce((sum, s) => sum + (s.accuracy || 0), 0) / scores.length
-      : 0;
+  const avgAccuracy = scores.length > 0
+    ? scores.reduce((sum, s) => sum + (s.accuracy || 0), 0) / scores.length
+    : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 text-white">
@@ -111,7 +128,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
         <div className="bg-[#444] p-4 rounded-xl text-center shadow">
           <p className="text-sm text-gray-300">Best WPM</p>
@@ -143,23 +160,24 @@ const Profile = () => {
               </tr>
             </thead>
             <tbody>
-              {scores.length === 0 && (
+              {scores.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                     No sessions yet.
                   </td>
                 </tr>
+              ) : (
+                scores.map((s, idx) => (
+                  <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
+                    <td className="px-4 py-2">{new Date(s.date).toLocaleString()}</td>
+                    <td className="px-4 py-2">{s.mode}</td>
+                    <td className="px-4 py-2">{s.difficulty || "-"}</td>
+                    <td className="px-4 py-2">{`${parseFloat(s.time).toFixed(1)}s`}</td>
+                    <td className="px-4 py-2 font-semibold">{s.wpm}</td>
+                    <td className="px-4 py-2">{`${parseFloat(s.accuracy).toFixed(1)}%`}</td>
+                  </tr>
+                ))
               )}
-              {scores.map((s, idx) => (
-                <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
-                  <td className="px-4 py-2">{s.date ? new Date(s.date).toLocaleString() : "-"}</td>
-                  <td className="px-4 py-2">{s.mode || "-"}</td>
-                  <td className="px-4 py-2">{s.difficulty || "-"}</td>
-                  <td className="px-4 py-2">{s.time ? `${parseFloat(s.time).toFixed(1)}s` : "-"}</td>
-                  <td className="px-4 py-2 font-semibold">{s.wpm ?? "-"}</td>
-                  <td className="px-4 py-2">{s.accuracy != null ? `${parseFloat(s.accuracy).toFixed(1)}%` : "-"}</td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
