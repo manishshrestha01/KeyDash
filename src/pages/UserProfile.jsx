@@ -92,7 +92,7 @@ const UserProfile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0D1117] flex items-center justify-center px-4 py-10 text-white">
+    <div className="min-h-screen bg-[#101826] flex items-center justify-center px-4 py-10 -mt-20 text-white">
       <div className="max-w-3xl w-full bg-[#161B22] rounded-xl shadow-xl p-8">
         {/* Avatar and Name */}
         <div className="flex flex-col items-center">
