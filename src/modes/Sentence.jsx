@@ -171,6 +171,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     const words = target.split(" ");
     const lines = [];
     let line = [];
+    let lineLen = 0;
     let charIndex = 0;
 
     words.forEach((word, wIdx) => {
@@ -187,7 +188,11 @@ const Sentence = ({ difficulty = "easy" }) => {
         const isCaret = charIndex === currentCharIdx;
 
         const charSpan = (
-          <span key={`${wIdx}-${i}`} className={`relative ${cls}`}>
+          <span
+            key={`${wIdx}-${i}`}
+            className={`relative inline-block align-bottom ${cls}`}
+            style={{ lineHeight: "inherit" }}
+          >
             {c}
             {isCaret && (
               <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
@@ -199,6 +204,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         return charSpan;
       });
 
+      // Add a space after the word
       const isSpaceCaret = charIndex === currentCharIdx;
       const spaceCorrect = input[charIndex] === " ";
       const spaceClass =
@@ -218,18 +224,18 @@ const Sentence = ({ difficulty = "easy" }) => {
       );
       charIndex++;
 
-      line.push(...wordChars);
-
-      if (line.length >= CHARS_PER_LINE) {
-        lines.push(
-          <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
-            {line}
-          </div>
-        );
-        line = [];
-      }
+      line.push(
+        <span
+          key={`word-${wIdx}`}
+          className="inline-block whitespace-pre  mr-[1 em]"
+        >
+          {wordChars}
+        </span>
+      );
+      lineLen += word.length + 1;
     });
 
+    // Push final line
     if (line.length > 0) {
       lines.push(
         <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
