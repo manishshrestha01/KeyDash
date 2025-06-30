@@ -208,6 +208,7 @@ const Timed = ({ time }) => {
     const words = target.split(" ");
     const lines = [];
     let line = [];
+    let lineLen = 0;
     let charIndex = 0;
 
     words.forEach((word, wIdx) => {
@@ -224,7 +225,7 @@ const Timed = ({ time }) => {
         const isCaret = charIndex === currentCharIdx;
 
         const charSpan = (
-          <span key={`${wIdx}-${i}`} className={`relative ${cls}`}>
+          <span key={`${wIdx}-${i}`} className={`relative ${cls}`} style={{ lineHeight: "inherit" }}>
             {c}
             {isCaret && (
               <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
@@ -255,17 +256,17 @@ const Timed = ({ time }) => {
       );
       charIndex++;
 
-      line.push(...wordChars);
-
-      if (line.length >= CHARS_PER_LINE) {
-        lines.push(
-          <div key={`line-${lines.length}`} style={{ scrollSnapAlign: "start" }}>
-            {line}
-          </div>
-        );
-        line = [];
-      }
+      line.push(
+        <span
+          key={`word-${wIdx}`}
+          className="inline-block whitespace-pre"
+        >
+          {wordChars}
+        </span>
+      );
+      lineLen += word.length + 1;
     });
+
 
     if (line.length > 0) {
       lines.push(
