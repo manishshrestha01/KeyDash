@@ -224,10 +224,15 @@ const Sentence = ({ difficulty = "easy" }) => {
       );
       charIndex++;
 
+      // Before
+
+      // line.push(...wordChars);
+      
+      // After
       line.push(
         <span
           key={`word-${wIdx}`}
-          className="inline-block whitespace-pre  mr-[1 em]"
+          className="inline-block whitespace-pre"
         >
           {wordChars}
         </span>
