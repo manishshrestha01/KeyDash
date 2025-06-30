@@ -31,9 +31,11 @@ const Leaderboard = () => {
       let query = supabase
         .from(table)
         .select(`
-          user_id, wpm, accuracy, ${mode === "Timed" ? "time" : "difficulty"},
-          profiles!inner(display_name, avatar_url, twitter, github, linkedin, instagram, youtube, twitch)
-        `);
+          user_id, wpm, accuracy, difficulty,
+          display_name, avatar_url
+        `)
+        
+        
 
       if (mode === "Sentence") {
         query = query.eq("difficulty", difficulty);
@@ -119,9 +121,9 @@ const Leaderboard = () => {
               <tr key={u.user_id + "-" + i} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
                 <td className="px-4 py-2">{i + 1}</td>
                 <td className="px-4 py-2 flex items-center gap-3">
-                  {u.profiles.avatar_url ? (
+                  {u.avatar_url ? (
                     <img
-                      src={u.profiles.avatar_url}
+                      src={u.avatar_url}
                       alt="avatar"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
@@ -143,7 +145,7 @@ const Leaderboard = () => {
                   )}
 
                   <Link to={`/users/${u.user_id}`} className="hover:underline font-medium">
-                    {u.profiles.display_name || "Anonymous"}
+                    {u.display_name || "Anonymous"}
                   </Link>
                 </td>
                 <td className="px-4 py-2 font-semibold">{u.wpm}</td>
