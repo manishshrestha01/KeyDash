@@ -94,14 +94,14 @@ const LoginForm = () => {
 
             <button
               type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition cursor-pointer"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition cursor-pointer"
             >
               Continue with Email
             </button>
 
             <div className="flex items-center my-4">
               <div className="flex-grow border-t border-gray-400" />
-              <span className="mx-4 text-black">Or continue with</span>
+              <span className="mx-4 text-black">OR</span>
               <div className="flex-grow border-t border-gray-400" />
             </div>
 
@@ -115,7 +115,7 @@ const LoginForm = () => {
                 alt="Google"
                 className="w-5 h-5 mr-3"
               />
-              <span className="text-black font-medium">Google</span>
+              <span className="text-black font-medium">Continue with Google</span>
             </button>
           </form>
         </div>

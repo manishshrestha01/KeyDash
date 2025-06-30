@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import Settings from "./components/auth/Settings";
 import Leaderboard from "./pages/Leaderboard";
 import UserProfile from "./pages/UserProfile";
+import Error from "./pages/Error";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
@@ -19,6 +20,7 @@ const Routes = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/users/:userId" element={<UserProfile />} />
+            <Route path="*" element={<Error/>} />
 
 
         </Route>
