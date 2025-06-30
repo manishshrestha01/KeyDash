@@ -221,7 +221,7 @@ const Settings = () => {
     }
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    const publicUrl = data.publicUrl;
+    const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
 
     const { error } = await supabase
       .from("profiles")
