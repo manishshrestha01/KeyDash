@@ -210,13 +210,21 @@ const ScorePage = () => {
           <Line data={data} options={options} height={120} />
         </div>
       </div>
+      <div className="mt-6 text-white text-lg">
+        <p>Thank you for playing! Keep practicing to improve your typing skills.</p>
+      </div> 
 
+      <div>
+        <button onClick={() => navigate("/login")} className="mr-6 mt-6 px-8 py-3 rounded-full bg-yellow-400 text-black text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer">
+          Login to save your score
+        </button>
       <button
         onClick={handlePlayAgain}
-        className="mt-10 px-8 py-3 rounded-full bg-[#facc15] text-[#23242a] text-lg font-semibold hover:bg-yellow-400 transition"
+        className="mt-6 px-8 py-3 rounded-full bg-yellow-400 text-[#23242a] text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer"
       >
         Play Again
       </button>
+      </div>
     </div>
   )
 }
