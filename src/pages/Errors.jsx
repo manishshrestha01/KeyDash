@@ -1,5 +1,5 @@
 import Error from "../components/Error"
-import Meta from '../../components/Meta'
+import Meta from '../components/Meta'
 const Errors = () => {
   return (
     <div>
