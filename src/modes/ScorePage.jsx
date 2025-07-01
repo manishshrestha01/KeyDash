@@ -188,57 +188,80 @@ const ScorePage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-[#0f1826] text-gray-100">
-      <h1 className="text-4xl font-extrabold -mt-5 mb-4 text-[#facc15]">
-        Your Score
-      </h1>
+  <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 bg-[#0f1826] text-gray-100">
+    <h1 className="text-3xl md:text-3xl xl:text-4xl lg:text-4xl sm:text-4xl font-extrabold lg:-mt-5 xl:-mt-5 md:-mt-4 -mt-1 mb-4 text-[#facc15] text-center">
+      Your Score
+    </h1>
 
-      <div className="w-full max-w-5xl bg-[#23242a] p-6 rounded-xl space-y-8 ">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
-          <div>
-            <div className="uppercase text-gray-400 text-lg ">wpm</div>
-            <div className="text-5xl font-bold text-[#facc15]">{wpmInt}</div>
-          </div>
-          <div>
-            <div className="uppercase text-gray-400 text-lg">accuracy</div>
-            <div className="text-5xl font-bold text-[#facc15]">
-              {accuracy.toFixed(1)}%
-            </div>
-          </div>
-          <div>
-            <div className="uppercase text-gray-400 text-lg">mistakes</div>
-            <div className="text-5xl font-bold text-[#b91c1c]">{mistakes}</div>
-          </div>
-          <div>
-            <div className="uppercase text-gray-400 text-lg">characters</div>
-            <div className="text-4xl font-bold text-[#38bdf8]">
-              {correct} / {input?.length || 0}
-            </div>
-          </div>
-          <div>
-            <div className="uppercase text-gray-400 text-lg">time</div>
-            <div className="text-4xl font-bold text-[#facc15]">
-              {durationSec.toFixed(1)}s
-            </div>
+    <div className="w-full max-w-xl sm:max-w-3xl md:max-w-5xl bg-[#23242a] p-4 sm:p-6 md:p-8 rounded-xl space-y-6 sm:space-y-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6 text-center">
+        {/* WPM */}
+        <div>
+          <div className="uppercase text-gray-400 text-sm sm:text-base">wpm</div>
+          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
+            {wpmInt}
           </div>
         </div>
-        <div className="bg-[#23242a] rounded-lg p-4">
-          <Line data={data} options={options} height={120} />
+
+        {/* Accuracy */}
+        <div>
+          <div className="uppercase text-gray-400 text-sm sm:text-base">accuracy</div>
+          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
+            {accuracy.toFixed(1)}%
+          </div>
+        </div>
+
+        {/* Mistakes */}
+        <div>
+          <div className="uppercase text-gray-400 text-sm sm:text-base">mistakes</div>
+          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#b91c1c]">
+            {mistakes}
+          </div>
+        </div>
+
+        {/* Characters */}
+        <div>
+          <div className="uppercase text-gray-400 text-sm sm:text-base">characters</div>
+          <div className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-4xl font-bold text-[#38bdf8]">
+            {correct} / {input?.length || 0}
+          </div>
+        </div>
+
+        {/* Time */}
+        <div>
+          <div className="uppercase text-gray-400 text-sm sm:text-base">time</div>
+          <div className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-4xl font-bold text-[#facc15]">
+            {durationSec.toFixed(1)}s
+          </div>
         </div>
       </div>
-      <div className="mt-6 text-white text-xl">
-        <p>
-          Thank you for playing! Keep practicing to improve your typing skills.
-        </p>
-      </div>
-      <button
-        onClick={handlePlayAgain}
-        className="mt-6 px-8 py-3 rounded-full bg-yellow-400 text-[#23242a] text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer"
-      >
-        Play Again
-      </button>
+
+      <div className="bg-[#23242a] rounded-lg p-3 sm:p-4 w-full h-80 sm:h-100 md:h-100 lg:h-100 xl:h-100">
+  <Line
+    data={data}
+    options={{
+      ...options,
+      responsive: true,
+      maintainAspectRatio: false,
+    }}
+  />
+</div>
     </div>
-  );
+
+    <div className="mt-6 text-white text-center text-base sm:text-lg max-w-xl px-2">
+      <p>
+        Thank you for playing! Keep practicing to improve your typing skills.
+      </p>
+    </div>
+
+    <button
+      onClick={handlePlayAgain}
+      className="mt-6 px-6 sm:px-8 py-2 sm:py-3 rounded-full bg-yellow-400 text-[#23242a] text-base sm:text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer"
+    >
+      Play Again
+    </button>
+  </div>
+);
 };
 
 export default ScorePage;
