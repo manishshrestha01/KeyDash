@@ -65,9 +65,18 @@ const Navbar = () => {
     return (
       <nav className="bg-[#101826] text-white sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
-          <NavLink to="/" className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3">
-            <img src="/logo.svg" className="h-7 sm:h-9 md:h-10 lg:h-10 xl:h-10" alt="logo" />
-            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">KeyDash</span>
+          <NavLink
+            to="/"
+            className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3"
+          >
+            <img
+              src="/logo.svg"
+              className="h-7 sm:h-9 md:h-10 lg:h-10 xl:h-10"
+              alt="logo"
+            />
+            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
+              KeyDash
+            </span>
           </NavLink>
         </div>
       </nav>
@@ -77,9 +86,18 @@ const Navbar = () => {
   return (
     <nav className="bg-[#101826] text-white sticky top-0 z-50 border-b border-white/10">
       <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
-        <NavLink to="/" className="flex items-center space-x-1 sm:space-x-3 md:space-x-3 lg:space-x-3 xl:space-x-3 2xl:space-x-4">
-          <img src="/logo.svg" className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10 2xl:h-20" alt="logo" />
-          <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl 2xl:text-6xl font-semibold">KeyDash</span>
+        <NavLink
+          to="/"
+          className="flex items-center space-x-1 sm:space-x-3 md:space-x-3 lg:space-x-3 xl:space-x-3 2xl:space-x-4"
+        >
+          <img
+            src="/logo.svg"
+            className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10 2xl:h-20"
+            alt="logo"
+          />
+          <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl 2xl:text-6xl font-semibold">
+            KeyDash
+          </span>
         </NavLink>
 
         <div className="relative">
@@ -94,7 +112,11 @@ const Navbar = () => {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 px-4 py-2 text-base rounded-lg bg-gray-800 hover:bg-gray-700"
+                className="flex items-center gap-1 px-2 py-1 text-sm rounded-md
+                          sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm sm:rounded-md
+                          md:gap-2 md:px-4 md:py-2 md:text-base md:rounded-lg
+                          xl:gap-2 xl:px-4 xl:py-2 xl:text-base xl:rounded-lg
+                          bg-gray-800 hover:bg-gray-700"
               >
                 {avatarUrl ? (
                   <img
@@ -110,7 +132,7 @@ const Navbar = () => {
                     </svg>
                   </div>
                 )}
-                <span className="hidden sm:inline font-medium whitespace-nowrap">
+                <span className="font-medium whitespace-nowrap">
                   {displayName}
                 </span>
                 <svg
