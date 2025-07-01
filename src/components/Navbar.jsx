@@ -67,14 +67,14 @@ const Navbar = () => {
         <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
           <NavLink
             to="/"
-            className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3 2xl:space-x-4"
+            className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3"
           >
             <img
               src="/logo.svg"
-              className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10 2xl:h-20"
+              className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10"
               alt="logo"
             />
-            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl 2xl:text-6xl font-semibold">
+            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
               KeyDash
             </span>
           </NavLink>
@@ -88,14 +88,14 @@ const Navbar = () => {
       <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
         <NavLink
           to="/"
-          className="flex items-center space-x-1 sm:space-x-3 md:space-x-3 lg:space-x-3 xl:space-x-3 2xl:space-x-4"
+          className="flex items-center space-x-1 sm:space-x-3 md:space-x-3 lg:space-x-3 xl:space-x-3"
         >
           <img
             src="/logo.svg"
-            className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10 2xl:h-20"
+            className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10"
             alt="logo"
           />
-          <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl 2xl:text-6xl font-semibold">
+          <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
             KeyDash
           </span>
         </NavLink>
@@ -104,7 +104,7 @@ const Navbar = () => {
           {!user ? (
             <NavLink
               to="/login"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base rounded-lg px-1.5 py-1.5 sm:text-xl sm:rounded-lg sm:px-4 sm:py-2 md:text-xl md:rounded-lg md:px-4 md:py-2 lg:text-xl lg:rounded-lg lg:px-4 lg:py-2 xl:text-xl xl:rounded-lg xl:px-4 xl:py-2 2xl:text-5xl 2xl:rounded-2xl 2xl:px-6 2xl:py-3"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base rounded-lg px-1.5 py-1.5 sm:text-xl sm:rounded-lg sm:px-4 sm:py-2 md:text-xl md:rounded-lg md:px-4 md:py-2 lg:text-xl lg:rounded-lg lg:px-4 lg:py-2 xl:text-xl xl:rounded-lg xl:px-4 xl:py-2"
             >
               Login / Sign Up
             </NavLink>
