@@ -67,14 +67,14 @@ const Navbar = () => {
         <div className="max-w-screen-xl flex justify-between items-center mx-auto p-4">
           <NavLink
             to="/"
-            className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3"
+            className="flex items-center space-x-1 md:space-x-3 lg:space-x-3 xl:space-x-3 2xl:space-x-4"
           >
             <img
               src="/logo.svg"
-              className="h-7 sm:h-9 md:h-10 lg:h-10 xl:h-10"
+              className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10 2xl:h-20"
               alt="logo"
             />
-            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
+            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl 2xl:text-6xl font-semibold">
               KeyDash
             </span>
           </NavLink>
