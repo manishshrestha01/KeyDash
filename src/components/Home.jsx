@@ -1,4 +1,4 @@
-import ModesButton from "../components/ModesButton"
+import ModesButton from "./ModesButton"
 import { useState } from "react"
 import Timed from "../modes/Timed"
 import Sentence from "../modes/Sentence"

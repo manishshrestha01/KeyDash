@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Link } from "react-router-dom";
-import ModesButton from "../components/ModesButton";
+import ModesButton from "./ModesButton";
 import {
   FaTwitter, FaGithub, FaLinkedin, FaInstagram, FaYoutube, FaTwitch
 } from "react-icons/fa";
