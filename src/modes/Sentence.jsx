@@ -20,7 +20,18 @@ const getRandomSentence = (difficulty = "easy") => {
   return filtered[Math.floor(Math.random() * filtered.length)].text;
 };
 
-const CHARS_PER_LINE = 50;
+// Responsive chars per line based on device width
+const getCharsPerLine = () => {
+  if (typeof window === 'undefined') return 50;
+  if (window.innerWidth >= 1280) return 50;
+  if (window.innerWidth >= 1024) return 40;
+  if (window.innerWidth >= 768) return 35;
+  if (window.innerWidth >= 640) return 40;
+  if (window.innerWidth >= 425) return 35;
+  if (window.innerWidth >= 375) return 30;
+  if (window.innerWidth >= 320) return 25;
+  return 20;
+};
 
 const Sentence = ({ difficulty = "easy" }) => {
   const [target, setTarget] = useState("");
@@ -254,26 +265,38 @@ const Sentence = ({ difficulty = "easy" }) => {
 
   return (
     <div className="flex flex-col items-center pt-8 -mt-6">
-      <div className="text-yellow-300 text-4xl font-medium mb-4">
+      <div className="text-yellow-300 text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-medium mb-4">
         {getCorrectWordCount()}
       </div>
 
       <div
         ref={containerRef}
-        className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
+        className="relative w-full max-w-7xl sm:max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl h-[7.5rem] sm:h-[8.5rem] md:h-[9.5rem] lg:h-[10.5rem] overflow-hidden cursor-text px-2 sm:px-4 md:px-8"
         style={{
           fontFamily: `"Fira Code","JetBrains Mono",monospace`,
-          fontSize: "2.3rem",
-          lineHeight: "3.5rem",
+          fontSize: "1.1rem",
+          lineHeight: "2rem",
+          // Responsive font size and line height
+          ...(window.innerWidth >= 640 && { fontSize: "1.5rem", lineHeight: "2.5rem" }),
+          ...(window.innerWidth >= 768 && { fontSize: "1.8rem", lineHeight: "3rem" }),
+          ...(window.innerWidth >= 1024 && { fontSize: "2.1rem", lineHeight: "3.2rem" }),
+          ...(window.innerWidth >= 1280 && { fontSize: "2.3rem", lineHeight: "3.5rem" }),
         }}
         onClick={() => textareaRef.current?.focus()}
       >
         <div
-          className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
+          className="absolute inset-0 flex flex-col transition-transform duration-200 px-1 sm:px-2 md:px-4"
           style={{
+            // Responsive scroll offset for all devices
             transform: `translateY(-${
-              Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5
-            }rem)`,
+              Math.max(0, Math.floor(currentCharIdx / getCharsPerLine()) - 2) * (
+                window.innerWidth >= 1280 ? 3.5 :
+                window.innerWidth >= 1024 ? 3.2 :
+                window.innerWidth >= 768 ? 3 :
+                window.innerWidth >= 640 ? 2.5 :
+                2
+              )
+            }rem)`
           }}
         >
           {renderColoredText()}
