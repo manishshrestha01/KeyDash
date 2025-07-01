@@ -6,8 +6,7 @@ const Meta = ({ title, description, url, image }) => {
   const defaultDescription =
     "KeyDash is a fast, clean, and minimalist online typing test. Practice with multiple difficulty levels, timed and sentence modes, real-time WPM, accuracy tracking, and a competitive leaderboard.";
   const defaultUrl = "https://keydash.shresthamanish.info.np/";
-  const defaultImage = "https://keydash.shresthamanish.info.np/default-og-image.png"; // <-- put your default OG image url here
-
+  
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -27,19 +26,6 @@ const Meta = ({ title, description, url, image }) => {
       <meta name="description" content={description || defaultDescription} />
       <link rel="canonical" href={url || defaultUrl} />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      
-      {/* Open Graph */}
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content={title || defaultTitle} />
-      <meta property="og:description" content={description || defaultDescription} />
-      <meta property="og:url" content={url || defaultUrl} />
-      <meta property="og:image" content={image || defaultImage} />
-      
-      {/* Twitter Card */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title || defaultTitle} />
-      <meta name="twitter:description" content={description || defaultDescription} />
-      <meta name="twitter:image" content={image || defaultImage} />
 
       <meta name="robots" content="index, follow" />
       
