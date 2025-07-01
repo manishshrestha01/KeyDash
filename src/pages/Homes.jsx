@@ -4,7 +4,7 @@ const Homes = () => {
   return (
     <div>
       <Meta
-        title="Home | KeyDash"
+        title="KeyDash | Fast & Clean Online Typing Test"
         description="KeyDash is a fast, clean, and minimalist online typing test. Practice with multiple difficulty levels, timed and sentence modes, real-time WPM, accuracy tracking, and a competitive leaderboard."
         url="https://keydash.shresthamanish.info.np/"
       />
