@@ -4,7 +4,7 @@ const Errors = () => {
   return (
     <div>
       <Meta
-        title="Errors | KeyDash"
+        title="Page Not Found | KeyDash"
         description="An error occurred while processing your request."
         url="https://keydash.shresthamanish.info.np/errors"
       />

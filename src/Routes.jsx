@@ -1,5 +1,4 @@
 import { createBrowserRouter, createRoutesFromElements, Route } from "react-router-dom";
-import Home from "./components/Home";
 import { RouterProvider } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
@@ -9,11 +8,12 @@ import Leaderboards from "./pages/Leaderboards";
 import UserProfile from "./components/UserProfile";
 import Errors from "./pages/Errors";
 import Profiles from "./pages/Profiles";
+import Homes from "./pages/Homes";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
         <Route element={<MainLayout />}>
-            <Route index element={<Home />} />
+            <Route index element={<Homes />} />
             <Route path="/login" element={<Login/>} />
             <Route path="/results" element={<ScorePage />} />
             <Route path="/profile" element={<Profiles/>} />
