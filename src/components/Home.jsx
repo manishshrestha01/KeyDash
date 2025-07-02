@@ -35,7 +35,7 @@ const Home = () => {
       {/* Mobile Button */}
       <div className="md:hidden flex justify-center mt-4">
         <button
-          className="bg-yellow-400 text-black px-4 py-2 rounded-full font-semibold text-lg"
+          className="bg-yellow-400 text-black px-4 py-2 rounded-full font-semibold text-sm"
           onClick={() => setShowMobileModal(true)}
         >
           Mode
