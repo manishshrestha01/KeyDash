@@ -350,6 +350,9 @@ const Timed = ({ time }) => {
           onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
           spellCheck="false"
           autoFocus
+          autoCorrect="off"
+          autoComplete="off"
+          inputMode="none"
         />
       </div>
 

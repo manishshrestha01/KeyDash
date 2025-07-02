@@ -325,6 +325,9 @@ const Sentence = ({ difficulty = "easy" }) => {
           onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
           spellCheck="false"
           autoFocus
+          autoCorrect="off"
+          autoComplete="off"
+          inputMode="none"
         />
       </div>
 
