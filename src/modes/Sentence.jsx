@@ -267,7 +267,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     <div className="flex flex-col items-center pt-8 -mt-6">
       <div
         className="text-yellow-300 font-medium mb-4 mt-15 xl:mt-0 lg:mt-0 md:mt-3 sm:mt-10 sm:mb-0 
-          text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl
+          text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl
           px-2 sm:px-4 md:px-8 lg:px-12 xl:px-16
           py-1 sm:py-2 md:py-3 lg:py-4 xl:py-5
           rounded-lg sm:rounded-xl md:rounded-2xl"
