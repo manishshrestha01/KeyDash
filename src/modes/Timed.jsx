@@ -18,7 +18,17 @@ const getRandomSentence = () => {
   return words.join(" ");
 };
 
-const CHARS_PER_LINE = 50;
+const getCharsPerLine = () => {
+  if (typeof window === 'undefined') return 50;
+  if (window.innerWidth >= 1280) return 50;
+  if (window.innerWidth >= 1024) return 40;
+  if (window.innerWidth >= 768) return 35;
+  if (window.innerWidth >= 640) return 40;
+  if (window.innerWidth >= 425) return 35;
+  if (window.innerWidth >= 375) return 30;
+  if (window.innerWidth >= 320) return 25;
+  return 20;
+};
 
 const Timed = ({ time }) => {
   const [target, setTarget] = useState("");
@@ -118,27 +128,6 @@ const Timed = ({ time }) => {
     setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
-  // Handle typing input
-  const handleInput = (e) => {
-    if (isTimeUp) return;
-    const val = e.target.value;
-
-    if (val.length > 0 && !startTime) {
-      setStartTime(Date.now());
-    }
-
-    if (
-      val.length > target.length ||
-      (val.trimEnd().endsWith(".") &&
-        val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
-    ) {
-      handleFinish(val);
-      return;
-    }
-
-    setInput(val);
-  };
-
   // Save score and navigate to results
   const handleFinish = async (
     finalInput = inputRef.current,
@@ -192,6 +181,27 @@ const Timed = ({ time }) => {
     });
   };
 
+   // Handle typing input
+   const handleInput = (e) => {
+    if (isTimeUp) return;
+    const val = e.target.value;
+
+    if (val.length > 0 && !startTime) {
+      setStartTime(Date.now());
+    }
+
+    if (
+      val.length > target.length ||
+      (val.trimEnd().endsWith(".") &&
+        val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
+    ) {
+      handleFinish(val);
+      return;
+    }
+
+    setInput(val);
+  };
+  // Handle restart button click
   const handleRestart = () => {
     setRestartCount((c) => c + 1);
     setTimeout(() => {
@@ -236,7 +246,8 @@ const Timed = ({ time }) => {
         charIndex++;
         return charSpan;
       });
-
+      
+      // Add a space after the word
       const isSpaceCaret = charIndex === currentCharIdx;
       const spaceCorrect = input[charIndex] === " ";
       const spaceClass =
@@ -282,25 +293,49 @@ const Timed = ({ time }) => {
   return (
     <div className="flex flex-col items-center pt-8 -mt-6">
       {/* Timer display */}
-      <div className="text-yellow-300 text-4xl font-medium mb-4">{timeLeft}</div>
+      <div className="text-yellow-300 font-medium mb-4 mt-15 xl:mt-0 lg:mt-0 md:mt-3 sm:mt-10 sm:mb-0 
+          text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl
+          px-2 sm:px-4 md:px-8 lg:px-12 xl:px-16
+          py-1 sm:py-2 md:py-3 lg:py-4 xl:py-5
+          rounded-lg sm:rounded-xl md:rounded-2xl" 
+          style={{
+            wordBreak: 'keep-all',
+            textAlign: 'center',
+            minWidth: '5.5rem',
+            display: 'inline-block',
+          }}>
+            {timeLeft}
+            </div>
 
       {/* Typing area */}
       <div
         ref={containerRef}
-        className="relative w-full max-w-7xl h-[10.5rem] overflow-hidden cursor-text"
+        className="relative w-full max-w-7xl sm:max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl h-[7.5rem] sm:h-[8.5rem] md:h-[9.5rem] lg:h-[10.5rem] overflow-hidden cursor-text px-2 sm:px-4 md:px-8 xl:mt-0 lg:mt-0 md:mt-10 sm:mt-15 mt-10"
         style={{
           fontFamily: `"Fira Code","JetBrains Mono",monospace`,
-          fontSize: "2.3rem",
-          lineHeight: "3.5rem",
+          fontSize: "1.1rem",
+          lineHeight: "2rem",
+          // Responsive font size and line height
+          ...(window.innerWidth >= 640 && { fontSize: "1.8rem", lineHeight: "2.7rem" }),
+          ...(window.innerWidth >= 768 && { fontSize: "1.8rem", lineHeight: "3rem" }),
+          ...(window.innerWidth >= 1024 && { fontSize: "2.1rem", lineHeight: "3.5rem" }),
+          ...(window.innerWidth >= 1280 && { fontSize: "2.3rem", lineHeight: "3.5rem" }),
         }}
         onClick={() => textareaRef.current?.focus()}
       >
         <div
-          className="absolute inset-0 px-2 py-1 flex flex-col transition-transform duration-200"
+          className="absolute inset-0 flex flex-col transition-transform duration-200 px-1 sm:px-2 md:px-4"
           style={{
+            // Responsive scroll offset for all devices
             transform: `translateY(-${
-              Math.max(0, Math.floor(currentCharIdx / CHARS_PER_LINE) - 2) * 3.5
-            }rem)`,
+              Math.max(0, Math.floor(currentCharIdx / getCharsPerLine()) - 2) * (
+                window.innerWidth >= 1280 ? 3.5 :
+                window.innerWidth >= 1024 ? 3.2 :
+                window.innerWidth >= 768 ? 3 :
+                window.innerWidth >= 640 ? 2.5 :
+                2
+              )
+            }rem)`
           }}
         >
           {renderColoredText()}
@@ -355,7 +390,7 @@ const Timed = ({ time }) => {
       </button>
 
       {/* Stats display */}
-      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
+      <div className="xl:-ml-260 xl:-mt-18 xl:text-2xl xl:rounded-2xl xl:px-7 xl:py-5 lg:-ml-190 lg:-mt-18 lg:text-2xl lg:rounded-2xl lg:px-7 lg:py-5 md:-ml-130 md:-mt-93 md:text-xl md:rounded-2xl md:px-4 md:py-2 sm:-ml-105 sm:-mt-90 sm:text-xl sm:rounded-2xl sm:px-2 sm:py-1 -ml-60 -mt-85 text-base rounded-xl px-2 py-1 bg-yellow-400 text-black font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
         <div>Error = {mistakes}</div>

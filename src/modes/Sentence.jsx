@@ -265,6 +265,7 @@ const Sentence = ({ difficulty = "easy" }) => {
 
   return (
     <div className="flex flex-col items-center pt-8 -mt-6">
+      {/* Word counter display */}
       <div
         className="text-yellow-300 font-medium mb-4 mt-15 xl:mt-0 lg:mt-0 md:mt-3 sm:mt-10 sm:mb-0 
           text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-4xl
@@ -281,6 +282,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         {getCorrectWordCount()}
       </div>
 
+      {/* Typing area */}
       <div
         ref={containerRef}
         className="relative w-full max-w-7xl sm:max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl h-[7.5rem] sm:h-[8.5rem] md:h-[9.5rem] lg:h-[10.5rem] overflow-hidden cursor-text px-2 sm:px-4 md:px-8 xl:mt-0 lg:mt-0 md:mt-10 sm:mt-15 mt-10"
