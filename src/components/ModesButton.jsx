@@ -6,7 +6,7 @@ const ModesButton = ({ children, onClick, active, icon, theme = "dark" }) => {
     flex items-center gap-2
     px-3 py-1.5 md:px-4 md:py-2
     rounded-full
-    text-sm md:text-base lg:text-lg xl:text-xl
+    text-sm md:text-lg lg:text-lg xl:text-xl
     font-semibold transition-all border
   `
 

@@ -35,17 +35,17 @@ const Home = () => {
       {/* Mobile Button */}
       <div className="md:hidden flex justify-center mt-4">
         <button
-          className="bg-yellow-400 text-black px-4 py-2 rounded-full font-semibold text-sm"
+          className="bg-yellow-400 text-black px-4 py-2 rounded-full font-semibold sm:text-xl text-base mt-10"
           onClick={() => setShowMobileModal(true)}
         >
-          Mode
+          Modes Setting
         </button>
       </div>
 
       {/* Mobile Modal */}
       {showMobileModal && (
   <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
-    <div className="bg-[#1e1e1e] text-white w-full max-w-xs rounded-3xl p-5 space-y-6">
+    <div className="bg-[#101826] text-white w-full max-w-xs rounded-3xl p-5 space-y-6">
       {/* Close button */}
       <div className="flex justify-end">
         <button
