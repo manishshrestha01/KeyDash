@@ -121,73 +121,73 @@ const Profile = () => {
     : 0;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 text-white">
+    <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10 text-white">
       {/* User Info */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 mb-8">
         {profile.avatar_url ? (
           <img
             src={profile.avatar_url}
             alt="Avatar"
-            className="w-14 h-14 rounded-full object-cover border-2 border-white"
+            className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-white"
           />
         ) : (
-          <div className="w-14 h-14 bg-gray-600 flex items-center justify-center rounded-full border-2 border-white">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gray-600 flex items-center justify-center rounded-full border-2 border-white">
             <svg className="w-12 h-12 rounded-full object-cover" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
           </div>
         )}
-        <div>
-          <h2 className="text-2xl font-semibold">Hello, {profile.display_name || "User"}</h2>
-          <p className="text-gray-400">Welcome back to your typing dashboard</p>
+        <div className="text-center sm:text-left">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold">Hello, {profile.display_name || "User"}</h2>
+          <p className="text-gray-400 text-sm sm:text-base">Welcome back to your typing dashboard</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        <div className="bg-[#444] p-4 rounded-xl text-center shadow">
-          <p className="text-sm text-gray-300">Best WPM</p>
-          <h3 className="text-3xl font-bold">{bestWpm}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8 md:mb-10">
+        <div className="bg-[#444] p-3 sm:p-4 rounded-xl text-center shadow">
+          <p className="text-xs sm:text-sm text-gray-300">Best WPM</p>
+          <h3 className="text-2xl sm:text-3xl font-bold">{bestWpm}</h3>
         </div>
-        <div className="bg-[#444] p-4 rounded-xl text-center shadow">
-          <p className="text-sm text-gray-300">Avg Accuracy</p>
-          <h3 className="text-3xl font-bold">{avgAccuracy.toFixed(1)}%</h3>
+        <div className="bg-[#444] p-3 sm:p-4 rounded-xl text-center shadow">
+          <p className="text-xs sm:text-sm text-gray-300">Avg Accuracy</p>
+          <h3 className="text-2xl sm:text-3xl font-bold">{avgAccuracy.toFixed(1)}%</h3>
         </div>
-        <div className="bg-[#444] p-4 rounded-xl text-center shadow">
-          <p className="text-sm text-gray-300">Sessions</p>
-          <h3 className="text-3xl font-bold">{scores.length}</h3>
+        <div className="bg-[#444] p-3 sm:p-4 rounded-xl text-center shadow">
+          <p className="text-xs sm:text-sm text-gray-300">Sessions</p>
+          <h3 className="text-2xl sm:text-3xl font-bold">{scores.length}</h3>
         </div>
       </div>
 
       {/* Recent Sessions */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">Recent Sessions</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Recent Sessions</h3>
         <div className="bg-[#2f3133] rounded-lg overflow-x-auto">
-          <table className="w-full text-left table-auto">
+          <table className="w-full text-left table-auto text-xs sm:text-sm md:text-base">
             <thead>
-              <tr className="border-b border-gray-600 text-sm text-gray-300">
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Mode</th>
-                <th className="px-4 py-2">Difficulty</th>
-                <th className="px-4 py-2">Time</th>
-                <th className="px-4 py-2">WPM</th>
-                <th className="px-4 py-2">Accuracy</th>
+              <tr className="border-b border-gray-600 text-xs sm:text-sm text-gray-300">
+                <th className="px-2 sm:px-4 py-2">Date</th>
+                <th className="px-2 sm:px-4 py-2">Mode</th>
+                <th className="px-2 sm:px-4 py-2">Difficulty</th>
+                <th className="px-2 sm:px-4 py-2">Time</th>
+                <th className="px-2 sm:px-4 py-2">WPM</th>
+                <th className="px-2 sm:px-4 py-2">Accuracy</th>
               </tr>
             </thead>
             <tbody>
               {scores.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={6} className="px-2 sm:px-4 py-6 text-center text-gray-400">
                     No sessions yet.
                   </td>
                 </tr>
               ) : (
                 scores.map((s, idx) => (
                   <tr key={idx} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
-                    <td className="px-4 py-2">{new Date(s.date).toLocaleString()}</td>
-                    <td className="px-4 py-2">{s.mode}</td>
-                    <td className="px-4 py-2">{s.difficulty || "-"}</td>
-                    <td className="px-4 py-2">{`${parseFloat(s.time).toFixed(1)}s`}</td>
-                    <td className="px-4 py-2 font-semibold">{s.wpm}</td>
-                    <td className="px-4 py-2">{`${parseFloat(s.accuracy).toFixed(1)}%`}</td>
+                    <td className="px-2 sm:px-4 py-2">{new Date(s.date).toLocaleString()}</td>
+                    <td className="px-2 sm:px-4 py-2">{s.mode}</td>
+                    <td className="px-2 sm:px-4 py-2">{s.difficulty || "-"}</td>
+                    <td className="px-2 sm:px-4 py-2">{`${parseFloat(s.time).toFixed(1)}s`}</td>
+                    <td className="px-2 sm:px-4 py-2 font-semibold">{s.wpm}</td>
+                    <td className="px-2 sm:px-4 py-2">{`${parseFloat(s.accuracy).toFixed(1)}%`}</td>
                   </tr>
                 ))
               )}
