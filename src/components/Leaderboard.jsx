@@ -2,18 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Link } from "react-router-dom";
 import ModesButton from "./ModesButton";
-import {
-  FaTwitter, FaGithub, FaLinkedin, FaInstagram, FaYoutube, FaTwitch
-} from "react-icons/fa";
 
 const modes = ["Sentence", "Timed"];
 const difficulties = ["easy", "medium", "hard", "extreme"];
 const times = [15, 30, 60, 120];
 
-const socialIcons = {
-  twitter: FaTwitter, github: FaGithub, linkedin: FaLinkedin,
-  instagram: FaInstagram, youtube: FaYoutube, twitch: FaTwitch,
-};
 
 const Leaderboard = () => {
   const [mode, setMode] = useState("Sentence");
@@ -60,7 +53,7 @@ const Leaderboard = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 text-white">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-center font-bold mb-6 md:mb-9 -mt-2 md:-mt-3">Leaderboard</h1>
+      <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-5xl text-center font-bold mb-6 md:mb-9 -mt-2 md:-mt-3">Leaderboard</h1>
 
       {/* Mode Selector */}
       <div className="flex gap-4 mb-4 justify-center">
