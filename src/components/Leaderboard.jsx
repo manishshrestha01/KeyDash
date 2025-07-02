@@ -60,7 +60,7 @@ const Leaderboard = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 text-white">
-      <h1 className="text-5xl text-center font-bold mb-9 -mt-3">Leaderboard</h1>
+      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-center font-bold mb-6 md:mb-9 -mt-2 md:-mt-3">Leaderboard</h1>
 
       {/* Mode Selector */}
       <div className="flex gap-4 mb-4 justify-center">
@@ -95,9 +95,9 @@ const Leaderboard = () => {
 
       {/* Leaderboard Table */}
       <div className="bg-[#2f3133] rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[350px] sm:min-w-0 text-xs sm:text-sm table-auto">
+        <table className="w-full min-w-[350px] sm:min-w-0 text-xs sm:text-sm md:text-base lg:text-lg table-auto">
           <thead>
-            <tr className="text-left text-gray-300 border-b border-gray-600 bg-[#1f2022]">
+            <tr className="text-left text-gray-300 border-b border-gray-600 bg-[#1f2022] text-xs sm:text-sm md:text-base lg:text-lg">
               <th className="px-2 sm:px-3 md:px-4 py-2">#</th>
               <th className="px-2 sm:px-3 md:px-4 py-2">User</th>
               <th className="px-2 sm:px-3 md:px-4 py-2">WPM</th>
@@ -113,16 +113,16 @@ const Leaderboard = () => {
           <tbody>
             {scores.length === 0 && !loading && (
               <tr>
-                <td colSpan={5} className="px-2 sm:px-3 md:px-4 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-2 sm:px-3 md:px-4 py-6 text-center text-gray-400 text-xs sm:text-sm md:text-base lg:text-lg">
                   No entries yet.
                 </td>
               </tr>
             )}
 
             {scores.map((u, i) => (
-              <tr key={u.user_id + "-" + i} className="border-b border-gray-700 hover:bg-[#3a3d3f]">
+              <tr key={u.user_id + "-" + i} className="border-b border-gray-700 hover:bg-[#3a3d3f] text-xs sm:text-sm md:text-base lg:text-lg">
                 <td className="px-2 sm:px-3 md:px-4 py-2">{i + 1}</td>
-                <td className="px-2 sm:px-3 md:px-4 py-2 flex items-center gap-2 sm:gap-3">
+                <td className="px-2 sm:px-2 md:px-4 py-2 flex items-center gap-1 sm:gap-2 md:gap-3">
                   {u.profiles.avatar_url ? (
                     <img
                       src={u.profiles.avatar_url}
