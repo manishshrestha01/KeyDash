@@ -349,7 +349,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         </svg>
       </button>
 
-      <div className="-ml-260 -mt-18 bg-yellow-400 rounded-2xl px-7 py-5 text-black text-2xl font-mono shadow-lg z-10">
+      <div className="xl:-ml-260 xl:-mt-18 xl:text-2xl xl:rounded-2xl xl:px-7 xl:py-5 lg:-ml-190 lg:-mt-18 lg:text-2xl lg:rounded-2xl lg:px-7 lg:py-5 md:-ml-140 md:-mt-110 md:text-xl md:rounded-2xl md:px-4 md:py-2 -ml-65 -mt-80 text-base rounded-xl px-2 py-1 bg-yellow-400 text-black font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
         <div>Acc = {accuracy.toFixed(1)}%</div>
         <div>Error = {mistakes}</div>
