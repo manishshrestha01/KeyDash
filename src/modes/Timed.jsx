@@ -352,7 +352,6 @@ const Timed = ({ time }) => {
           autoFocus
           autoCorrect="off"
           autoComplete="off"
-          inputMode="none"
         />
       </div>
 

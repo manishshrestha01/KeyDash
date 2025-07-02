@@ -327,7 +327,6 @@ const Sentence = ({ difficulty = "easy" }) => {
           autoFocus
           autoCorrect="off"
           autoComplete="off"
-          inputMode="none"
         />
       </div>
 
