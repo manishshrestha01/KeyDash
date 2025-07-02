@@ -88,7 +88,7 @@ const Leaderboard = () => {
 
       {/* Leaderboard Table */}
       <div className="bg-[#2f3133] rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[320px] sm:min-w-0 text-xs sm:text-sm md:text-base lg:text-lg table-auto">
+        <table className="w-full min-w-[300px] sm:min-w-0 text-xs sm:text-sm md:text-base lg:text-lg table-auto">
           <thead>
             <tr className="text-left text-gray-300 border-b border-gray-600 bg-[#1f2022] text-xs sm:text-sm md:text-base lg:text-lg">
               <th className="px-2 sm:px-3 md:px-4 py-2">#</th>
