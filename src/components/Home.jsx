@@ -38,7 +38,7 @@ const Home = () => {
           className="bg-yellow-400 text-black px-4 py-2 rounded-full font-semibold sm:text-xl text-base mt-10"
           onClick={() => setShowMobileModal(true)}
         >
-          Modes Setting
+          Modes Settings
         </button>
       </div>
 
