@@ -82,6 +82,7 @@ const Sentence = ({ difficulty = "easy" }) => {
       if (input[i] === target[i]) correct++;
     }
 
+    // Real-time Stats calculation
     const totalTyped = input.length;
     const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
     const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
@@ -103,6 +104,8 @@ const Sentence = ({ difficulty = "easy" }) => {
     for (let i = 0; i < finalInput.length; i++) {
       if (finalInput[i] === target[i]) correctChars++;
     }
+
+    // Scoreboard Stats calculation
     const totalTyped = finalInput.length;
     const wpmCalc = durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
     const wpmRounded = Math.round(wpmCalc);

@@ -11,7 +11,6 @@ const getRandomSentence = () => {
     const randomIndex = Math.floor(Math.random() * arr.length);
     const word = arr[randomIndex];
 
-    // You can add filters here if you want to exclude too long words
     words.push(word);
   }
 
@@ -117,6 +116,7 @@ const Timed = ({ time }) => {
       if (input[i] === target[i]) correct++;
     }
 
+    // Real-time Stats calculation
     const totalTyped = input.length;
     const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
     const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
@@ -147,6 +147,7 @@ const Timed = ({ time }) => {
     for (let i = 0; i < finalInput.length; i++) {
       if (finalInput[i] === target[i]) correctChars++;
     }
+    // Scoreboard Stats calculation
     const totalTyped = finalInput.length;
     const wpmVal =
       durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
