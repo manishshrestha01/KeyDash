@@ -157,7 +157,7 @@ const Navbar = () => {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-full bg-white text-black rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-fit bg-white text-black rounded-lg shadow-lg z-50">
                   <NavLink
                     to="/"
                     onClick={() => setMenuOpen(false)}
