@@ -13,11 +13,13 @@ const Navbar = () => {
     let polling;
 
     const fetchUserProfile = async () => {
+      // Fetch user profile with auth
       const {
         data: { user },
         error,
       } = await supabase.auth.getUser();
 
+      // if no user set all states to null and return
       if (error || !user) {
         setUser(null);
         setProfile(null);
@@ -25,8 +27,10 @@ const Navbar = () => {
         return;
       }
 
+      // If user exists
       setUser(user);
 
+      // Returns display_name and avatar_url from profiles table where id matches user.id
       const { data: profileData } = await supabase
         .from("profiles")
         .select("display_name, avatar_url")
@@ -39,12 +43,14 @@ const Navbar = () => {
 
     fetchUserProfile();
 
+    // fetchUserProfile is called on auth state change
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       fetchUserProfile();
     });
 
     polling = setInterval(fetchUserProfile, 1000); //Data updates in 1 seconds of saving
 
+    // Stops memory leaks by unsubscribing from the listener and clearing the interval
     return () => {
       listener?.subscription.unsubscribe();
       clearInterval(polling);
