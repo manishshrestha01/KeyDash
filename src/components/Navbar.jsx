@@ -80,9 +80,9 @@ const Navbar = () => {
               className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10"
               alt="logo"
             />
-            <span className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
+            <h1 className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
               KeyDash
-            </span>
+            </h1>
           </NavLink>
         </div>
       </nav>
