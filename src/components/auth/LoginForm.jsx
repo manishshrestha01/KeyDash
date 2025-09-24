@@ -64,9 +64,9 @@ const LoginForm = () => {
             ×
           </a>
 
-          <h1 className="text-slate-900 text-center text-3xl font-semibold mb-6">
+          <h2 className="text-slate-900 text-center text-3xl font-semibold mb-6">
             Login / Sign Up
-          </h1>
+          </h2>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
