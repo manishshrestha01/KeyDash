@@ -1,7 +1,7 @@
 import React from "react";
 import { Helmet } from "react-helmet";
 
-const Meta = ({ title, description, url }) => {
+const Meta = ({ title, description, url, keywords }) => {
   const defaultTitle = "KeyDash | Fast & Clean Online Typing Test";
   const defaultDescription =
     "KeyDash is a fast, clean, and minimalist online typing test. Practice with multiple difficulty levels, timed and sentence modes, real-time WPM, accuracy tracking, and a competitive leaderboard.";
