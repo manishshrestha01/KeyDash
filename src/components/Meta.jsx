@@ -26,7 +26,7 @@ const Meta = ({ title, description, url }) => {
       <meta name="description" content={description || defaultDescription} />
       <link rel="canonical" href={url || defaultUrl} />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+      <meta name="keywords" content={keywords || ""} />
       <meta name="robots" content="index, follow" />
       
       {/* JSON-LD Structured Data */}
