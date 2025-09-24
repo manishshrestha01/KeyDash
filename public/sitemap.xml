@@ -1,38 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset
-  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Homepage -->
   <url>
     <loc>https://keydash.shresthamanish.info.np/</loc>
-    <lastmod>2025-07-01T17:34:26+00:00</lastmod>
+    <lastmod>2025-09-25</lastmod>
+    <priority>1.00</priority>
   </url>
-
-  <!-- Login Page -->
-  <url>
-    <loc>https://keydash.shresthamanish.info.np/login</loc>
-    <lastmod>2025-07-01T17:34:26+00:00</lastmod>
-  </url>
-
-  <!-- Leaderboard Page -->
+  <!-- Leaderboard (public) -->
   <url>
     <loc>https://keydash.shresthamanish.info.np/leaderboard</loc>
-    <lastmod>2025-07-01T17:34:26+00:00</lastmod>
+    <lastmod>2025-09-25</lastmod>
+    <priority>0.80</priority>
   </url>
-
-  <!-- Settings Page (if exists) -->
-  <url>
-    <loc>https://keydash.shresthamanish.info.np/settings</loc>
-    <lastmod>2025-07-01T17:34:26+00:00</lastmod>
-  </url>
-  
-  <!-- Profile Page (if exists) -->
-  <url>
-    <loc>https://keydash.shresthamanish.info.np/profile</loc>
-    <lastmod>2025-07-01T17:34:26+00:00</lastmod>
-  </url>
-
 </urlset>
