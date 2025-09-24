@@ -53,7 +53,7 @@ const Leaderboard = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 text-white">
-      <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-5xl text-center font-bold mb-6 md:mb-9 -mt-2 md:-mt-3">Leaderboard</h1>
+      <h2 className="text-4xl sm:text-4xl md:text-5xl lg:text-5xl text-center font-bold mb-6 md:mb-9 -mt-2 md:-mt-3">Leaderboard</h2>
 
       {/* Mode Selector */}
       <div className="flex gap-4 mb-4 justify-center">
