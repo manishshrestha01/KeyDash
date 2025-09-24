@@ -46,7 +46,7 @@ const ScorePage = () => {
   if (!location.state) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
-        <h1 className="text-3xl font-bold mb-4">No Result Found</h1>
+        <h2 className="text-3xl font-bold mb-4">No Result Found</h2>
         <button
           onClick={() => navigate("/")}
           className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -189,9 +189,9 @@ const ScorePage = () => {
 
   return (
   <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 bg-[#0f1826] text-gray-100">
-    <h1 className="text-3xl md:text-3xl xl:text-4xl lg:text-4xl sm:text-4xl font-extrabold lg:-mt-5 xl:-mt-5 md:-mt-4 -mt-1 mb-4 text-[#facc15] text-center">
+    <h2 className="text-3xl md:text-3xl xl:text-4xl lg:text-4xl sm:text-4xl font-extrabold lg:-mt-5 xl:-mt-5 md:-mt-4 -mt-1 mb-4 text-[#facc15] text-center">
       Your Score
-    </h1>
+    </h2>
 
     <div className="w-full max-w-xl sm:max-w-3xl md:max-w-5xl bg-[#23242a] p-4 sm:p-6 md:p-8 rounded-xl space-y-6 sm:space-y-8">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6 text-center">
