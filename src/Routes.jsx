@@ -9,6 +9,8 @@ import UserProfile from "./components/UserProfile";
 import Errors from "./pages/Errors";
 import Profiles from "./pages/Profiles";
 import Homes from "./pages/Homes";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
@@ -20,6 +22,8 @@ const Routes = () => {
             <Route path="/settings" element={<Setting />} />
             <Route path="/leaderboard" element={<Leaderboards/>} />
             <Route path="/users/:userId" element={<UserProfile />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="*" element={<Errors />} />
 
 
