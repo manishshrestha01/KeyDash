@@ -144,10 +144,16 @@ const Sentence = ({ difficulty = "easy" }) => {
   const handleInput = (e) => {
     const val = e.target.value;
 
+    // Helper: detect if the trimmed value ends with a sentence terminator
+    const endsWithSentenceTerminator = (s) => {
+      // allow trailing closing quotes/brackets after the terminator
+      return /[.!?][\)\]\"'’”»]*$/.test(s.trimEnd());
+    };
+
     // Sentence complete conditions
     if (
       val.length > target.length ||
-      (val.trimEnd().endsWith(".") &&
+      (endsWithSentenceTerminator(val) &&
         val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
     ) {
       handleFinish(val);
