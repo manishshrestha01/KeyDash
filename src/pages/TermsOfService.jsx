@@ -9,7 +9,8 @@ const TermsOfService = () => {
         url="https://keydash.shresthamanish.info.np/terms-of-service"
       />
 
-      <h1 className="text-3xl font-semibold mb-4">Terms of Service</h1>
+      {/* Avoid duplicate H1s — render as H2 so the site chrome can provide the single H1 */}
+      <h2 className="text-3xl font-semibold mb-4">Terms of Service</h2>
       <p className="text-sm text-gray-500 mb-6">Last updated: January 17, 2026</p>
 
       <p className="mb-4">

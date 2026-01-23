@@ -9,7 +9,8 @@ const PrivacyPolicy = () => {
         url="https://keydash.shresthamanish.info.np/privacy-policy"
       />
 
-      <h1 className="text-3xl font-semibold mb-4">Privacy Policy</h1>
+      {/* Use H2 here to avoid duplicate top-level headings from site chrome (Navbar) */}
+      <h2 className="text-3xl font-semibold mb-4">Privacy Policy</h2>
       <p className="text-sm text-gray-500 mb-6">Last updated: January 17, 2026</p>
 
       <p className="mb-4">
