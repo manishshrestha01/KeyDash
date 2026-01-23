@@ -108,12 +108,12 @@ const Navbar = () => {
             alt="logo"
           />
           {/* site title: visible but not a document-level heading */}
-          <div
+          <h1
             className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold"
             aria-hidden="true"
           >
             KeyDash
-          </div>
+          </h1>
           <span className="sr-only">KeyDash — Home</span>
         </NavLink>
 
