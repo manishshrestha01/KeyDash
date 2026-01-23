@@ -80,9 +80,15 @@ const Navbar = () => {
               className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10"
               alt="logo"
             />
-            <h1 className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
+            {/* site title: keep visible styling but remove semantic H1 so pages can provide their own H1 */}
+            <div
+              className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold"
+              aria-hidden="true"
+            >
               KeyDash
-            </h1>
+            </div>
+            {/* accessible name for screen readers */}
+            <span className="sr-only">KeyDash — Home</span>
           </NavLink>
         </div>
       </nav>
@@ -101,9 +107,14 @@ const Navbar = () => {
             className="h-7 sm:h-10 md:h-10 lg:h-10 xl:h-10"
             alt="logo"
           />
-          <h1 className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold">
+          {/* site title: visible but not a document-level heading */}
+          <div
+            className="text-xl sm:text-3xl md:text-3xl lg:text-3xl xl:text-3xl font-semibold"
+            aria-hidden="true"
+          >
             KeyDash
-          </h1>
+          </div>
+          <span className="sr-only">KeyDash — Home</span>
         </NavLink>
 
         <div className="relative">
