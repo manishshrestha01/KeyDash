@@ -156,10 +156,14 @@ const Sentence = ({ difficulty = "easy" }) => {
     };
 
     // Sentence complete conditions
+    const inputWordCount = val.trim().split(/\s+/).filter(Boolean).length;
+    const targetWordCount = target.trim().split(/\s+/).filter(Boolean).length;
+
     if (
       val.length > target.length ||
       (endsWithSentenceTerminator(val) &&
-        val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
+        (inputWordCount >= targetWordCount ||
+          val.trim().length >= target.trim().length))
     ) {
       handleFinish(val);
       return;
