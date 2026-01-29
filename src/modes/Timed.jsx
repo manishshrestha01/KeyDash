@@ -187,6 +187,9 @@ const Timed = ({ time }) => {
     if (isTimeUp) return;
     const val = e.target.value;
 
+    // Prevent deletions: ignore any change that shortens the input (disables backspace/delete and cuts)
+    if (val.length < input.length) return;
+
     if (val.length > 0 && !startTime) {
       setStartTime(Date.now());
     }
@@ -202,6 +205,19 @@ const Timed = ({ time }) => {
 
     setInput(val);
   };
+
+  // Prevent Backspace and Delete keys
+  const handleKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      return;
+    }
+  };
+
   // Handle restart button click
   const handleRestart = () => {
     setRestartCount((c) => c + 1);
@@ -348,7 +364,7 @@ const Timed = ({ time }) => {
           value={input}
           onChange={handleInput}
           onPaste={(e) => e.preventDefault()}
-          onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
+          onKeyDown={handleKeyDown}
           spellCheck="false"
           autoFocus
           autoCorrect="off"
