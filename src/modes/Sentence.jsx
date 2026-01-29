@@ -144,6 +144,11 @@ const Sentence = ({ difficulty = "easy" }) => {
   const handleInput = (e) => {
     const val = e.target.value;
 
+    // Prevent deletions: ignore any change that shortens the input (disables backspace/delete and cuts)
+    if (val.length < input.length) {
+      return;
+    }
+
     // Helper: detect if the trimmed value ends with a sentence terminator
     const endsWithSentenceTerminator = (s) => {
       // allow trailing closing quotes/brackets after the terminator
@@ -161,6 +166,18 @@ const Sentence = ({ difficulty = "easy" }) => {
     }
 
     setInput(val);
+  };
+
+  // Prevent Backspace and Delete keys
+  const handleKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      return;
+    }
   };
 
   const handleRestart = () => {
@@ -331,7 +348,7 @@ const Sentence = ({ difficulty = "easy" }) => {
           value={input}
           onChange={handleInput}
           onPaste={(e) => e.preventDefault()}
-          onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
+          onKeyDown={handleKeyDown}
           spellCheck="false"
           autoFocus
           autoCorrect="off"
