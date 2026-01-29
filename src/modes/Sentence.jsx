@@ -72,6 +72,12 @@ const Sentence = ({ difficulty = "easy" }) => {
     textareaRef.current?.focus();
   }, [restartCount, difficulty]);
 
+  // Helper: detect if the trimmed value ends with a sentence terminator
+  const endsWithSentenceTerminator = (s) => {
+    // allow trailing closing quotes/brackets after the terminator
+    return /[.!?][\)\]\"'’”»]*$/.test((s || "").trimEnd());
+  };
+
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
 
@@ -144,23 +150,58 @@ const Sentence = ({ difficulty = "easy" }) => {
   const handleInput = (e) => {
     const val = e.target.value;
 
-    // Helper: detect if the trimmed value ends with a sentence terminator
-    const endsWithSentenceTerminator = (s) => {
-      // allow trailing closing quotes/brackets after the terminator
-      return /[.!?][\)\]\"'’”»]*$/.test(s.trimEnd());
-    };
+    // Prevent deletions: ignore any change that shortens the input (disables backspace/delete)
+    if (val.length < input.length) {
+      // Controlled textarea will remain showing the previous `input` value
+      return;
+    }
 
     // Sentence complete conditions
+    const inputWordCount = val.trim().split(/\s+/).filter(Boolean).length;
+    const targetWordCount = target.trim().split(/\s+/).filter(Boolean).length;
+
+    const approxComplete = endsWithSentenceTerminator(val) && val.trim().length >= Math.max(target.trim().length - 2, 0);
+
     if (
       val.length > target.length ||
-      (endsWithSentenceTerminator(val) &&
-        val.trim().split(/\s+/).length >= target.trim().split(/\s+/).length)
+      (endsWithSentenceTerminator(val) && inputWordCount >= targetWordCount) ||
+      approxComplete
     ) {
       handleFinish(val);
       return;
     }
 
     setInput(val);
+  };
+
+  // Disable Backspace/Delete keys so users cannot delete characters while typing
+  const handleKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      return;
+    }
+
+    // If the user types a sentence terminator, check for completion after the
+    // keypress (textarea value updates after the key event). This ensures
+    // pressing '.' / '!' / '?' immediately finishes the sentence when
+    // the typed content looks complete.
+    if (e.key === "." || e.key === "!" || e.key === "?") {
+      setTimeout(() => {
+        const valNow = textareaRef.current?.value ?? input;
+        const inputWordCount = valNow.trim().split(/\s+/).filter(Boolean).length;
+        const targetWordCount = target.trim().split(/\s+/).filter(Boolean).length;
+
+        const approxCompleteNow = endsWithSentenceTerminator(valNow) && valNow.trim().length >= Math.max(target.trim().length - 2, 0);
+
+        if ((endsWithSentenceTerminator(valNow) && inputWordCount >= targetWordCount) || approxCompleteNow) {
+          handleFinish(valNow);
+        }
+      }, 0);
+    }
   };
 
   const handleRestart = () => {
@@ -331,7 +372,7 @@ const Sentence = ({ difficulty = "easy" }) => {
           value={input}
           onChange={handleInput}
           onPaste={(e) => e.preventDefault()}
-          onKeyDown={(e) => e.key === "Tab" && e.preventDefault()}
+          onKeyDown={handleKeyDown}
           spellCheck="false"
           autoFocus
           autoCorrect="off"
