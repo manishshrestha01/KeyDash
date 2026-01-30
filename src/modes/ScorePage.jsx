@@ -25,9 +25,9 @@ const ScorePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { target, input, durationSec } = location.state || {};
+  const { target, input, durationSec, wpm: stateWpm, acc: stateAcc, mistakes: stateMistakes, mistakenIndices } = location.state || {};
 
-  // Compute correct characters
+  // Compute basic stats from input/target as fallback
   let correct = 0;
   if (target && input) {
     for (let i = 0; i < input.length; i++) {
@@ -35,27 +35,17 @@ const ScorePage = () => {
     }
   }
 
-  // Standard WPM formula: (correct chars / 5) / (duration in minutes)
-  const wpm = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
-  const wpmInt = Math.round(wpm);
-  const accuracy = input?.length > 0 ? (correct / input.length) * 100 : 0;
-  const mistakes = input?.length && correct >= 0 ? input.length - correct : 0;
+  // Standard WPM formula based on currently-correct chars (fallback)
+  const baseWpm = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
+  const baseWpmInt = Math.round(baseWpm);
+  const baseAccuracy = input?.length > 0 ? (correct / input.length) * 100 : 0;
+  const baseMistakes = input?.length && correct >= 0 ? input.length - correct : 0;
 
-  const handlePlayAgain = () => navigate("/");
-
-  if (!location.state) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
-        <h2 className="text-3xl font-bold mb-4">No Result Found</h2>
-        <button
-          onClick={() => navigate("/")}
-          className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Go to Typing Test
-        </button>
-      </div>
-    );
-  }
+  // Prefer passed values from the mode (e.g., Timed) when available
+  const displayWpm = typeof stateWpm !== "undefined" ? stateWpm : baseWpmInt;
+  const displayAcc = typeof stateAcc !== "undefined" ? parseFloat(stateAcc) : parseFloat(baseAccuracy.toFixed(1));
+  const displayMistakes = typeof stateMistakes !== "undefined" ? stateMistakes : baseMistakes;
+  const displayedCorrectChars = Math.max(0, (input?.length || 0) - displayMistakes);
 
   // Chart data generation (fluctuating demo, ends at real values)
   const seconds = Math.max(1, Math.ceil(durationSec || 1));
@@ -66,51 +56,61 @@ const ScorePage = () => {
     timeLabels[seconds - 1] = durationSec.toFixed(1);
   }
 
-  // Exact cumulative correct chars at each second
+  // Exact cumulative correct chars at each second.
+  // If `mistakenIndices` is provided (Timed mode), treat any index in that array as a permanent mistake
+  // so corrected characters don't remove mistakes from history.
   let cumulativeCorrect = Array(seconds).fill(0);
+  let cumulativeMistakes = Array(seconds).fill(0);
   if (target && input && input.length > 0) {
-    for (let i = 0; i < input.length; i++) {
-      const charTime = ((i + 1) * durationSec) / input.length;
-      const secIdx = Math.min(Math.floor(charTime), seconds - 1);
-      if (input[i] === target[i]) {
-        cumulativeCorrect[secIdx] += 1;
+    if (Array.isArray(mistakenIndices) && mistakenIndices.length > 0) {
+      // Use mistakenIndices to compute typed and mistaken counts per second
+      const typedPerSec = Array(seconds).fill(0);
+      const mistakesPerSec = Array(seconds).fill(0);
+      const mistakenSet = new Set(mistakenIndices);
+      for (let i = 0; i < input.length; i++) {
+        const charTime = ((i + 1) * durationSec) / input.length;
+        const secIdx = Math.min(Math.floor(charTime), seconds - 1);
+        typedPerSec[secIdx] += 1;
+        if (mistakenSet.has(i)) mistakesPerSec[secIdx] += 1;
       }
-    }
-    // Make cumulative
-    for (let i = 1; i < seconds; i++) {
-      cumulativeCorrect[i] += cumulativeCorrect[i - 1];
+      // Make cumulative
+      for (let i = 1; i < seconds; i++) {
+        typedPerSec[i] += typedPerSec[i - 1];
+        mistakesPerSec[i] += mistakesPerSec[i - 1];
+      }
+      cumulativeMistakes = mistakesPerSec;
+      cumulativeCorrect = typedPerSec.map((t, idx) => Math.max(0, t - mistakesPerSec[idx]));
+    } else {
+      for (let i = 0; i < input.length; i++) {
+        const charTime = ((i + 1) * durationSec) / input.length;
+        const secIdx = Math.min(Math.floor(charTime), seconds - 1);
+        if (input[i] === target[i]) {
+          cumulativeCorrect[secIdx] += 1;
+        } else {
+          cumulativeMistakes[secIdx] += 1;
+        }
+      }
+      // Make cumulative
+      for (let i = 1; i < seconds; i++) {
+        cumulativeCorrect[i] += cumulativeCorrect[i - 1];
+        cumulativeMistakes[i] += cumulativeMistakes[i - 1];
+      }
     }
   }
 
-  // WPM at each time point, using float for last point and ensuring last matches main WPM
   let wpmData = cumulativeCorrect.map((correctSoFar, i) => {
     let elapsedSec = i + 1;
     if (i === seconds - 1 && durationSec % 1 !== 0) {
       elapsedSec = durationSec;
-      correctSoFar = correct; // use total correct chars for last point
+      // If mistakenIndices used, our cumulativeCorrect already represents adjusted correct; otherwise fall back
+      correctSoFar = Array.isArray(mistakenIndices) && mistakenIndices.length > 0 ? cumulativeCorrect[cumulativeCorrect.length - 1] : correct;
     }
     const timeMin = elapsedSec / 60;
     return timeMin > 0 ? Math.round(correctSoFar / 5 / timeMin) : 0; // round to integer
   });
-  // Ensure last value matches main WPM exactly
+  // Ensure last value matches main WPM exactly (prefer passed displayWpm)
   if (wpmData.length > 0) {
-    wpmData[wpmData.length - 1] = wpmInt;
-  }
-
-  // Exact cumulative mistakes at each second
-  let cumulativeMistakes = Array(seconds).fill(0);
-  if (target && input && input.length > 0) {
-    for (let i = 0; i < input.length; i++) {
-      const charTime = ((i + 1) * durationSec) / input.length;
-      const secIdx = Math.min(Math.floor(charTime), seconds - 1);
-      if (input[i] !== target[i]) {
-        cumulativeMistakes[secIdx] += 1;
-      }
-    }
-    // Make cumulative
-    for (let i = 1; i < seconds; i++) {
-      cumulativeMistakes[i] += cumulativeMistakes[i - 1];
-    }
+    wpmData[wpmData.length - 1] = displayWpm;
   }
 
   const errorData = cumulativeMistakes;
@@ -187,6 +187,22 @@ const ScorePage = () => {
     },
   };
 
+  const handlePlayAgain = () => navigate("/");
+
+  if (!location.state) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
+        <h2 className="text-3xl font-bold mb-4">No Result Found</h2>
+        <button
+          onClick={() => navigate("/")}
+          className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Go to Typing Test
+        </button>
+      </div>
+    );
+  }
+
   return (
   <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 bg-[#0f1826] text-gray-100">
     <h2 className="text-3xl md:text-3xl xl:text-4xl lg:text-4xl sm:text-4xl font-extrabold lg:-mt-5 xl:-mt-5 md:-mt-4 -mt-1 mb-4 text-[#facc15] text-center">
@@ -199,7 +215,7 @@ const ScorePage = () => {
         <div>
           <div className="uppercase text-gray-400 text-sm sm:text-base">wpm</div>
           <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
-            {wpmInt}
+            {displayWpm}
           </div>
         </div>
 
@@ -207,7 +223,7 @@ const ScorePage = () => {
         <div>
           <div className="uppercase text-gray-400 text-sm sm:text-base">accuracy</div>
           <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
-            {accuracy.toFixed(1)}%
+            {displayAcc.toFixed(1)}%
           </div>
         </div>
 
@@ -215,7 +231,7 @@ const ScorePage = () => {
         <div>
           <div className="uppercase text-gray-400 text-sm sm:text-base">mistakes</div>
           <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#b91c1c]">
-            {mistakes}
+            {displayMistakes}
           </div>
         </div>
 
@@ -223,7 +239,7 @@ const ScorePage = () => {
         <div>
           <div className="uppercase text-gray-400 text-sm sm:text-base">characters</div>
           <div className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-4xl font-bold text-[#38bdf8]">
-            {correct} / {input?.length || 0}
+            {displayedCorrectChars} / {input?.length || 0}
           </div>
         </div>
 

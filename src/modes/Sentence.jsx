@@ -49,6 +49,8 @@ const Sentence = ({ difficulty = "easy" }) => {
   const [mistakes, setMistakes] = useState(0);
   // Index (one past) up to which input is locked (user cannot delete past this point)
   const [lockedIndex, setLockedIndex] = useState(0);
+  // Track indices that were ever mistyped (each index counted once)
+  const wrongIndicesRef = useRef(new Set());
 
   const [user, setUser] = useState(null);
 
@@ -69,6 +71,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     setAccuracy(100);
     setMistakes(0);
     setLockedIndex(0);
+    wrongIndicesRef.current.clear();
   }, [restartCount, difficulty]);
 
   useEffect(() => {
@@ -80,21 +83,30 @@ const Sentence = ({ difficulty = "easy" }) => {
 
     setCurrentCharIdx(input.length);
 
-    let correct = 0;
-    for (let i = 0; i < input.length; i++) {
-      if (input[i] === target[i]) correct++;
+    // Detect newly mistyped positions by scanning from the first differing index
+    let start = 0;
+    while (start < input.length && start < target.length && input[start] === target[start]) start++;
+
+    for (let i = start; i < input.length; i++) {
+      if (input[i] !== target[i] && !wrongIndicesRef.current.has(i)) {
+        wrongIndicesRef.current.add(i);
+      }
     }
 
-    // Real-time Stats calculation
+    // Update mistakes counter shown in UI to reflect persistent wrong indices
+    setMistakes(wrongIndicesRef.current.size);
+
+    // Use persistent wrong indices for stats so corrections don't erase earlier mistakes
     const totalTyped = input.length;
+    const mistakesCount = wrongIndicesRef.current.size;
+    const adjustedCorrect = Math.max(0, totalTyped - mistakesCount);
+
     const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
-    const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
-    const accVal = totalTyped > 0 ? (correct / totalTyped) * 100 : 100;
-    const mistakesVal = totalTyped - correct;
+    const wpmVal = durationSec > 0 ? adjustedCorrect / 5 / (durationSec / 60) : 0;
+    const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 100;
 
     setWpm(Math.round(wpmVal));
     setAccuracy(accVal);
-    setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
   // Save score to Supabase leaderboard_sentence and navigate to results page
@@ -103,18 +115,14 @@ const Sentence = ({ difficulty = "easy" }) => {
 
     const durationSec = (Date.now() - startTime) / 1000;
 
-    let correctChars = 0;
-    for (let i = 0; i < finalInput.length; i++) {
-      if (finalInput[i] === target[i]) correctChars++;
-    }
-
-    // Scoreboard Stats calculation
+    // Scoreboard Stats calculation using persistent wrong indices
     const totalTyped = finalInput.length;
-    const wpmCalc = durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
+    const mistakesCalc = wrongIndicesRef.current.size;
+    const adjustedCorrect = Math.max(0, totalTyped - mistakesCalc);
+    const wpmCalc = durationSec > 0 ? adjustedCorrect / 5 / (durationSec / 60) : 0;
     const wpmRounded = Math.round(wpmCalc);
-    const accCalc = totalTyped > 0 ? (correctChars / totalTyped) * 100 : 0;
+    const accCalc = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0;
     const accRounded = parseFloat(accCalc.toFixed(1));
-    const mistakesCalc = totalTyped - correctChars;
 
     // Save to leaderboard_sentence table
     if (user) {
@@ -140,6 +148,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         wpm: wpmRounded,
         acc: accRounded,
         mistakes: mistakesCalc,
+        mistakenIndices: Array.from(wrongIndicesRef.current),
       },
     });
   };

@@ -51,6 +51,8 @@ const Timed = ({ time }) => {
 
   const inputRef = useRef(input);
   const startTimeRef = useRef(startTime);
+  // Track indices that were ever mistyped (each index counted once)
+  const wrongIndicesRef = useRef(new Set());
 
   // Get current logged-in user
   const [user, setUser] = useState(null);
@@ -69,7 +71,7 @@ const Timed = ({ time }) => {
     setWpm(0);
     setAccuracy(100);
     setMistakes(0);
-    setLockedIndex(0);
+    wrongIndicesRef.current.clear();
     setIsTimeUp(false);
     setTimeLeft(time);
     if (intervalRef.current) {
@@ -114,21 +116,30 @@ const Timed = ({ time }) => {
   useEffect(() => {
     setCurrentCharIdx(input.length);
 
-    let correct = 0;
-    for (let i = 0; i < input.length; i++) {
-      if (input[i] === target[i]) correct++;
+    // Detect newly mistyped positions by scanning from the first differing index
+    let start = 0;
+    while (start < input.length && start < target.length && input[start] === target[start]) start++;
+
+    for (let i = start; i < input.length; i++) {
+      if (input[i] !== target[i] && !wrongIndicesRef.current.has(i)) {
+        wrongIndicesRef.current.add(i);
+      }
     }
 
-    // Real-time Stats calculation
+    // Update mistakes counter shown in UI to reflect persistent wrong indices
+    setMistakes(wrongIndicesRef.current.size);
+
+    // Use persistent wrong indices for stats so corrections don't erase earlier mistakes
     const totalTyped = input.length;
+    const mistakesCount = wrongIndicesRef.current.size;
+    const adjustedCorrect = Math.max(0, totalTyped - mistakesCount);
+
     const durationSec = startTime ? (Date.now() - startTime) / 1000 : 0;
-    const wpmVal = durationSec > 0 ? correct / 5 / (durationSec / 60) : 0;
-    const accVal = totalTyped > 0 ? (correct / totalTyped) * 100 : 100;
-    const mistakesVal = totalTyped - correct;
+    const wpmVal = durationSec > 0 ? adjustedCorrect / 5 / (durationSec / 60) : 0;
+    const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 100;
 
     setWpm(Math.round(wpmVal));
     setAccuracy(accVal);
-    setMistakes(mistakesVal);
   }, [input, startTime, target]);
 
   // Save score and navigate to results
@@ -146,17 +157,12 @@ const Timed = ({ time }) => {
       durationSec = time - timeLeft;
     }
 
-    let correctChars = 0;
-    for (let i = 0; i < finalInput.length; i++) {
-      if (finalInput[i] === target[i]) correctChars++;
-    }
-    // Scoreboard Stats calculation
+    // Scoreboard Stats calculation using persistent wrong indices
     const totalTyped = finalInput.length;
-    const wpmVal =
-      durationSec > 0 ? correctChars / 5 / (durationSec / 60) : 0;
-    const accVal =
-      totalTyped > 0 ? (correctChars / totalTyped) * 100 : 0;
-    const mistakesVal = totalTyped - correctChars;
+    const mistakesVal = wrongIndicesRef.current.size;
+    const adjustedCorrect = Math.max(0, totalTyped - mistakesVal);
+    const wpmVal = durationSec > 0 ? adjustedCorrect / 5 / (durationSec / 60) : 0;
+    const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0;
 
     // Insert into leaderboard_timed table
     if (user && user.id) {
@@ -181,6 +187,7 @@ const Timed = ({ time }) => {
         wpm: Math.round(wpmVal),
         acc: accVal.toFixed(1),
         mistakes: mistakesVal,
+        mistakenIndices: Array.from(wrongIndicesRef.current),
       },
     });
   };
