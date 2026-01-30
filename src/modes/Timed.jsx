@@ -48,6 +48,13 @@ const Timed = ({ time }) => {
   const [mistakes, setMistakes] = useState(0);
   // Index (one past) up to which input is locked (user cannot delete past this point)
   const [lockedIndex, setLockedIndex] = useState(0);
+  // Caret state: 'moving' while typing (solid), 'popping' briefly when transitioning to idle, 'idle' when blinking
+  const [caretState, setCaretState] = useState("idle");
+  const caretIdleTimerRef = useRef(null);
+  const caretPopTimerRef = useRef(null);
+  const CARET_ACTIVE_TIMEOUT = 600; // ms before starting the pop -> blink
+  const CARET_POP_DURATION = 160; // duration of pop animation
+  const caretTimerRef = useRef(null);
 
   const inputRef = useRef(input);
   const startTimeRef = useRef(startTime);
@@ -72,6 +79,16 @@ const Timed = ({ time }) => {
     setAccuracy(100);
     setMistakes(0);
     wrongIndicesRef.current.clear();
+    // reset caret state
+    if (caretIdleTimerRef.current) {
+      clearTimeout(caretIdleTimerRef.current);
+      caretIdleTimerRef.current = null;
+    }
+    if (caretPopTimerRef.current) {
+      clearTimeout(caretPopTimerRef.current);
+      caretPopTimerRef.current = null;
+    }
+    setCaretState("idle");
     setIsTimeUp(false);
     setTimeLeft(time);
     if (intervalRef.current) {
@@ -79,6 +96,20 @@ const Timed = ({ time }) => {
       intervalRef.current = null;
     }
   }, [restartCount, time]);
+
+  // cleanup caret timer on unmount
+  useEffect(() => {
+    return () => {
+      if (caretIdleTimerRef.current) {
+        clearTimeout(caretIdleTimerRef.current);
+        caretIdleTimerRef.current = null;
+      }
+      if (caretPopTimerRef.current) {
+        clearTimeout(caretPopTimerRef.current);
+        caretPopTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     inputRef.current = input;
@@ -229,6 +260,22 @@ const Timed = ({ time }) => {
     }
 
     setInput(val);
+
+    // mark caret as moving to suppress blink; restart timer for inactivity
+    if (caretIdleTimerRef.current) clearTimeout(caretIdleTimerRef.current);
+    if (caretPopTimerRef.current) {
+      clearTimeout(caretPopTimerRef.current);
+      caretPopTimerRef.current = null;
+    }
+    setCaretState("moving");
+    caretIdleTimerRef.current = setTimeout(() => {
+      setCaretState("popping");
+      caretPopTimerRef.current = setTimeout(() => {
+        setCaretState("idle");
+        caretPopTimerRef.current = null;
+      }, CARET_POP_DURATION);
+      caretIdleTimerRef.current = null;
+    }, CARET_ACTIVE_TIMEOUT);
   };
 
   // Prevent Backspace and Delete keys from deleting into locked area
@@ -290,6 +337,7 @@ const Timed = ({ time }) => {
     let charIndex = 0;
 
     words.forEach((word, wIdx) => {
+      const caretClass = caretState === "moving" ? "caret-static" : caretState === "popping" ? "caret-pop" : "animate-blink";
       const wordChars = word.split("").map((c, i) => {
         let cls = "text-muted";
 
@@ -306,7 +354,7 @@ const Timed = ({ time }) => {
           <span key={`${wIdx}-${i}`} className={`relative ${cls}`} style={{ lineHeight: "inherit" }}>
             {c}
             {isCaret && (
-              <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+              <span className={`caret absolute top-[0.05em] left-0 w-[3px] h-[1.25em] bg-caret ${caretClass} rounded-sm`} />
             )}
           </span>
         );
@@ -329,7 +377,7 @@ const Timed = ({ time }) => {
         <span key={`${wIdx}-space`} className={`relative ${spaceClass}`}>
           {" "}
           {isSpaceCaret && (
-            <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+            <span className={`caret absolute top-[0.12em] left-0 w-[3px] h-[1.25em] bg-caret ${caretClass} rounded-sm`} />
           )}
         </span>
       );

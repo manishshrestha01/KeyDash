@@ -49,6 +49,12 @@ const Sentence = ({ difficulty = "easy" }) => {
   const [mistakes, setMistakes] = useState(0);
   // Index (one past) up to which input is locked (user cannot delete past this point)
   const [lockedIndex, setLockedIndex] = useState(0);
+  // Caret state: 'moving' while typing (solid), 'popping' briefly when transitioning to idle, 'idle' when blinking
+  const [caretState, setCaretState] = useState("idle");
+  const caretIdleTimerRef = useRef(null);
+  const caretPopTimerRef = useRef(null);
+  const CARET_ACTIVE_TIMEOUT = 600; // ms before starting the pop -> blink
+  const CARET_POP_DURATION = 160; // ms for pop animation
   // Track indices that were ever mistyped (each index counted once)
   const wrongIndicesRef = useRef(new Set());
 
@@ -71,12 +77,29 @@ const Sentence = ({ difficulty = "easy" }) => {
     setAccuracy(100);
     setMistakes(0);
     setLockedIndex(0);
-    wrongIndicesRef.current.clear();
+    if (caretIdleTimerRef.current) {
+      clearTimeout(caretIdleTimerRef.current);
+      caretIdleTimerRef.current = null;
+    }
+    if (caretPopTimerRef.current) {
+      clearTimeout(caretPopTimerRef.current);
+      caretPopTimerRef.current = null;
+    }
+    setCaretState("idle");
   }, [restartCount, difficulty]);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-  }, [restartCount, difficulty]);
+    return () => {
+      if (caretIdleTimerRef.current) {
+        clearTimeout(caretIdleTimerRef.current);
+        caretIdleTimerRef.current = null;
+      }
+      if (caretPopTimerRef.current) {
+        clearTimeout(caretPopTimerRef.current);
+        caretPopTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (input.length === 1 && !startTime) setStartTime(Date.now());
@@ -173,6 +196,22 @@ const Sentence = ({ difficulty = "easy" }) => {
       setLockedIndex(val.length);
     }
 
+    // mark caret as moving to suppress blink; restart timer for inactivity
+    if (caretIdleTimerRef.current) clearTimeout(caretIdleTimerRef.current);
+    if (caretPopTimerRef.current) {
+      clearTimeout(caretPopTimerRef.current);
+      caretPopTimerRef.current = null;
+    }
+    setCaretState("moving");
+    caretIdleTimerRef.current = setTimeout(() => {
+      setCaretState("popping");
+      caretPopTimerRef.current = setTimeout(() => {
+        setCaretState("idle");
+        caretPopTimerRef.current = null;
+      }, CARET_POP_DURATION);
+      caretIdleTimerRef.current = null;
+    }, CARET_ACTIVE_TIMEOUT);
+
     // Helper: detect if the trimmed value ends with a sentence terminator
     const endsWithSentenceTerminator = (s) => {
       // allow trailing closing quotes/brackets after the terminator
@@ -266,6 +305,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     let charIndex = 0;
 
     words.forEach((word, wIdx) => {
+      const caretClass = caretState === "moving" ? "caret-static" : caretState === "popping" ? "caret-pop" : "animate-blink";
       const wordChars = word.split("").map((c, i) => {
         let cls = "text-muted";
 
@@ -286,7 +326,7 @@ const Sentence = ({ difficulty = "easy" }) => {
           >
             {c}
             {isCaret && (
-              <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+              <span className={`caret absolute top-[0.12em] left-0 w-[3px] h-[1.25em] bg-caret ${caretClass} rounded-sm`} />
             )}
           </span>
         );
@@ -309,7 +349,7 @@ const Sentence = ({ difficulty = "easy" }) => {
         <span key={`${wIdx}-space`} className={`relative ${spaceClass}`}>
           {" "}
           {isSpaceCaret && (
-            <span className="caret absolute top-0 left-0 w-[2px] h-[1.4em] bg-caret animate-blink" />
+            <span className={`caret absolute top-[0.05em] left-0 w-[3px] h-[1.25em] bg-caret ${caretClass} rounded-sm`} />
           )}
         </span>
       );

@@ -3,11 +3,42 @@ body {
   @apply bg-[#101826] text-white;
 }
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
 }
+
+@keyframes caret-pop {
+  0% { transform: scaleX(1) scaleY(0.6); opacity: 0.6; }
+  60% { transform: scaleX(1.4) scaleY(1.15); opacity: 1; }
+  100% { transform: scaleX(1) scaleY(1); opacity: 1; }
+}
+.caret-static {
+  /* solid caret shown while typing (no blinking) */
+  animation: none !important;
+  transform: none;
+  opacity: 1;
+}
+
+.caret-pop {
+  /* single-run pop animation (no blinking) used when transitioning to idle) */
+  animation: caret-pop 160ms ease-in-out forwards;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  border-radius: 1px;
+}
+
 .animate-blink {
-  animation: blink 1s step-end infinite;
+  /* simple smooth blink used when idle */
+  animation: blink 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blink,
+  .caret-pop {
+    animation: none !important;
+  }
 }
 
 :root {
