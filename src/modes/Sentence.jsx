@@ -47,6 +47,8 @@ const Sentence = ({ difficulty = "easy" }) => {
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [mistakes, setMistakes] = useState(0);
+  // Index (one past) up to which input is locked (user cannot delete past this point)
+  const [lockedIndex, setLockedIndex] = useState(0);
 
   const [user, setUser] = useState(null);
 
@@ -66,6 +68,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     setWpm(0);
     setAccuracy(100);
     setMistakes(0);
+    setLockedIndex(0);
   }, [restartCount, difficulty]);
 
   useEffect(() => {
@@ -144,9 +147,21 @@ const Sentence = ({ difficulty = "easy" }) => {
   const handleInput = (e) => {
     const val = e.target.value;
 
-    // Prevent deletions: ignore any change that shortens the input (disables backspace/delete and cuts)
+    // If this is a deletion (shorter value), ensure it doesn't delete into the locked area
     if (val.length < input.length) {
-      return;
+      // Find first index where input and val differ
+      let i = 0;
+      while (i < val.length && input[i] === val[i]) i++;
+
+      // If the change touches locked area, ignore it
+      if (i < lockedIndex) {
+        return;
+      }
+    }
+
+    // If user added a space at the end, lock everything up to the new length
+    if (val.length > input.length && val.endsWith(" ")) {
+      setLockedIndex(val.length);
     }
 
     // Helper: detect if the trimmed value ends with a sentence terminator
@@ -172,15 +187,41 @@ const Sentence = ({ difficulty = "easy" }) => {
     setInput(val);
   };
 
-  // Prevent Backspace and Delete keys
+  // Prevent Backspace and Delete keys from deleting into locked area
   const handleKeyDown = (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
       return;
     }
+
     if (e.key === "Backspace" || e.key === "Delete") {
-      e.preventDefault();
-      return;
+      const targetEl = e.target;
+      const selStart = targetEl.selectionStart ?? input.length;
+      const selEnd = targetEl.selectionEnd ?? input.length;
+
+      let removeStart, removeEnd;
+
+      if (selStart === selEnd) {
+        // No selection -> single-character delete
+        if (e.key === "Backspace") {
+          removeStart = selStart - 1;
+          removeEnd = selStart;
+        } else {
+          // Delete key
+          removeStart = selStart;
+          removeEnd = selStart + 1;
+        }
+      } else {
+        // Range delete
+        removeStart = selStart;
+        removeEnd = selEnd;
+      }
+
+      // Prevent deletion if it would touch the locked area or out of bounds
+      if (removeStart < 0 || removeStart < lockedIndex) {
+        e.preventDefault();
+        return;
+      }
     }
   };
 
