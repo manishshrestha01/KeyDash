@@ -438,7 +438,7 @@ const Sentence = ({ difficulty = "easy" }) => {
 
         <textarea
           ref={textareaRef}
-          className="absolute inset-0 opacity-0 resize-none text-2xl"
+          className="absolute inset-0 opacity-0 resize-none text-2xl pointer-events-none"
           value={input}
           onChange={handleInput}
           onPaste={(e) => e.preventDefault()}
