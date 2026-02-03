@@ -1,0 +1,155 @@
+{
+  "language": "python",
+  "snippets": [
+    {
+      "id": 1,
+      "code": "def greet(name):\n    return f'Hello, {name}!'",
+      "description": "Function with f-string"
+    },
+    {
+      "id": 2,
+      "code": "squares = [x**2 for x in range(10)]",
+      "description": "List comprehension"
+    },
+    {
+      "id": 3,
+      "code": "filtered = [x for x in items if x > 0]",
+      "description": "Filtered list comprehension"
+    },
+    {
+      "id": 4,
+      "code": "word_count = {word: len(word) for word in words}",
+      "description": "Dictionary comprehension"
+    },
+    {
+      "id": 5,
+      "code": "unique = set(numbers)",
+      "description": "Create set from list"
+    },
+    {
+      "id": 6,
+      "code": "result = sum(numbers) / len(numbers)",
+      "description": "Calculate average"
+    },
+    {
+      "id": 7,
+      "code": "sorted_list = sorted(items, key=lambda x: x['name'])",
+      "description": "Sort with lambda key"
+    },
+    {
+      "id": 8,
+      "code": "mapped = list(map(lambda x: x * 2, numbers))",
+      "description": "Map function"
+    },
+    {
+      "id": 9,
+      "code": "filtered = list(filter(lambda x: x > 0, numbers))",
+      "description": "Filter function"
+    },
+    {
+      "id": 10,
+      "code": "class Person:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age",
+      "description": "Class with constructor"
+    },
+    {
+      "id": 11,
+      "code": "with open('file.txt', 'r') as f:\n    content = f.read()",
+      "description": "File reading context"
+    },
+    {
+      "id": 12,
+      "code": "try:\n    result = risky_operation()\nexcept Exception as e:\n    print(f'Error: {e}')",
+      "description": "Try-except block"
+    },
+    {
+      "id": 13,
+      "code": "def decorator(func):\n    def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)\n    return wrapper",
+      "description": "Decorator pattern"
+    },
+    {
+      "id": 14,
+      "code": "@property\ndef name(self):\n    return self._name",
+      "description": "Property decorator"
+    },
+    {
+      "id": 15,
+      "code": "async def fetch_data(url):\n    async with aiohttp.ClientSession() as session:\n        async with session.get(url) as response:\n            return await response.json()",
+      "description": "Async function"
+    },
+    {
+      "id": 16,
+      "code": "from typing import List, Dict, Optional",
+      "description": "Type hints import"
+    },
+    {
+      "id": 17,
+      "code": "def process(items: List[int]) -> int:\n    return sum(items)",
+      "description": "Function with type hints"
+    },
+    {
+      "id": 18,
+      "code": "data = {'key': 'value', **extra_dict}",
+      "description": "Dictionary unpacking"
+    },
+    {
+      "id": 19,
+      "code": "first, *rest, last = sequence",
+      "description": "Extended unpacking"
+    },
+    {
+      "id": 20,
+      "code": "result = value if condition else default",
+      "description": "Ternary expression"
+    },
+    {
+      "id": 21,
+      "code": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: int\n    y: int",
+      "description": "Dataclass definition"
+    },
+    {
+      "id": 22,
+      "code": "import json\ndata = json.loads(json_string)",
+      "description": "JSON parsing"
+    },
+    {
+      "id": 23,
+      "code": "from functools import reduce\ntotal = reduce(lambda a, b: a + b, numbers)",
+      "description": "Reduce function"
+    },
+    {
+      "id": 24,
+      "code": "if __name__ == '__main__':\n    main()",
+      "description": "Main guard"
+    },
+    {
+      "id": 25,
+      "code": "from collections import defaultdict\ncounts = defaultdict(int)",
+      "description": "Defaultdict usage"
+    },
+    {
+      "id": 26,
+      "code": "for i, item in enumerate(items):\n    print(f'{i}: {item}')",
+      "description": "Enumerate loop"
+    },
+    {
+      "id": 27,
+      "code": "for key, value in dictionary.items():\n    print(f'{key}: {value}')",
+      "description": "Dictionary iteration"
+    },
+    {
+      "id": 28,
+      "code": "pairs = list(zip(list1, list2))",
+      "description": "Zip two lists"
+    },
+    {
+      "id": 29,
+      "code": "assert condition, 'Error message'",
+      "description": "Assert statement"
+    },
+    {
+      "id": 30,
+      "code": "class MyError(Exception):\n    pass\n\nraise MyError('Something went wrong')",
+      "description": "Custom exception"
+    }
+  ]
+}

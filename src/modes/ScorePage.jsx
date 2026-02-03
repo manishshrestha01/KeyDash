@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Line } from "react-chartjs-2";
+import { motion } from "framer-motion";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,6 +10,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
 
 ChartJS.register(
@@ -18,7 +20,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 const ScorePage = () => {
@@ -115,73 +118,145 @@ const ScorePage = () => {
 
   const errorData = cumulativeMistakes;
 
-  const datasets = [
-    {
-      label: "WPM",
-      data: wpmData,
-      borderColor: "#facc15",
-      backgroundColor: "#facc15",
-      pointRadius: 0.1, // Point adder in graph
-      pointHoverRadius: 4,
-      borderWidth: 3,
-      tension: 0.5,
-      fill: false,
-      yAxisID: "y",
-      order: 1,
-    },
-    {
-      label: "Mistakes",
-      data: errorData,
-      borderColor: "#b91c1c", // dark red
-      backgroundColor: "#b91c1c",
-      pointRadius: 0.1, // Point adder in graph
-      pointBackgroundColor: "#b91c1c",
-      borderWidth: 3,
-      tension: 0.5,
-      fill: false,
-      yAxisID: "y",
-      order: 2,
-    },
-  ];
-
   const data = {
     labels: timeLabels,
-    datasets,
+    datasets: [
+      {
+        label: "WPM",
+        data: wpmData,
+        borderColor: "#fbbf24",
+        backgroundColor: "rgba(251, 191, 36, 0.1)",
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        yAxisID: "y",
+      },
+      {
+        label: "Errors",
+        data: errorData,
+        borderColor: "#ef4444",
+        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        yAxisID: "y1",
+      },
+    ],
   };
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
     plugins: {
-      legend: { display: true },
+      legend: { 
+        display: true,
+        position: "top",
+        labels: {
+          color: "#9ca3af",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+            size: 12,
+          },
+          usePointStyle: true,
+          pointStyle: "circle",
+        },
+      },
       tooltip: {
-        mode: "index",
-        intersect: false,
-        backgroundColor: "#22223b",
-        titleColor: "#facc15",
-        bodyColor: "#fff",
-        borderColor: "#facc15",
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleColor: "#fbbf24",
+        bodyColor: "#e5e7eb",
+        borderColor: "rgba(251, 191, 36, 0.3)",
         borderWidth: 1,
+        padding: 12,
+        cornerRadius: 12,
+        titleFont: {
+          family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+          size: 14,
+          weight: "600",
+        },
+        bodyFont: {
+          family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+          size: 13,
+        },
       },
     },
     scales: {
       x: {
-        grid: { color: "rgba(255,255,255,0.08)" },
-        ticks: { color: "#9ca3af" },
+        grid: { 
+          color: "rgba(255,255,255,0.05)",
+          drawBorder: false,
+        },
+        ticks: { 
+          color: "#6b7280",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+          },
+        },
         title: {
           display: true,
-          text: "Time (s)",
-          color: "#9ca3af",
+          text: "Time (seconds)",
+          color: "#6b7280",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+            size: 12,
+          },
         },
       },
       y: {
-        beginAtZero: true,
+        type: "linear",
+        display: true,
         position: "left",
-        grid: { color: "rgba(255,255,255,0.08)" },
-        ticks: { color: "#9ca3af" },
+        beginAtZero: true,
+        grid: { 
+          color: "rgba(255,255,255,0.05)",
+          drawBorder: false,
+        },
+        ticks: { 
+          color: "#fbbf24",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+          },
+        },
         title: {
           display: true,
-          text: "Words per Minute / Mistakes",
-          color: "#9ca3af",
+          text: "WPM",
+          color: "#fbbf24",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+            size: 12,
+          },
+        },
+      },
+      y1: {
+        type: "linear",
+        display: true,
+        position: "right",
+        beginAtZero: true,
+        grid: {
+          drawOnChartArea: false,
+        },
+        ticks: { 
+          color: "#ef4444",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+          },
+        },
+        title: {
+          display: true,
+          text: "Errors",
+          color: "#ef4444",
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+            size: 12,
+          },
         },
       },
     },
@@ -189,13 +264,24 @@ const ScorePage = () => {
 
   const handlePlayAgain = () => navigate("/");
 
+  // Performance rating
+  const getPerformanceRating = () => {
+    if (displayWpm >= 80 && displayAcc >= 98) return { text: "Exceptional!", color: "text-purple-400" };
+    if (displayWpm >= 60 && displayAcc >= 95) return { text: "Excellent!", color: "text-green-400" };
+    if (displayWpm >= 40 && displayAcc >= 90) return { text: "Good Job!", color: "text-blue-400" };
+    if (displayWpm >= 30 && displayAcc >= 85) return { text: "Keep Practicing!", color: "text-yellow-400" };
+    return { text: "Room to Improve", color: "text-orange-400" };
+  };
+
+  const rating = getPerformanceRating();
+
   if (!location.state) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-6" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" }}>
         <h2 className="text-3xl font-bold mb-4">No Result Found</h2>
         <button
           onClick={() => navigate("/")}
-          className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-6 py-3 bg-yellow-400 text-black rounded-full font-semibold hover:bg-yellow-500 transition"
         >
           Go to Typing Test
         </button>
@@ -204,80 +290,143 @@ const ScorePage = () => {
   }
 
   return (
-  <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 md:p-8 bg-[#0f1826] text-gray-100">
-    <h2 className="text-3xl md:text-3xl xl:text-4xl lg:text-4xl sm:text-4xl font-extrabold lg:-mt-5 xl:-mt-5 md:-mt-4 -mt-1 mb-4 text-[#facc15] text-center">
-      Your Score
-    </h2>
-
-    <div className="w-full max-w-xl sm:max-w-3xl md:max-w-5xl bg-[#23242a] p-4 sm:p-6 md:p-8 rounded-xl space-y-6 sm:space-y-8">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6 text-center">
-        {/* WPM */}
-        <div>
-          <div className="uppercase text-gray-400 text-sm sm:text-base">wpm</div>
-          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
-            {displayWpm}
-          </div>
-        </div>
-
-        {/* Accuracy */}
-        <div>
-          <div className="uppercase text-gray-400 text-sm sm:text-base">accuracy</div>
-          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#facc15]">
-            {displayAcc.toFixed(1)}%
-          </div>
-        </div>
-
-        {/* Mistakes */}
-        <div>
-          <div className="uppercase text-gray-400 text-sm sm:text-base">mistakes</div>
-          <div className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-5xl font-bold text-[#b91c1c]">
-            {displayMistakes}
-          </div>
-        </div>
-
-        {/* Characters */}
-        <div>
-          <div className="uppercase text-gray-400 text-sm sm:text-base">characters</div>
-          <div className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-4xl font-bold text-[#38bdf8]">
-            {displayedCorrectChars} / {input?.length || 0}
-          </div>
-        </div>
-
-        {/* Time */}
-        <div>
-          <div className="uppercase text-gray-400 text-sm sm:text-base">time</div>
-          <div className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-4xl font-bold text-[#facc15]">
-            {durationSec.toFixed(1)}s
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#23242a] rounded-lg p-3 sm:p-4 w-full h-80 sm:h-100 md:h-100 lg:h-100 xl:h-100">
-  <Line
-    data={data}
-    options={{
-      ...options,
-      responsive: true,
-      maintainAspectRatio: false,
-    }}
-  />
-</div>
-    </div>
-
-    <div className="mt-6 text-white text-center text-base sm:text-lg max-w-xl px-2">
-      <p>
-        Thank you for playing! Keep practicing to improve your typing skills.
-      </p>
-    </div>
-
-    <button
-      onClick={handlePlayAgain}
-      className="mt-6 px-6 sm:px-8 py-2 sm:py-3 rounded-full bg-yellow-400 text-[#23242a] text-base sm:text-lg font-semibold hover:bg-yellow-500 transition cursor-pointer"
+    <div 
+      className="min-h-screen flex flex-col items-center px-4 py-8 md:py-12 bg-[#0a0f1a]"
+      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" }}
     >
-      Play Again
-    </button>
-  </div>
-);
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-8"
+      >
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight">
+          Results
+        </h1>
+        <p className={`text-xl md:text-2xl font-medium ${rating.color}`}>
+          {rating.text}
+        </p>
+      </motion.div>
+
+      {/* Main Stats Card */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="w-full max-w-4xl"
+      >
+        {/* Primary Stats - WPM & Accuracy */}
+        <div className="grid grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+          {/* WPM Card */}
+          <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-6 md:p-8 border border-gray-800/50 backdrop-blur-xl">
+            <div className="text-gray-400 text-sm md:text-base font-medium uppercase tracking-wider mb-2">
+              Words Per Minute
+            </div>
+            <div className="text-5xl md:text-7xl font-bold text-yellow-400 tracking-tight">
+              {displayWpm}
+            </div>
+            <div className="mt-2 text-gray-500 text-sm">
+              wpm
+            </div>
+          </div>
+
+          {/* Accuracy Card */}
+          <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-6 md:p-8 border border-gray-800/50 backdrop-blur-xl">
+            <div className="text-gray-400 text-sm md:text-base font-medium uppercase tracking-wider mb-2">
+              Accuracy
+            </div>
+            <div className={`text-5xl md:text-7xl font-bold tracking-tight ${displayAcc >= 95 ? 'text-green-400' : displayAcc >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>
+              {displayAcc.toFixed(1)}
+            </div>
+            <div className="mt-2 text-gray-500 text-sm">
+              percent
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Stats */}
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+          {/* Errors */}
+          <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-2xl p-4 md:p-6 border border-gray-800/50">
+            <div className="text-gray-400 text-xs md:text-sm font-medium uppercase tracking-wider mb-1">
+              Errors
+            </div>
+            <div className="text-2xl md:text-4xl font-bold text-red-400">
+              {displayMistakes}
+            </div>
+          </div>
+
+          {/* Characters */}
+          <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-2xl p-4 md:p-6 border border-gray-800/50">
+            <div className="text-gray-400 text-xs md:text-sm font-medium uppercase tracking-wider mb-1">
+              Characters
+            </div>
+            <div className="text-2xl md:text-4xl font-bold text-blue-400">
+              <span className="text-green-400">{displayedCorrectChars}</span>
+              <span className="text-gray-500 text-lg md:text-2xl">/{input?.length || 0}</span>
+            </div>
+          </div>
+
+          {/* Time */}
+          <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-2xl p-4 md:p-6 border border-gray-800/50">
+            <div className="text-gray-400 text-xs md:text-sm font-medium uppercase tracking-wider mb-1">
+              Time
+            </div>
+            <div className="text-2xl md:text-4xl font-bold text-purple-400">
+              {durationSec.toFixed(1)}
+              <span className="text-lg md:text-xl text-gray-500">s</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-4 md:p-6 border border-gray-800/50"
+        >
+          <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">
+            Performance Over Time
+          </h3>
+          <div className="h-64 md:h-80">
+            <Line data={data} options={options} />
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Action Buttons */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mt-8 flex flex-col sm:flex-row gap-4"
+      >
+        <button
+          onClick={handlePlayAgain}
+          className="px-8 py-4 rounded-full bg-yellow-400 text-black text-lg font-semibold hover:bg-yellow-500 hover:scale-105 transition-all duration-200 shadow-lg shadow-yellow-400/20"
+        >
+          Try Again
+        </button>
+        <button
+          onClick={() => navigate("/leaderboard")}
+          className="px-8 py-4 rounded-full bg-transparent text-white text-lg font-semibold border border-gray-700 hover:border-gray-500 hover:bg-white/5 transition-all duration-200"
+        >
+          View Leaderboard
+        </button>
+      </motion.div>
+
+      {/* Tip */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-8 text-gray-500 text-center text-sm max-w-md"
+      >
+        💡 Tip: Focus on accuracy first, speed will follow naturally with practice.
+      </motion.p>
+    </div>
+  );
 };
 
 export default ScorePage;

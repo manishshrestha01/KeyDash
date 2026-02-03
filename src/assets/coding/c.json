@@ -1,0 +1,105 @@
+{
+  "language": "c",
+  "snippets": [
+    {
+      "id": 1,
+      "code": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, World!\\n\");\n    return 0;\n}",
+      "description": "Hello World program"
+    },
+    {
+      "id": 2,
+      "code": "int add(int a, int b) {\n    return a + b;\n}",
+      "description": "Simple function"
+    },
+    {
+      "id": 3,
+      "code": "int arr[5] = {1, 2, 3, 4, 5};",
+      "description": "Array initialization"
+    },
+    {
+      "id": 4,
+      "code": "for (int i = 0; i < n; i++) {\n    printf(\"%d\\n\", arr[i]);\n}",
+      "description": "For loop"
+    },
+    {
+      "id": 5,
+      "code": "while (condition) {\n    // do something\n}",
+      "description": "While loop"
+    },
+    {
+      "id": 6,
+      "code": "int *ptr = &variable;",
+      "description": "Pointer declaration"
+    },
+    {
+      "id": 7,
+      "code": "int *arr = (int *)malloc(n * sizeof(int));",
+      "description": "Dynamic memory allocation"
+    },
+    {
+      "id": 8,
+      "code": "free(ptr);\nptr = NULL;",
+      "description": "Memory deallocation"
+    },
+    {
+      "id": 9,
+      "code": "struct Person {\n    char name[50];\n    int age;\n};",
+      "description": "Struct definition"
+    },
+    {
+      "id": 10,
+      "code": "typedef struct {\n    int x;\n    int y;\n} Point;",
+      "description": "Typedef struct"
+    },
+    {
+      "id": 11,
+      "code": "void swap(int *a, int *b) {\n    int temp = *a;\n    *a = *b;\n    *b = temp;\n}",
+      "description": "Swap function with pointers"
+    },
+    {
+      "id": 12,
+      "code": "FILE *fp = fopen(\"file.txt\", \"r\");\nif (fp != NULL) {\n    fclose(fp);\n}",
+      "description": "File handling"
+    },
+    {
+      "id": 13,
+      "code": "char str[100];\nfgets(str, sizeof(str), stdin);",
+      "description": "String input"
+    },
+    {
+      "id": 14,
+      "code": "int len = strlen(str);",
+      "description": "String length"
+    },
+    {
+      "id": 15,
+      "code": "strcpy(dest, src);",
+      "description": "String copy"
+    },
+    {
+      "id": 16,
+      "code": "if (strcmp(str1, str2) == 0) {\n    printf(\"Equal\\n\");\n}",
+      "description": "String comparison"
+    },
+    {
+      "id": 17,
+      "code": "#define MAX_SIZE 100",
+      "description": "Macro definition"
+    },
+    {
+      "id": 18,
+      "code": "#define SQUARE(x) ((x) * (x))",
+      "description": "Macro with parameter"
+    },
+    {
+      "id": 19,
+      "code": "enum Status { ACTIVE, INACTIVE, PENDING };",
+      "description": "Enum definition"
+    },
+    {
+      "id": 20,
+      "code": "int factorial(int n) {\n    if (n <= 1) return 1;\n    return n * factorial(n - 1);\n}",
+      "description": "Recursive function"
+    }
+  ]
+}

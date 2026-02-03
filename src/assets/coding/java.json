@@ -1,0 +1,130 @@
+{
+  "language": "java",
+  "snippets": [
+    {
+      "id": 1,
+      "code": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+      "description": "Hello World program"
+    },
+    {
+      "id": 2,
+      "code": "public int add(int a, int b) {\n    return a + b;\n}",
+      "description": "Simple addition method"
+    },
+    {
+      "id": 3,
+      "code": "List<String> names = new ArrayList<>();\nnames.add(\"Alice\");",
+      "description": "ArrayList creation"
+    },
+    {
+      "id": 4,
+      "code": "for (int i = 0; i < arr.length; i++) {\n    System.out.println(arr[i]);\n}",
+      "description": "For loop iteration"
+    },
+    {
+      "id": 5,
+      "code": "for (String item : items) {\n    System.out.println(item);\n}",
+      "description": "Enhanced for loop"
+    },
+    {
+      "id": 6,
+      "code": "Map<String, Integer> map = new HashMap<>();\nmap.put(\"key\", 1);",
+      "description": "HashMap creation"
+    },
+    {
+      "id": 7,
+      "code": "try {\n    int result = 10 / 0;\n} catch (ArithmeticException e) {\n    e.printStackTrace();\n}",
+      "description": "Try-catch block"
+    },
+    {
+      "id": 8,
+      "code": "public interface Greeting {\n    void sayHello(String name);\n}",
+      "description": "Interface definition"
+    },
+    {
+      "id": 9,
+      "code": "public abstract class Animal {\n    public abstract void makeSound();\n}",
+      "description": "Abstract class"
+    },
+    {
+      "id": 10,
+      "code": "public class Dog extends Animal {\n    @Override\n    public void makeSound() {\n        System.out.println(\"Woof!\");\n    }\n}",
+      "description": "Class inheritance"
+    },
+    {
+      "id": 11,
+      "code": "List<Integer> filtered = numbers.stream()\n    .filter(n -> n > 0)\n    .collect(Collectors.toList());",
+      "description": "Stream filter"
+    },
+    {
+      "id": 12,
+      "code": "List<String> mapped = items.stream()\n    .map(String::toUpperCase)\n    .collect(Collectors.toList());",
+      "description": "Stream map"
+    },
+    {
+      "id": 13,
+      "code": "int sum = numbers.stream()\n    .reduce(0, Integer::sum);",
+      "description": "Stream reduce"
+    },
+    {
+      "id": 14,
+      "code": "Optional<String> opt = Optional.ofNullable(value);\nString result = opt.orElse(\"default\");",
+      "description": "Optional usage"
+    },
+    {
+      "id": 15,
+      "code": "Runnable task = () -> System.out.println(\"Task executed\");",
+      "description": "Lambda expression"
+    },
+    {
+      "id": 16,
+      "code": "Comparator<String> comp = (a, b) -> a.length() - b.length();",
+      "description": "Lambda comparator"
+    },
+    {
+      "id": 17,
+      "code": "private static final String CONSTANT = \"value\";",
+      "description": "Constant declaration"
+    },
+    {
+      "id": 18,
+      "code": "public record Person(String name, int age) {}",
+      "description": "Record class"
+    },
+    {
+      "id": 19,
+      "code": "String result = switch (day) {\n    case 1 -> \"Monday\";\n    case 2 -> \"Tuesday\";\n    default -> \"Unknown\";\n};",
+      "description": "Switch expression"
+    },
+    {
+      "id": 20,
+      "code": "var list = new ArrayList<String>();",
+      "description": "Var keyword"
+    },
+    {
+      "id": 21,
+      "code": "String text = \"\"\"\n    This is a\n    multiline string\n    \"\"\";",
+      "description": "Text block"
+    },
+    {
+      "id": 22,
+      "code": "if (obj instanceof String s) {\n    System.out.println(s.length());\n}",
+      "description": "Pattern matching"
+    },
+    {
+      "id": 23,
+      "code": "@FunctionalInterface\npublic interface Calculator {\n    int calculate(int a, int b);\n}",
+      "description": "Functional interface"
+    },
+    {
+      "id": 24,
+      "code": "public enum Status {\n    ACTIVE, INACTIVE, PENDING\n}",
+      "description": "Enum definition"
+    },
+    {
+      "id": 25,
+      "code": "public synchronized void increment() {\n    count++;\n}",
+      "description": "Synchronized method"
+    }
+  ]
+}

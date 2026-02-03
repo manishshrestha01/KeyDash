@@ -1,5 +1,5 @@
 import React from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 const Meta = ({ title, description, url, keywords }) => {
   const defaultTitle = "KeyDash | Fast & Clean Online Typing Test";

@@ -1,6 +1,30 @@
 @import "tailwindcss";
+
+/* Apple SF Pro Font Stack */
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), local('.SF NS Display'), local('SF Pro');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('.SF NS Text'), local('SF Pro');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+:root {
+  --font-sf: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sf-text: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
 body {
   @apply bg-[#101826] text-white;
+  font-family: var(--font-sf);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 @keyframes blink {
   0% { opacity: 0; }

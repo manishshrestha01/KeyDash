@@ -1,0 +1,211 @@
+{
+  "language": "nepali",
+  "name": "नेपाली",
+  "description": "Practice typing in Nepali (Devanagari script)",
+  "sentences": [
+    {
+      "id": 1,
+      "text": "नेपाल एक सुन्दर देश हो।",
+      "translation": "Nepal is a beautiful country.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "text": "हिमालय संसारको सबैभन्दा अग्लो पर्वत हो।",
+      "translation": "The Himalayas are the tallest mountains in the world.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "text": "काठमाडौं नेपालको राजधानी हो।",
+      "translation": "Kathmandu is the capital of Nepal.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "text": "नेपाली भाषा देवनागरी लिपिमा लेखिन्छ।",
+      "translation": "Nepali language is written in Devanagari script.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 5,
+      "text": "आज मौसम धेरै राम्रो छ।",
+      "translation": "The weather is very nice today.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 6,
+      "text": "मलाई नेपाली खाना मन पर्छ।",
+      "translation": "I like Nepali food.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 7,
+      "text": "विद्यार्थीहरू विद्यालयमा पढ्छन्।",
+      "translation": "Students study at school.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 8,
+      "text": "किताब पढ्नु ज्ञान बढाउने उत्तम तरिका हो।",
+      "translation": "Reading books is the best way to increase knowledge.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "text": "नेपालमा विभिन्न जातजाति र संस्कृतिका मानिसहरू बस्छन्।",
+      "translation": "People of various ethnicities and cultures live in Nepal.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "text": "सगरमाथा संसारको सबैभन्दा अग्लो शिखर हो।",
+      "translation": "Mount Everest is the highest peak in the world.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 11,
+      "text": "प्रविधिले हाम्रो जीवनलाई सजिलो बनाएको छ।",
+      "translation": "Technology has made our lives easier.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "text": "शिक्षा मानव विकासको आधारशिला हो।",
+      "translation": "Education is the foundation of human development.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "text": "स्वास्थ्य नै सबैभन्दा ठूलो धन हो।",
+      "translation": "Health is the greatest wealth.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 14,
+      "text": "नेपालको संविधानले धर्म, जात र लिङ्ग आधारित भेदभाव निषेध गर्छ।",
+      "translation": "Nepal's constitution prohibits discrimination based on religion, caste and gender.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 15,
+      "text": "वातावरण संरक्षण हाम्रो सबैको जिम्मेवारी हो।",
+      "translation": "Environmental protection is everyone's responsibility.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 16,
+      "text": "नेपाली साहित्यमा महान् कवि भानुभक्त आचार्यको योगदान अतुलनीय छ।",
+      "translation": "The contribution of great poet Bhanubhakta Acharya in Nepali literature is incomparable.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 17,
+      "text": "जलवायु परिवर्तनले विश्वभरका मानिसहरूलाई प्रभाव पारिरहेको छ।",
+      "translation": "Climate change is affecting people around the world.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 18,
+      "text": "नेपालको पर्यटन उद्योग देशको आर्थिक विकासमा महत्वपूर्ण भूमिका खेल्छ।",
+      "translation": "Nepal's tourism industry plays an important role in the country's economic development.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 19,
+      "text": "लोकतन्त्रमा जनताको सहभागिता अत्यन्त महत्वपूर्ण हुन्छ।",
+      "translation": "People's participation is very important in democracy.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 20,
+      "text": "प्राकृतिक सौन्दर्य र सांस्कृतिक विविधताले नेपाललाई विशेष बनाउँछ।",
+      "translation": "Natural beauty and cultural diversity make Nepal special.",
+      "difficulty": "hard"
+    }
+  ],
+  "paragraphs": [
+    {
+      "id": 1,
+      "text": "नेपाल दक्षिण एसियामा अवस्थित एक सुन्दर देश हो। यो उत्तरमा चीन र दक्षिण, पूर्व र पश्चिममा भारतसँग सीमाना जोडिएको छ। नेपालको राजधानी काठमाडौं हो र यो देशको सबैभन्दा ठूलो शहर पनि हो।",
+      "translation": "Nepal is a beautiful country located in South Asia. It shares borders with China in the north and India in the south, east and west. The capital of Nepal is Kathmandu and it is also the largest city in the country.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 2,
+      "text": "हिमालय पर्वत शृंखला नेपालको उत्तरी भागमा फैलिएको छ। संसारको सबैभन्दा अग्लो शिखर सगरमाथा यहीं अवस्थित छ। प्रत्येक वर्ष हजारौं पर्यटकहरू यो शिखर चढ्न र हेर्न नेपाल आउँछन्।",
+      "translation": "The Himalayan mountain range spans across the northern part of Nepal. Mount Everest, the highest peak in the world, is located here. Every year thousands of tourists come to Nepal to climb and see this peak.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 3,
+      "text": "नेपाली संस्कृति विविधताले भरिएको छ। यहाँ विभिन्न जातजाति, भाषा र धर्मका मानिसहरू मिलेर बस्छन्। दशैं र तिहार नेपालका प्रमुख चाडपर्वहरू हुन् जसलाई सबै नेपालीहरूले हर्षोल्लासका साथ मनाउँछन्।",
+      "translation": "Nepali culture is full of diversity. People of different ethnicities, languages and religions live together here. Dashain and Tihar are the major festivals of Nepal which all Nepalis celebrate with great joy.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 4,
+      "text": "शिक्षाको महत्व मानव विकासमा अत्यधिक छ। शिक्षाले मानिसलाई ज्ञान, सीप र आत्मविश्वास प्रदान गर्छ। एक शिक्षित व्यक्तिले समाज र देशको विकासमा महत्वपूर्ण योगदान पुर्‍याउन सक्छ।",
+      "translation": "The importance of education in human development is immense. Education provides knowledge, skills and confidence to people. An educated person can contribute significantly to the development of society and country.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 5,
+      "text": "वातावरण प्रदूषण आजको विश्वको ठूलो समस्या हो। हावा, पानी र माटोको प्रदूषणले मानव स्वास्थ्य र जीवजन्तुमा गम्भीर असर पारिरहेको छ। यसलाई नियन्त्रण गर्न हामी सबैको सहयोग आवश्यक छ।",
+      "translation": "Environmental pollution is a major problem in today's world. Air, water and soil pollution is seriously affecting human health and wildlife. Everyone's cooperation is needed to control this.",
+      "difficulty": "hard"
+    }
+  ],
+  "words": [
+    "नमस्ते",
+    "धन्यवाद",
+    "स्वागत",
+    "विद्यालय",
+    "किताब",
+    "पानी",
+    "खाना",
+    "घर",
+    "मानिस",
+    "देश",
+    "शहर",
+    "गाउँ",
+    "परिवार",
+    "बच्चा",
+    "आमा",
+    "बुबा",
+    "भाइ",
+    "बहिनी",
+    "साथी",
+    "शिक्षक",
+    "विद्यार्थी",
+    "कार्यालय",
+    "अस्पताल",
+    "बजार",
+    "पसल",
+    "समय",
+    "दिन",
+    "राति",
+    "बिहान",
+    "साँझ",
+    "हप्ता",
+    "महिना",
+    "वर्ष",
+    "आज",
+    "भोलि",
+    "हिजो",
+    "अहिले",
+    "पछि",
+    "अगाडि",
+    "माथि",
+    "तल",
+    "भित्र",
+    "बाहिर",
+    "नजिक",
+    "टाढा",
+    "सानो",
+    "ठूलो",
+    "राम्रो",
+    "नराम्रो",
+    "नयाँ"
+  ]
+}

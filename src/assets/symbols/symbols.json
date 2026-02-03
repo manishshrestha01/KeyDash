@@ -1,0 +1,146 @@
+{
+  "categories": [
+    {
+      "name": "Basic Symbols",
+      "symbols": "! @ # $ % ^ & * ( ) - _ = + [ ] { } | \\ : ; \" ' < > , . ? / `"
+    },
+    {
+      "name": "Programming Operators",
+      "symbols": "== != <= >= && || ++ -- += -= *= /= %= &= |= ^= << >> === !== => -> :: ... ?? ?. #{ %{ ${ @{ {{ }} }}"
+    },
+    {
+      "name": "Brackets Mix",
+      "symbols": "( ) [ ] { } < > (( )) [[ ]] {{ }} << >> </ > /> <? ?> <% %> /* */ <!-- --> [[ ]] (( ))"
+    },
+    {
+      "name": "Math Symbols",
+      "symbols": "+ - * / % ^ = < > <= >= != == += -= *= /= %= ^= ** // %% && || ! ~ & | ^ << >>"
+    },
+    {
+      "name": "String Delimiters",
+      "symbols": "\" \" ' ' ` ` \"\" '' `` \\\" \\' \\` \\\\ \\n \\t \\r \\0 ${ } #{ } %{ }"
+    },
+    {
+      "name": "Special Characters",
+      "symbols": "@ # $ % ^ & * ~ ` | \\ / ? ! ; : , . _ - + = [ ] { } ( ) < > \" '"
+    },
+    {
+      "name": "Code Comments",
+      "symbols": "// /* */ # <!-- --> ''' \"\"\" =begin =end --[[ ]] (* *) {- -} // // /* /* */ */"
+    },
+    {
+      "name": "Web & URLs",
+      "symbols": ":// www. .com .org .net .io https:// http:// ftp:// mailto: tel: @domain #anchor ?query=value &param=1"
+    },
+    {
+      "name": "Regex Patterns",
+      "symbols": "^ $ . * + ? [ ] { } ( ) | \\ / ^$ .* .+ .? [a-z] [A-Z] [0-9] \\d \\w \\s \\b (?:) (?=) (?!)"
+    },
+    {
+      "name": "Terminal & Shell",
+      "symbols": "$ # ~ > >> < << | && || ; & ! * ? [ ] { } ` \" ' \\ / - -- = += $( ) ${ } %{ }"
+    }
+  ],
+  "practice_texts": [
+    {
+      "id": 1,
+      "text": "const result = (a && b) || (c != d);",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "text": "if (arr[i] >= 0 && arr[i] <= 100) { }",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "text": "const obj = { key: 'value', num: 123 };",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "text": "function* generator() { yield value; }",
+      "difficulty": "medium"
+    },
+    {
+      "id": 5,
+      "text": "const fn = (x) => x ** 2 + x * 3 - 1;",
+      "difficulty": "medium"
+    },
+    {
+      "id": 6,
+      "text": "SELECT * FROM users WHERE age >= 18 && status != 'inactive';",
+      "difficulty": "medium"
+    },
+    {
+      "id": 7,
+      "text": "const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;",
+      "difficulty": "hard"
+    },
+    {
+      "id": 8,
+      "text": "echo ${VAR:-default} | grep -E '^[0-9]+$' >> output.log 2>&1",
+      "difficulty": "hard"
+    },
+    {
+      "id": 9,
+      "text": "template<typename T, typename U = std::vector<T>>",
+      "difficulty": "hard"
+    },
+    {
+      "id": 10,
+      "text": "@decorator(param1='value', param2=True)\ndef func(**kwargs): pass",
+      "difficulty": "hard"
+    },
+    {
+      "id": 11,
+      "text": "https://api.example.com/v1/users?page=1&limit=10&sort=desc",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "text": "<!-- <div class=\"container\" data-id=\"123\"> -->\n",
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "text": "{ \"name\": \"John\", \"age\": 30, \"active\": true }",
+      "difficulty": "easy"
+    },
+    {
+      "id": 14,
+      "text": "arr.filter(x => x !== null && x !== undefined)",
+      "difficulty": "medium"
+    },
+    {
+      "id": 15,
+      "text": "process.env.NODE_ENV === 'production' ? 'prod' : 'dev'",
+      "difficulty": "medium"
+    },
+    {
+      "id": 16,
+      "text": "Math.floor(Math.random() * (max - min + 1)) + min",
+      "difficulty": "medium"
+    },
+    {
+      "id": 17,
+      "text": "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-",
+      "difficulty": "hard"
+    },
+    {
+      "id": 18,
+      "text": "[...array1, ...array2].map(x => ({ ...x, id: x.id ?? 0 }))",
+      "difficulty": "hard"
+    },
+    {
+      "id": 19,
+      "text": "git commit -m \"feat(auth): add OAuth2 support (#123)\"",
+      "difficulty": "medium"
+    },
+    {
+      "id": 20,
+      "text": "INSERT INTO users (name, email) VALUES ('John', 'john@example.com');",
+      "difficulty": "medium"
+    }
+  ]
+}

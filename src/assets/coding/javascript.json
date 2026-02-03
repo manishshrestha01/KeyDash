@@ -1,0 +1,155 @@
+{
+  "language": "javascript",
+  "snippets": [
+    {
+      "id": 1,
+      "code": "const sum = (a, b) => a + b;",
+      "description": "Arrow function for addition"
+    },
+    {
+      "id": 2,
+      "code": "const greet = (name) => `Hello, ${name}!`;",
+      "description": "Template literal greeting"
+    },
+    {
+      "id": 3,
+      "code": "const arr = [1, 2, 3].map(x => x * 2);",
+      "description": "Array map transformation"
+    },
+    {
+      "id": 4,
+      "code": "const filtered = data.filter(item => item.active);",
+      "description": "Array filter method"
+    },
+    {
+      "id": 5,
+      "code": "const total = nums.reduce((acc, n) => acc + n, 0);",
+      "description": "Array reduce for sum"
+    },
+    {
+      "id": 6,
+      "code": "async function fetchData(url) {\n  const res = await fetch(url);\n  return res.json();\n}",
+      "description": "Async function with fetch"
+    },
+    {
+      "id": 7,
+      "code": "const { name, age } = user;",
+      "description": "Object destructuring"
+    },
+    {
+      "id": 8,
+      "code": "const newArr = [...arr1, ...arr2];",
+      "description": "Spread operator for arrays"
+    },
+    {
+      "id": 9,
+      "code": "const merged = { ...obj1, ...obj2 };",
+      "description": "Object spread merge"
+    },
+    {
+      "id": 10,
+      "code": "class Person {\n  constructor(name) {\n    this.name = name;\n  }\n}",
+      "description": "ES6 class definition"
+    },
+    {
+      "id": 11,
+      "code": "const promise = new Promise((resolve, reject) => {\n  setTimeout(() => resolve('done'), 1000);\n});",
+      "description": "Promise creation"
+    },
+    {
+      "id": 12,
+      "code": "try {\n  JSON.parse(data);\n} catch (e) {\n  console.error(e);\n}",
+      "description": "Try-catch block"
+    },
+    {
+      "id": 13,
+      "code": "const unique = [...new Set(array)];",
+      "description": "Remove duplicates with Set"
+    },
+    {
+      "id": 14,
+      "code": "const sorted = arr.sort((a, b) => a - b);",
+      "description": "Numeric array sort"
+    },
+    {
+      "id": 15,
+      "code": "const found = users.find(u => u.id === id);",
+      "description": "Array find method"
+    },
+    {
+      "id": 16,
+      "code": "const hasAdmin = users.some(u => u.role === 'admin');",
+      "description": "Array some method"
+    },
+    {
+      "id": 17,
+      "code": "const allValid = items.every(i => i.valid);",
+      "description": "Array every method"
+    },
+    {
+      "id": 18,
+      "code": "export const helper = () => {};\nexport default main;",
+      "description": "ES6 module exports"
+    },
+    {
+      "id": 19,
+      "code": "import { useState, useEffect } from 'react';",
+      "description": "React hooks import"
+    },
+    {
+      "id": 20,
+      "code": "const [count, setCount] = useState(0);",
+      "description": "React useState hook"
+    },
+    {
+      "id": 21,
+      "code": "useEffect(() => {\n  document.title = `Count: ${count}`;\n}, [count]);",
+      "description": "React useEffect hook"
+    },
+    {
+      "id": 22,
+      "code": "const memoized = useMemo(() => expensiveCalc(a, b), [a, b]);",
+      "description": "React useMemo hook"
+    },
+    {
+      "id": 23,
+      "code": "const callback = useCallback(() => handleClick(id), [id]);",
+      "description": "React useCallback hook"
+    },
+    {
+      "id": 24,
+      "code": "const ref = useRef(null);",
+      "description": "React useRef hook"
+    },
+    {
+      "id": 25,
+      "code": "const value = useContext(MyContext);",
+      "description": "React useContext hook"
+    },
+    {
+      "id": 26,
+      "code": "Object.keys(obj).forEach(key => console.log(key));",
+      "description": "Iterate object keys"
+    },
+    {
+      "id": 27,
+      "code": "Object.entries(obj).map(([k, v]) => `${k}: ${v}`);",
+      "description": "Object entries mapping"
+    },
+    {
+      "id": 28,
+      "code": "const clone = JSON.parse(JSON.stringify(original));",
+      "description": "Deep clone object"
+    },
+    {
+      "id": 29,
+      "code": "const debounce = (fn, ms) => {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), ms);\n  };\n};",
+      "description": "Debounce function"
+    },
+    {
+      "id": 30,
+      "code": "const throttle = (fn, limit) => {\n  let flag = true;\n  return (...args) => {\n    if (flag) {\n      fn(...args);\n      flag = false;\n      setTimeout(() => flag = true, limit);\n    }\n  };\n};",
+      "description": "Throttle function"
+    }
+  ]
+}

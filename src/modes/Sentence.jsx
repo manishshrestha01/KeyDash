@@ -147,7 +147,7 @@ const Sentence = ({ difficulty = "easy" }) => {
     const accCalc = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0;
     const accRounded = parseFloat(accCalc.toFixed(1));
 
-    // Save to leaderboard_sentence table
+    // Save to leaderboard_sentence table (v1)
     if (user) {
       const { error } = await supabase.from("leaderboard_sentence").insert({
         user_id: user.id,
@@ -160,6 +160,29 @@ const Sentence = ({ difficulty = "easy" }) => {
 
       if (error) {
         console.error("Failed to insert sentence leaderboard score:", error);
+      }
+
+      // Also save to typing_history (v2) for unified history
+      const { error: historyError } = await supabase.from("typing_history").insert({
+        user_id: user.id,
+        mode: 'sentence',
+        sub_mode: difficulty,
+        original_text: target,
+        typed_text: finalInput,
+        wpm: wpmRounded,
+        raw_wpm: Math.round(totalTyped / 5 / (durationSec / 60)),
+        accuracy: accRounded,
+        errors: mistakesCalc,
+        correct_chars: adjustedCorrect,
+        total_chars: totalTyped,
+        duration_seconds: parseFloat(durationSec.toFixed(2)),
+        mistake_indices: Array.from(wrongIndicesRef.current),
+        corrections: 0,
+        is_completed: true,
+      });
+
+      if (historyError) {
+        console.error("Failed to insert to typing_history:", historyError);
       }
     }
 
@@ -178,23 +201,6 @@ const Sentence = ({ difficulty = "easy" }) => {
 
   const handleInput = (e) => {
     const val = e.target.value;
-
-    // If this is a deletion (shorter value), ensure it doesn't delete into the locked area
-    if (val.length < input.length) {
-      // Find first index where input and val differ
-      let i = 0;
-      while (i < val.length && input[i] === val[i]) i++;
-
-      // If the change touches locked area, ignore it
-      if (i < lockedIndex) {
-        return;
-      }
-    }
-
-    // If user added a space at the end, lock everything up to the new length
-    if (val.length > input.length && val.endsWith(" ")) {
-      setLockedIndex(val.length);
-    }
 
     // mark caret as moving to suppress blink; restart timer for inactivity
     if (caretIdleTimerRef.current) clearTimeout(caretIdleTimerRef.current);
@@ -235,42 +241,18 @@ const Sentence = ({ difficulty = "easy" }) => {
     setInput(val);
   };
 
-  // Prevent Backspace and Delete keys from deleting into locked area
+  // Handle keyboard shortcuts
   const handleKeyDown = (e) => {
+    // Tab to restart
     if (e.key === "Tab") {
       e.preventDefault();
+      setRestartCount((c) => c + 1);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
       return;
     }
-
-    if (e.key === "Backspace" || e.key === "Delete") {
-      const targetEl = e.target;
-      const selStart = targetEl.selectionStart ?? input.length;
-      const selEnd = targetEl.selectionEnd ?? input.length;
-
-      let removeStart, removeEnd;
-
-      if (selStart === selEnd) {
-        // No selection -> single-character delete
-        if (e.key === "Backspace") {
-          removeStart = selStart - 1;
-          removeEnd = selStart;
-        } else {
-          // Delete key
-          removeStart = selStart;
-          removeEnd = selStart + 1;
-        }
-      } else {
-        // Range delete
-        removeStart = selStart;
-        removeEnd = selEnd;
-      }
-
-      // Prevent deletion if it would touch the locked area or out of bounds
-      if (removeStart < 0 || removeStart < lockedIndex) {
-        e.preventDefault();
-        return;
-      }
-    }
+    // Allow all backspace/delete operations - mistakes are tracked in background
   };
 
   const handleRestart = () => {
@@ -450,40 +432,44 @@ const Sentence = ({ difficulty = "easy" }) => {
         />
       </div>
 
-      <button
-        onClick={handleRestart}
-        className="mt-6 p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
-        aria-label="Restart"
-      >
-        <svg
-          viewBox="-13.44 -13.44 50.88 50.88"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-12 h-12 rotate-90"
+      {/* Restart button */}
+      <div className="flex flex-col items-center mt-6">
+        <button
+          onClick={handleRestart}
+          className="p-3 rounded-full bg-transparent text-[#636569] hover:text-white transition-colors"
+          aria-label="Restart"
         >
-          <g clipPath="url(#clip0)">
-            <path
-              d="M12 2.99982C16.9706 2.99982 21 7.02925 21 11.9998C21 16.9704 16.9706 20.9998 12 20.9998C7.02944 20.9998 3 16.9704 3 11.9998C3 9.17255 4.30367 6.64977 6.34267 4.99982"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M3 4.49982H7V8.49982"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
-          <defs>
-            <clipPath id="clip0">
-              <rect width="24" height="24" fill="white" />
-            </clipPath>
-          </defs>
-        </svg>
-      </button>
+          <svg
+            viewBox="-13.44 -13.44 50.88 50.88"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-12 h-12 rotate-90"
+          >
+            <g clipPath="url(#clip0)">
+              <path
+                d="M12 2.99982C16.9706 2.99982 21 7.02925 21 11.9998C21 16.9704 16.9706 20.9998 12 20.9998C7.02944 20.9998 3 16.9704 3 11.9998C3 9.17255 4.30367 6.64977 6.34267 4.99982"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 4.49982H7V8.49982"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </g>
+            <defs>
+              <clipPath id="clip0">
+                <rect width="24" height="24" fill="white" />
+              </clipPath>
+            </defs>
+          </svg>
+        </button>
+        <span className="text-gray-600 text-sm mt-1">or press <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd></span>
+      </div>
 
       <div className="xl:-ml-260 xl:-mt-18 xl:text-2xl xl:rounded-2xl xl:px-7 xl:py-5 lg:-ml-190 lg:-mt-18 lg:text-2xl lg:rounded-2xl lg:px-7 lg:py-5 md:-ml-130 md:-mt-93 md:text-xl md:rounded-2xl md:px-4 md:py-2 sm:-ml-105 sm:-mt-90 sm:text-xl sm:rounded-2xl sm:px-2 sm:py-1 -ml-60 -mt-85 text-base rounded-xl px-2 py-1 bg-yellow-400 text-black font-mono shadow-lg z-10">
         <div>WPM = {wpm}</div>
