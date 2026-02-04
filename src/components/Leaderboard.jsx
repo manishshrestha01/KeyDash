@@ -139,7 +139,7 @@ const Leaderboard = () => {
                     </div>
                   )}
 
-                  <Link to={`/users/${u.user_id}`} className="hover:underline font-medium truncate max-w-[70px] sm:max-w-[100px] md:max-w-none">
+                  <Link to={`/users/${u.user_id}`} state={{ avatar: u.profiles?.avatar_url }} className="hover:underline font-medium truncate max-w-[70px] sm:max-w-[100px] md:max-w-none">
                     {u.profiles.display_name || "Anonymous"}
                   </Link>
                 </td>

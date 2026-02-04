@@ -148,15 +148,16 @@ const NavbarV2 = () => {
                 <div className="relative w-8 h-8 sm:w-9 sm:h-9">
                   {avatarUrl ? (
                     <img
-                      src={avatarUrl}
+                      src={avatarUrl?.trim()}
                       alt="avatar"
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-gray-600"
                       referrerPolicy="no-referrer"
                       crossOrigin="anonymous"
                       onError={(e) => {
-                        e.target.style.display = 'none'
-                        const fallback = e.target.nextSibling
-                        if (fallback) fallback.style.display = 'flex'
+                        e.currentTarget.onerror = null
+                        e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                          "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
+                        )}`
                       }}
                     />
                   ) : null}

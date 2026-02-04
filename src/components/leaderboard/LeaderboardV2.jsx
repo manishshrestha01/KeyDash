@@ -608,6 +608,7 @@ const LeaderboardV2 = () => {
                   {/* Avatar - Clickable to profile */}
                   <Link 
                     to={`/users/${entry.user_id}`}
+                    state={{ avatar: entry.profiles?.avatar_url }}
                     className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-yellow-400/50 transition-all"
                   >
                     {entry.profiles?.avatar_url ? (
@@ -618,20 +619,17 @@ const LeaderboardV2 = () => {
                         referrerPolicy="no-referrer"
                         crossOrigin="anonymous"
                         onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.nextSibling.style.display = 'flex'
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
+                          )}`
                         }}
                       />
                     ) : null}
-                    <div 
-                      className={`w-full h-full items-center justify-center text-lg font-bold text-gray-400 ${entry.profiles?.avatar_url ? 'hidden' : 'flex'}`}
-                    >
-                      {entry.profiles?.display_name?.charAt(0).toUpperCase() || '?'}
-                    </div>
                   </Link>
 
                   {/* Username - Clickable to profile */}
-                  <Link to={`/users/${entry.user_id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                  <Link to={`/users/${entry.user_id}`} state={{ avatar: entry.profiles?.avatar_url }} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
                     <div className={`font-semibold truncate ${isCurrentUser ? 'text-yellow-400' : ''}`}>
                       {entry.profiles?.display_name || 'Anonymous'}
                       {isCurrentUser && <span className="text-xs ml-2">(You)</span>}

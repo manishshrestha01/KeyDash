@@ -146,9 +146,16 @@ const UserProfile = () => {
         <div className="flex flex-col items-center">
           {profile?.avatar_url ? (
             <img
-              src={profile.avatar_url}
+              src={profile.avatar_url?.trim()}
               alt="avatar"
               className="w-24 h-24 rounded-full object-cover mb-4 border-4 border-white"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>")}`;
+              }}
             />
           ) : (
             <div className="w-40 h-40 rounded-full overflow-hidden mb-3">

@@ -137,9 +137,15 @@ const Navbar = () => {
               >
                 {avatarUrl ? (
                   <img
-                    src={avatarUrl}
+                    src={avatarUrl?.trim()}
                     alt="avatar"
                     className="w-8 h-8 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null
+                      e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><circle cx='12' cy='8' r='4' /><path d='M4 18c0-2.21 3.582-4 8-4s8 1.79 8 4v2H4v-2z'/></svg>")}`
+                    }}
                   />
                 ) : (
                   <div className="w-9 h-9 rounded-lg bg-[#47506B] flex items-center justify-center">

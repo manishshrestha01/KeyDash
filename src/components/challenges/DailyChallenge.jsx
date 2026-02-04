@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Calendar, Trophy, Clock, Target, Zap, ArrowLeft, 
@@ -378,9 +378,11 @@ const DailyChallenge = () => {
               </h2>
               <div className="space-y-3">
                 {leaderboard.slice(0, 5).map((entry, idx) => (
-                  <div
+                  <Link
                     key={entry.id}
-                    className="flex items-center justify-between p-3 bg-[#252b3b] rounded-xl"
+                    to={`/users/${entry.user_id}`}
+                    state={{ avatar: entry.profiles?.avatar_url }}
+                    className="flex items-center justify-between p-3 bg-[#252b3b] rounded-xl hover:opacity-90"
                   >
                     <div className="flex items-center gap-3">
                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
@@ -392,7 +394,7 @@ const DailyChallenge = () => {
                         {idx + 1}
                       </span>
                       {entry.profiles?.avatar_url ? (
-                        <img src={entry.profiles.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                        <img src={entry.profiles.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
                           {(entry.profiles?.display_name || 'U')[0].toUpperCase()}
@@ -404,7 +406,7 @@ const DailyChallenge = () => {
                       <span className="text-yellow-400 font-bold">{entry.wpm} WPM</span>
                       <span className="text-gray-400">{entry.accuracy}%</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -503,7 +505,7 @@ const DailyChallenge = () => {
                         isCurrentUser ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-[#252b3b]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <Link to={`/users/${entry.user_id}`} state={{ avatar: entry.profiles?.avatar_url }} className="flex items-center gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                           idx === 0 ? 'bg-yellow-400 text-black' :
                           idx === 1 ? 'bg-gray-400 text-black' :
@@ -513,7 +515,11 @@ const DailyChallenge = () => {
                           {idx + 1}
                         </span>
                         {entry.profiles?.avatar_url ? (
-                          <img src={entry.profiles.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                          <img
+                            src={entry.profiles.avatar_url?.trim()}
+                            alt={entry.profiles?.display_name || ''}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
                         ) : (
                           <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
                             {(entry.profiles?.display_name || 'U')[0].toUpperCase()}
@@ -523,7 +529,7 @@ const DailyChallenge = () => {
                           {entry.profiles?.display_name || 'Anonymous'}
                           {isCurrentUser && ' (You)'}
                         </span>
-                      </div>
+                      </Link>
                       <div className="flex items-center gap-4">
                         <span className="text-yellow-400 font-bold">{entry.wpm} WPM</span>
                         <span className="text-gray-400">{entry.accuracy}%</span>

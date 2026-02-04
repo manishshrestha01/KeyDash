@@ -704,7 +704,17 @@ const MultiplayerLobby = () => {
                   className="flex items-center gap-3 p-3 bg-[#252b3b] rounded-xl"
                 >
                   {p.avatar_url ? (
-                    <img src={p.avatar_url} alt="" className="w-10 h-10 rounded-full" />
+                    <img
+                      src={p.avatar_url?.trim()}
+                      alt={p.display_name || ''}
+                      className="w-10 h-10 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null
+                        e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>")}`
+                      }}
+                    />
                   ) : (
                     <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
                       <Users className="w-5 h-5" />
@@ -838,7 +848,17 @@ const MultiplayerLobby = () => {
                       {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
                     </div>
                     {p.avatar_url ? (
-                      <img src={p.avatar_url} alt="" className="w-12 h-12 rounded-full" />
+                      <img
+                        src={p.avatar_url?.trim()}
+                        alt={p.display_name || ''}
+                        className="w-12 h-12 rounded-full object-cover"
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>")}`
+                        }}
+                      />
                     ) : (
                       <div className="w-12 h-12 bg-gray-600 rounded-full" />
                     )}

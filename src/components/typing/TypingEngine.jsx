@@ -178,12 +178,13 @@ const TypingEngine = ({
     setCurrentIndex(0)
     setIsFinished(false)
     setTimeLeft(timeLimit)
+
     setWpm(0)
     setRawWpm(0)
     setAccuracy(100)
     setErrors(0)
+
     setLockedIndex(0)
-    setCaretState('idle')
     wrongIndicesRef.current.clear()
     correctionsRef.current = 0
     charTimingsRef.current = []
@@ -194,11 +195,13 @@ const TypingEngine = ({
     }
     if (caretIdleTimerRef.current) {
       clearTimeout(caretIdleTimerRef.current)
+      caretIdleTimerRef.current = null
     }
     if (caretPopTimerRef.current) {
       clearTimeout(caretPopTimerRef.current)
+      caretPopTimerRef.current = null
     }
-  }, [text, timeLimit])
+  }, [text])
 
   // Timer logic for timed mode
   useEffect(() => {

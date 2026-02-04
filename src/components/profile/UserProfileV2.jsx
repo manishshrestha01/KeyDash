@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   User, Globe, Github, Linkedin, Instagram, Youtube, Twitch,
@@ -29,6 +29,8 @@ const UserProfileV2 = () => {
   const [recentScores, setRecentScores] = useState([])
   const [loading, setLoading] = useState(true)
   const [rank, setRank] = useState(null)
+  const location = useLocation()
+  const stateAvatar = location?.state?.avatar
 
   // Ensure we start at top of page when navigating to a user's profile
   useEffect(() => {
@@ -203,24 +205,34 @@ const UserProfileV2 = () => {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
               {/* Avatar */}
               <div className="relative">
-                {profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name}
-                    className="w-32 h-32 rounded-2xl object-cover border-4 border-yellow-400/30"
-                    onError={(e) => {
-                      e.target.onerror = null
-                      e.target.src = ''
-                      e.target.style.display = 'none'
-                      e.target.nextSibling.style.display = 'flex'
-                    }}
-                  />
-                ) : null}
-                <div 
-                  className={`w-32 h-32 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-4xl font-bold text-black ${profile.avatar_url ? 'hidden' : ''}`}
-                >
-                  {(profile.display_name || 'U')[0].toUpperCase()}
-                </div>
+                {(() => {
+                  const effectiveAvatar = (stateAvatar && stateAvatar.trim()) || (profile.avatar_url && profile.avatar_url.trim())
+                  return (
+                    <>
+                      {effectiveAvatar ? (
+                        <img
+                          src={effectiveAvatar}
+                          alt={profile.display_name}
+                          className="w-32 h-32 rounded-2xl object-cover border-4 border-yellow-400/30"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null
+                            e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                              "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
+                            )}`
+                          }}
+                        />
+                      ) : null}
+
+                      <div 
+                        className={`w-32 h-32 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-4xl font-bold text-black ${effectiveAvatar ? 'hidden' : ''}`}
+                      >
+                        {(profile.display_name || 'U')[0].toUpperCase()}
+                      </div>
+                    </>
+                  )
+                })()}
                 
                 {/* Rank Badge */}
                 {rank && rank <= 100 && (

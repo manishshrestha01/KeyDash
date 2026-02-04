@@ -244,6 +244,11 @@ const ModeSelector = () => {
   // Handle mode change
   const handleModeChange = (mode) => {
     setSelectedMode(mode)
+    // If switching to custom mode and user hasn't provided any custom text,
+    // ensure the typing area is empty instead of showing the previous mode text.
+    if (mode === 'custom') {
+      setTargetText(customText.trim() || '')
+    }
     const modeConfig = MODES[mode]
     if (modeConfig?.subModes?.length > 0) {
       setSelectedSubMode(modeConfig.subModes[0].key)
@@ -281,6 +286,13 @@ const ModeSelector = () => {
       setRestartKey(prev => prev + 1)
     }
   }
+
+  // Keep targetText in sync when editing custom text so users get a live preview
+  useEffect(() => {
+    if (selectedMode === 'custom') {
+      setTargetText(customText.trim())
+    }
+  }, [customText, selectedMode])
 
   const currentModeConfig = MODES[selectedMode]
 
@@ -451,17 +463,29 @@ const ModeSelector = () => {
       </div>
 
       {/* Typing Engine */}
-      <TypingEngine
-        key={restartKey}
-        text={targetText}
-        mode={selectedMode}
-        subMode={selectedSubMode}
-        language={selectedLanguage}
-        timeLimit={timeLimit}
-        onRestart={handleRestart}
-        showLiveStats={true}
-        showRestartButton={true}
-      />
+      {selectedMode === 'custom' && !customText.trim() ? (
+        // Empty placeholder when user hasn't entered custom text yet
+        <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
+          <div className="relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 cursor-text border border-gray-700/50 min-h-[120px] sm:min-h-[160px]">
+            <div className="font-mono text-sm leading-relaxed tracking-wide select-none text-gray-500 opacity-60">
+              {/* intentionally left blank until user provides text */}
+              <div className="h-32" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <TypingEngine
+          key={restartKey}
+          text={targetText}
+          mode={selectedMode}
+          subMode={selectedSubMode}
+          language={selectedLanguage}
+          timeLimit={timeLimit}
+          onRestart={handleRestart}
+          showLiveStats={true}
+          showRestartButton={true}
+        />
+      )}
     </div>
   )
 }

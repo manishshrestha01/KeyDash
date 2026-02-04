@@ -126,9 +126,15 @@ const Profile = () => {
       <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 mb-8">
         {profile.avatar_url ? (
           <img
-            src={profile.avatar_url}
+            src={profile.avatar_url?.trim()}
             alt="Avatar"
             className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-white"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              e.currentTarget.onerror = null
+              e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z'/></svg>")}`
+            }}
           />
         ) : (
           <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gray-600 flex items-center justify-center rounded-full border-2 border-white">
