@@ -30,6 +30,15 @@ const UserProfileV2 = () => {
   const [loading, setLoading] = useState(true)
   const [rank, setRank] = useState(null)
 
+  // Ensure we start at top of page when navigating to a user's profile
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      const root = document.getElementById('profile-root')
+      if (root) root.focus()
+    }
+  }, [userId])
+
   useEffect(() => {
     fetchData()
   }, [userId])
@@ -169,10 +178,10 @@ const UserProfileV2 = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e17] text-white pb-12">
+    <div className="min-h-screen bg-[#0a0e17] text-white pb-12" id="profile-root" tabIndex={-1}>
       {/* Header with gradient */}
       <div className="relative">
-        <div className="h-48 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20"></div>
+        <div className="h-48"></div>
         
         {/* Back Button */}
         <button
