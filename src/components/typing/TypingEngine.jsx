@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
@@ -61,11 +61,16 @@ const TypingEngine = ({
   // Refs
   const textareaRef = useRef(null)
   const containerRef = useRef(null)
+  const textDisplayRef = useRef(null)
+  const measureRef = useRef(null)
   const inputRef = useRef(input)
   const startTimeRef = useRef(startTime)
   const intervalRef = useRef(null)
   const caretIdleTimerRef = useRef(null)
   const caretPopTimerRef = useRef(null)
+
+  // Measured chars per line (based on actual font metrics)
+  const [measuredCharsPerLine, setMeasuredCharsPerLine] = useState(null)
 
   const CARET_ACTIVE_TIMEOUT = 600
   const CARET_POP_DURATION = 160
@@ -88,6 +93,8 @@ const TypingEngine = ({
 
   // Responsive chars per line - optimized for comfortable mobile reading
   const getCharsPerLine = useCallback(() => {
+    // Prefer measured value when available, fall back to window-based heuristic
+    if (measuredCharsPerLine) return measuredCharsPerLine
     const width = windowWidth
     if (width >= 1280) return 52
     if (width >= 1024) return 45
@@ -97,51 +104,48 @@ const TypingEngine = ({
     if (width >= 375) return 24
     if (width >= 320) return 20
     return 18
-  }, [windowWidth])
+  }, [windowWidth, measuredCharsPerLine])
 
   // Split text into lines - preserve exact character positions, never break words
   const lines = useMemo(() => {
-    if (!text) return []
-    const charsPerLine = getCharsPerLine()
-    const result = []
-    let currentLine = ''
-    let i = 0
-
-    while (i < text.length) {
-      // Find the next word (including any trailing space)
-      let wordStart = i
-      let wordEnd = i
-      
-      // Get the word characters
-      while (wordEnd < text.length && text[wordEnd] !== ' ') {
-        wordEnd++
+    if (!text) return [];
+    const charsPerLine = getCharsPerLine();
+    const result = [];
+    let currentLine = '';
+    // Split text into words (preserve spaces after each word)
+    const wordRegex = /(\S+\s*)/g;
+    const words = text.match(wordRegex) || [];
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      // If word contains a hard newline, split it
+      if (word.includes('\n')) {
+        const parts = word.split(/(\n)/);
+        for (let part of parts) {
+          if (part === '\n') {
+            if (currentLine.trim()) result.push(currentLine);
+            currentLine = '';
+          } else if (part.length > 0) {
+            if (currentLine.length + part.length <= charsPerLine) {
+              currentLine += part;
+            } else {
+              if (currentLine.trim()) result.push(currentLine);
+              currentLine = part;
+            }
+          }
+        }
+        continue;
       }
-      
-      // Include trailing space if present
-      let hasSpace = text[wordEnd] === ' '
-      let chunk = text.slice(wordStart, wordEnd) + (hasSpace ? ' ' : '')
-      
-      // Will this chunk fit on the current line?
-      if (currentLine.length + chunk.length <= charsPerLine) {
-        // Yes, add it
-        currentLine += chunk
-      } else if (currentLine === '') {
-        // Line is empty but word is too long - just add it anyway (rare edge case)
-        currentLine = chunk
+      // Greedy: add word if fits, else push current line and start new
+      if (currentLine.length + word.length <= charsPerLine) {
+        currentLine += word;
       } else {
-        // No room - push current line and start new one
-        result.push(currentLine)
-        currentLine = chunk
+        if (currentLine.trim()) result.push(currentLine);
+        currentLine = word;
       }
-      
-      // Move to next word
-      i = wordEnd + (hasSpace ? 1 : 0)
     }
-
-    // Don't forget the last line
-    if (currentLine) result.push(currentLine)
-    return result
-  }, [text, getCharsPerLine])
+    if (currentLine.trim()) result.push(currentLine);
+    return result.filter(line => line.trim().length > 0);
+  }, [text, getCharsPerLine]);
 
   // Determine visible lines (show 3 lines at a time)
   const visibleLineIndices = useMemo(() => {
@@ -433,7 +437,10 @@ const TypingEngine = ({
 
     // Handle special characters display
     let displayChar = char
-    if (char === ' ') displayChar = '\u00A0' // non-breaking space
+    // Use normal spaces so the browser can wrap at word boundaries.
+    // Replacing with non-breaking spaces prevented proper wrapping and
+    // could cause words to be split across lines unexpectedly.
+    if (char === '\t') displayChar = '  '
     if (char === '\n') displayChar = '↵'
 
     return (
@@ -453,6 +460,23 @@ const TypingEngine = ({
       </span>
     )
   }
+
+ 
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!textDisplayRef.current || !measureRef.current) return
+      // Use a representative character to estimate width
+      measureRef.current.textContent = 'M'
+      const charWidth = measureRef.current.getBoundingClientRect().width || 8
+      const containerWidth = textDisplayRef.current.getBoundingClientRect().width || windowWidth
+      const approx = Math.max(10, Math.floor(containerWidth / charWidth) - 1)
+      setMeasuredCharsPerLine(approx)
+    }
+
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [windowWidth, fontSize])
 
   // Cleanup
   useEffect(() => {
@@ -541,7 +565,7 @@ const TypingEngine = ({
         />
 
         {/* Text Display */}
-        <div className={`${fontSizeClasses[fontSize]} font-mono leading-relaxed tracking-wide select-none overflow-hidden`}>
+        <div ref={textDisplayRef} className={`${fontSizeClasses[fontSize]} font-mono leading-relaxed tracking-wide select-none overflow-hidden`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={visibleLineIndices.startLine}
@@ -561,10 +585,15 @@ const TypingEngine = ({
                   <div 
                     key={actualLineIdx} 
                     className={`
-                      whitespace-pre-wrap break-words
+                      whitespace-pre-wrap break-normal
                       ${actualLineIdx === visibleLineIndices.currentLineIdx ? 'opacity-100' : 'opacity-50'}
                       transition-opacity duration-200
                     `}
+                    style={{
+                      wordBreak: 'normal',
+                      overflowWrap: 'normal',
+                      hyphens: 'none'
+                    }}
                   >
                     {line.split('').map((char, charIdx) => 
                       renderChar(char, charOffset + charIdx)
@@ -575,6 +604,9 @@ const TypingEngine = ({
             </motion.div>
           </AnimatePresence>
         </div>
+
+        {/* Invisible measurement element for accurate chars-per-line calculation */}
+        <span ref={measureRef} className={`${fontSizeClasses[fontSize]} font-mono`} style={{ position: 'absolute', left: -9999, top: -9999, visibility: 'hidden' }}>M</span>
 
         {/* Focus indicator */}
         {document.activeElement !== textareaRef.current && !isFinished && (
