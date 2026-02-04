@@ -99,7 +99,7 @@ const TypingEngine = ({
     return 18
   }, [windowWidth])
 
-  // Split text into lines - preserve exact character positions
+  // Split text into lines - preserve exact character positions, never break words
   const lines = useMemo(() => {
     if (!text) return []
     const charsPerLine = getCharsPerLine()
@@ -108,40 +108,37 @@ const TypingEngine = ({
     let i = 0
 
     while (i < text.length) {
-      // Find the next word boundary
+      // Find the next word (including any trailing space)
+      let wordStart = i
       let wordEnd = i
+      
+      // Get the word characters
       while (wordEnd < text.length && text[wordEnd] !== ' ') {
         wordEnd++
       }
       
-      const word = text.slice(i, wordEnd)
-      const hasSpaceAfter = text[wordEnd] === ' '
+      // Include trailing space if present
+      let hasSpace = text[wordEnd] === ' '
+      let chunk = text.slice(wordStart, wordEnd) + (hasSpace ? ' ' : '')
       
-      // Check if adding this word (plus space if needed) would exceed line length
-      const testLine = currentLine + word + (hasSpaceAfter ? ' ' : '')
-      
-      if (testLine.length <= charsPerLine || currentLine === '') {
-        // Add word to current line
-        currentLine += word
-        if (hasSpaceAfter) {
-          currentLine += ' '
-          i = wordEnd + 1
-        } else {
-          i = wordEnd
-        }
+      // Will this chunk fit on the current line?
+      if (currentLine.length + chunk.length <= charsPerLine) {
+        // Yes, add it
+        currentLine += chunk
+      } else if (currentLine === '') {
+        // Line is empty but word is too long - just add it anyway (rare edge case)
+        currentLine = chunk
       } else {
-        // Start new line with this word
-        if (currentLine) result.push(currentLine)
-        currentLine = word
-        if (hasSpaceAfter) {
-          currentLine += ' '
-          i = wordEnd + 1
-        } else {
-          i = wordEnd
-        }
+        // No room - push current line and start new one
+        result.push(currentLine)
+        currentLine = chunk
       }
+      
+      // Move to next word
+      i = wordEnd + (hasSpace ? 1 : 0)
     }
 
+    // Don't forget the last line
     if (currentLine) result.push(currentLine)
     return result
   }, [text, getCharsPerLine])
