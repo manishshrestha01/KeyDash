@@ -77,12 +77,12 @@ const NavbarV2 = () => {
     navigate("/");
   };
 
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl = profile?.avatar_url?.trim();
 
   // Navigation items
   const navItems = [
     { path: "/", label: "Type", icon: Keyboard },
-    { path: "/leaderboard/v2", label: "Leaderboard", icon: Trophy },
+    { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   ];
 
@@ -96,33 +96,33 @@ const NavbarV2 = () => {
       className="bg-[#101826] text-white sticky top-0 z-50 border-b border-white/10"
       style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" }}
     >
-      <div className="max-w-screen-xl flex items-center justify-between mx-auto px-4 py-3">
+      <div className="max-w-screen-xl flex items-center justify-between mx-auto px-2 sm:px-4 py-2 sm:py-3 relative">
         {/* Logo */}
         <NavLink
           to="/"
-          className="flex items-center gap-2 hover:opacity-80 transition"
+          className="flex items-center gap-1 sm:gap-2 hover:opacity-80 transition"
         >
           <img
             src="/logo.svg"
             alt="KeyDash"
-            className="h-8 sm:h-9"
+            className="h-7 sm:h-9"
           />
-          <span className="text-3xl font-semibold hidden sm:block">KeyDash</span>
+          <span className="text-xl sm:text-3xl font-semibold hidden sm:block">KeyDash</span>
         </NavLink>
 
-        {/* Center Navigation */}
-        <div className="flex items-center gap-1 bg-[#1a2332] rounded-full p-1">
+        {/* Center Navigation - Absolutely positioned for true center */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 sm:gap-1 bg-[#1a2332] rounded-full p-0.5 sm:p-1">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
                 isActive(item.path)
                   ? "bg-[#2a3a4f] text-yellow-400 border border-yellow-400/30"
                   : "text-gray-400 hover:text-white hover:bg-[#242f3f]"
               }`}
             >
-              <item.icon className="w-4 h-4" />
+              <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{item.label}</span>
             </NavLink>
           ))}
@@ -131,11 +131,11 @@ const NavbarV2 = () => {
         {/* Right Side - User */}
         <div className="flex items-center">
           {loading ? (
-            <div className="w-9 h-9 rounded-full bg-gray-700 animate-pulse" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-700 animate-pulse" />
           ) : !user ? (
             <NavLink
               to="/login"
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold text-sm rounded-full px-4 py-2 transition"
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1.5 sm:py-2 transition"
             >
               Login
             </NavLink>
@@ -143,20 +143,34 @@ const NavbarV2 = () => {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 p-1 rounded-full hover:bg-[#1a2332] transition"
+                className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-full hover:bg-[#1a2332] transition"
               >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="w-9 h-9 rounded-full object-cover border-2 border-gray-600"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                    <User className="w-5 h-5 text-black" />
+                <div className="relative w-8 h-8 sm:w-9 sm:h-9">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="avatar"
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-gray-600"
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        const fallback = e.target.nextSibling
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 items-center justify-center ${avatarUrl ? 'hidden' : 'flex'}`}>
+                    {profile?.display_name ? (
+                      <span className="text-xs sm:text-sm font-bold text-black">
+                        {profile.display_name.charAt(0).toUpperCase()}
+                      </span>
+                    ) : (
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                    )}
                   </div>
-                )}
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform hidden sm:block ${menuOpen ? 'rotate-180' : ''}`} />
+                </div>
+                <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform hidden sm:block ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu */}

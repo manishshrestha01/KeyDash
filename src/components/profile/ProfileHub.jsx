@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Settings, History, Trophy, BarChart2,
   Mail, Globe, Github, Linkedin, Instagram, Youtube, Twitch,
-  Camera, Check, X, ChevronRight, Clock, Target, Zap,
+  Camera, Check, X, ChevronRight, ChevronUp, ChevronDown, Clock, Target, Zap,
   Calendar, TrendingUp, Award, Flame, Star, Edit3, Save,
   Eye, EyeOff, Trash2, Download, Filter, Search
 } from 'lucide-react'
@@ -59,6 +59,10 @@ const ProfileHub = () => {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyFilter, setHistoryFilter] = useState('all')
   const [historySearch, setHistorySearch] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [showHistoryFilters, setShowHistoryFilters] = useState(false)
+  const [historySortBy, setHistorySortBy] = useState('recent')
+  const HISTORY_PER_PAGE = 15
   
   // Stats data
   const [stats, setStats] = useState(null)
@@ -78,6 +82,7 @@ const ProfileHub = () => {
     { id: 'stats', label: 'Statistics', icon: BarChart2 },
   ]
 
+  // Initial data fetch when user is available
   useEffect(() => {
     // Wait for auth to finish loading before checking user
     if (authLoading) return
@@ -89,17 +94,34 @@ const ProfileHub = () => {
     }
     fetchProfile()
     fetchStats() // Always fetch stats for profile overview
-  }, [user, authLoading, navigate])
+    
+    // Fetch tab-specific data on initial load based on URL
+    const initialTab = getTabFromUrl()
+    if (initialTab === 'history') fetchHistory()
+    if (initialTab === 'achievements') fetchAchievements()
+  }, [user?.id, authLoading])
 
+  // Fetch data when tab changes (user clicks on tab)
   useEffect(() => {
-    // Update URL when tab changes
-    setSearchParams({ tab: activeTab })
+    if (authLoading || !user?.id) return
+    
+    // Update URL when tab changes (only if different from current)
+    const currentUrlTab = getTabFromUrl()
+    if (activeTab !== currentUrlTab) {
+      setSearchParams({ tab: activeTab })
+    }
     
     // Fetch tab-specific data
     if (activeTab === 'history') fetchHistory()
     if (activeTab === 'achievements') fetchAchievements()
     if (activeTab === 'stats') fetchStats()
-  }, [activeTab, historyFilter])
+  }, [activeTab, user?.id, authLoading])
+
+  // Re-fetch history when filter changes
+  useEffect(() => {
+    if (authLoading || !user?.id || activeTab !== 'history') return
+    fetchHistory()
+  }, [historyFilter])
 
   const fetchProfile = async () => {
     if (!user?.id) return
@@ -446,15 +468,65 @@ const ProfileHub = () => {
     setTimeout(() => setMessage({ text: '', type: '' }), 2000)
   }
 
-  // Filter history by search
-  const filteredHistory = history.filter(item => {
-    if (!historySearch) return true
-    const search = historySearch.toLowerCase()
-    return (
-      item.mode?.toLowerCase().includes(search) ||
-      item.sub_mode?.toLowerCase().includes(search)
-    )
-  })
+  // Mode options for history filter
+  const historyModes = [
+    { value: 'all', label: 'All Modes' },
+    { value: 'sentence', label: 'Sentence' },
+    { value: 'timed', label: 'Time' },
+    { value: 'coding', label: 'Coding' },
+    { value: 'symbols', label: 'Symbols' },
+    { value: 'custom', label: 'Custom' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'multiplayer', label: 'Multiplayer' },
+    { value: 'ai_battle', label: 'AI Battle' },
+  ]
+
+  // Filter and sort history
+  const filteredHistory = history
+    .filter(item => {
+      // Mode filter
+      if (historyFilter !== 'all' && item.mode !== historyFilter) return false
+      
+      // Search filter
+      if (historySearch) {
+        const search = historySearch.toLowerCase()
+        return (
+          item.mode?.toLowerCase().includes(search) ||
+          item.sub_mode?.toLowerCase().includes(search)
+        )
+      }
+      return true
+    })
+    .sort((a, b) => {
+      switch (historySortBy) {
+        case 'recent':
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'oldest':
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'wpm_high':
+          return (b.wpm || 0) - (a.wpm || 0)
+        case 'wpm_low':
+          return (a.wpm || 0) - (b.wpm || 0)
+        case 'accuracy_high':
+          return (parseFloat(b.accuracy) || 0) - (parseFloat(a.accuracy) || 0)
+        case 'accuracy_low':
+          return (parseFloat(a.accuracy) || 0) - (parseFloat(b.accuracy) || 0)
+        default:
+          return new Date(b.created_at) - new Date(a.created_at)
+      }
+    })
+
+  // Pagination helpers for history
+  const totalHistoryPages = Math.ceil(filteredHistory.length / HISTORY_PER_PAGE)
+  const paginatedHistory = filteredHistory.slice(
+    (historyPage - 1) * HISTORY_PER_PAGE,
+    historyPage * HISTORY_PER_PAGE
+  )
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setHistoryPage(1)
+  }, [historyFilter, historySearch, historySortBy])
 
   // Show loading while auth is checking or profile is loading
   if (authLoading || loading) {
@@ -490,15 +562,28 @@ const ProfileHub = () => {
               <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden bg-gray-700 border-4 border-gray-600">
                 {profile?.avatar_url ? (
                   <img
-                    src={profile.avatar_url}
+                    src={profile.avatar_url?.trim()}
                     alt="Avatar"
                     className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-12 h-12 md:w-16 md:h-16 text-gray-400" />
-                  </div>
+                  null
                 )}
+                <div className={`w-full h-full items-center justify-center ${profile?.avatar_url ? 'hidden' : 'flex'}`}>
+                  {profile?.display_name ? (
+                    <span className="text-3xl md:text-4xl font-bold text-gray-200">
+                      {profile.display_name.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <User className="w-12 h-12 md:w-16 md:h-16 text-gray-400" />
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -834,35 +919,97 @@ const ProfileHub = () => {
             {/* History Tab */}
             {activeTab === 'history' && (
               <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-6 md:p-8 border border-gray-800/50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <h2 className="text-xl font-bold text-white">Typing History</h2>
-                  
+                {/* Search and Filters Header */}
+                <div className="flex flex-col gap-4 mb-6">
+                  {/* Search Bar Row */}
                   <div className="flex gap-3">
-                    {/* Search */}
-                    <div className="flex items-center bg-[#0f1219] rounded-xl px-3 py-2 border border-gray-700">
-                      <Search className="w-4 h-4 text-gray-500 mr-2" />
+                    {/* Search Input */}
+                    <div className="flex-1 flex items-center bg-[#0f1219] rounded-xl px-4 py-3 border border-gray-700">
+                      <Search className="w-5 h-5 text-gray-500 mr-3" />
                       <input
                         type="text"
                         value={historySearch}
                         onChange={(e) => setHistorySearch(e.target.value)}
-                        className="bg-transparent outline-none text-white text-sm w-32"
-                        placeholder="Search..."
+                        className="bg-transparent outline-none text-white text-sm w-full"
+                        placeholder="Search by mode or text..."
                       />
                     </div>
                     
-                    {/* Filter */}
-                    <select
-                      value={historyFilter}
-                      onChange={(e) => setHistoryFilter(e.target.value)}
-                      className="bg-[#0f1219] text-white rounded-xl px-3 py-2 border border-gray-700 outline-none text-sm"
+                    {/* Filters Toggle Button */}
+                    <button
+                      onClick={() => setShowHistoryFilters(!showHistoryFilters)}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition ${
+                        showHistoryFilters 
+                          ? 'bg-[#1a1f2e] border-gray-600 text-white' 
+                          : 'bg-[#0f1219] border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                      }`}
                     >
-                      <option value="all">All Modes</option>
-                      <option value="timed">Timed</option>
-                      <option value="sentence">Sentence</option>
-                      <option value="coding">Coding</option>
-                      <option value="custom">Custom</option>
-                    </select>
+                      <Filter className="w-4 h-4" />
+                      <span className="text-sm font-medium">Filters</span>
+                      {showHistoryFilters ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
+
+                  {/* Expandable Filters */}
+                  <AnimatePresence>
+                    {showHistoryFilters && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-2 pb-4 border-t border-gray-800">
+                          <div className="flex flex-col gap-4 mt-4">
+                            {/* Mode Pills */}
+                            <div className="flex flex-col gap-2">
+                              <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Mode</span>
+                              <div className="flex flex-wrap gap-2">
+                                {historyModes.map((mode) => (
+                                  <button
+                                    key={mode.value}
+                                    onClick={() => setHistoryFilter(mode.value)}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                                      historyFilter === mode.value
+                                        ? 'bg-yellow-400 text-black'
+                                        : 'bg-[#0f1219] text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600'
+                                    }`}
+                                  >
+                                    {mode.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Sort Row */}
+                            <div className="flex flex-col md:flex-row md:items-end gap-4">
+                              {/* Sort By */}
+                              <div className="flex flex-col gap-2 md:ml-auto">
+                                <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Sort By</span>
+                                <select
+                                  value={historySortBy}
+                                  onChange={(e) => setHistorySortBy(e.target.value)}
+                                  className="bg-[#0f1219] text-white rounded-xl px-4 py-2.5 border border-gray-700 outline-none text-sm min-w-[150px]"
+                                >
+                                  <option value="recent">Most Recent</option>
+                                  <option value="oldest">Oldest First</option>
+                                  <option value="wpm_high">Highest WPM</option>
+                                  <option value="wpm_low">Lowest WPM</option>
+                                  <option value="accuracy_high">Highest Accuracy</option>
+                                  <option value="accuracy_low">Lowest Accuracy</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {historyLoading ? (
@@ -887,14 +1034,15 @@ const ProfileHub = () => {
                         <tr className="text-gray-400 text-sm border-b border-gray-700">
                           <th className="text-left py-3 px-4">Date</th>
                           <th className="text-left py-3 px-4">Mode</th>
+                          <th className="text-left py-3 px-4">Difficulty</th>
                           <th className="text-right py-3 px-4">WPM</th>
                           <th className="text-right py-3 px-4">Accuracy</th>
-                          <th className="text-right py-3 px-4">Time</th>
-                          <th className="text-right py-3 px-4">Actions</th>
+                          <th className="text-right py-3 px-4">Duration</th>
+                          <th className="text-right py-3 px-4"></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredHistory.slice(0, 50).map((item, idx) => (
+                        {paginatedHistory.map((item, idx) => (
                           <tr key={item.id || idx} className="border-b border-gray-800 hover:bg-[#0f1219] transition">
                             <td className="py-3 px-4 text-gray-300 text-sm">
                               {item.created_at 
@@ -908,7 +1056,20 @@ const ProfileHub = () => {
                                 item.mode === 'coding' ? 'bg-purple-500/20 text-purple-400' :
                                 'bg-gray-500/20 text-gray-400'
                               }`}>
-                                {item.mode || 'Unknown'}
+                                {item.mode === 'timed' ? 'Time' : 
+                                 item.mode === 'sentence' ? 'Sentence' : 
+                                 item.mode === 'coding' ? 'Coding' : 
+                                 item.mode || 'Unknown'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                item.sub_mode === 'easy' ? 'bg-green-500/20 text-green-400' :
+                                item.sub_mode === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                item.sub_mode === 'hard' ? 'bg-red-500/20 text-red-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {item.sub_mode || '--'}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -941,10 +1102,56 @@ const ProfileHub = () => {
                       </tbody>
                     </table>
                     
-                    {filteredHistory.length > 50 && (
-                      <p className="text-center text-gray-500 text-sm mt-4">
-                        Showing 50 of {filteredHistory.length} results
-                      </p>
+                    {/* Pagination */}
+                    {totalHistoryPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-800">
+                        <p className="text-gray-500 text-sm">
+                          Showing {((historyPage - 1) * HISTORY_PER_PAGE) + 1} - {Math.min(historyPage * HISTORY_PER_PAGE, filteredHistory.length)} of {filteredHistory.length}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                            disabled={historyPage === 1}
+                            className="px-3 py-1.5 text-sm bg-[#0f1219] text-gray-400 rounded-lg border border-gray-700 hover:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Previous
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalHistoryPages) }, (_, i) => {
+                              let pageNum
+                              if (totalHistoryPages <= 5) {
+                                pageNum = i + 1
+                              } else if (historyPage <= 3) {
+                                pageNum = i + 1
+                              } else if (historyPage >= totalHistoryPages - 2) {
+                                pageNum = totalHistoryPages - 4 + i
+                              } else {
+                                pageNum = historyPage - 2 + i
+                              }
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setHistoryPage(pageNum)}
+                                  className={`w-8 h-8 text-sm rounded-lg transition ${
+                                    historyPage === pageNum
+                                      ? 'bg-yellow-400 text-black font-semibold'
+                                      : 'bg-[#0f1219] text-gray-400 border border-gray-700 hover:border-gray-600'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <button
+                            onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                            disabled={historyPage === totalHistoryPages}
+                            className="px-3 py-1.5 text-sm bg-[#0f1219] text-gray-400 rounded-lg border border-gray-700 hover:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

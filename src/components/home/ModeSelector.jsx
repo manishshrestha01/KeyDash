@@ -1,14 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Globe, Code, Hash, FileText, Clock, Trophy, Users, Bot,
-  ChevronDown, Flame, Target, Zap
+  ChevronDown, Flame, Target, Zap, Check
 } from 'lucide-react'
 import { useAppStore } from '../../store'
 import TypingEngine from '../typing/TypingEngine'
 
+// Custom Sentence icon
+const SentenceIcon = ({ className }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M6 5h12"/>
+    <path d="M4 12h10"/>
+    <path d="M12 19h8"/>
+  </svg>
+)
+
 // Mode data imports
 import englishData from '../../assets/english/english.json'
+import nepaliData from '../../assets/nepali/nepali.json'
 import timedData from '../../assets/english/timed.json'
 import javascriptCode from '../../assets/coding/javascript.json'
 import pythonCode from '../../assets/coding/python.json'
@@ -17,12 +38,18 @@ import cCode from '../../assets/coding/c.json'
 import cppCode from '../../assets/coding/cpp.json'
 import symbolsData from '../../assets/symbols/symbols.json'
 
+// Language configurations
+const LANGUAGES = {
+  english: { name: 'English' },
+  nepali: { name: 'Nepali' },
+}
+
 // Mode configurations
 const MODES = {
-  english: {
-    name: 'English',
-    icon: Globe,
-    description: 'Classic typing with English quotes',
+  sentence: {
+    name: 'Sentence',
+    icon: SentenceIcon,
+    description: 'Classic typing with quotes',
     subModes: [
       { key: 'easy', name: 'Easy', range: [0, 100] },
       { key: 'medium', name: 'Medium', range: [101, 300] },
@@ -31,7 +58,7 @@ const MODES = {
     ]
   },
   timed: {
-    name: 'Timed',
+    name: 'Time',
     icon: Clock,
     description: 'Race against the clock',
     subModes: [
@@ -89,8 +116,8 @@ const SPECIAL_MODES = {
   },
 }
 
-// Get random sentence from quotes based on difficulty
-const getRandomQuote = (difficulty = 'medium') => {
+// Get random sentence from quotes based on difficulty and language
+const getRandomQuote = (difficulty = 'medium', language = 'english') => {
   const ranges = {
     easy: [0, 100],
     medium: [101, 300],
@@ -98,17 +125,34 @@ const getRandomQuote = (difficulty = 'medium') => {
     extreme: [601, 9999],
   }
   const [min, max] = ranges[difficulty] || ranges.medium
-  const filtered = englishData.quotes.filter(q => q.length >= min && q.length <= max)
+  
+  // Select data based on language
+  const data = language === 'nepali' ? nepaliData : englishData
+  const quotes = data.quotes || data.sentences || []
+  
+  const filtered = quotes.filter(q => {
+    const text = q.text || q
+    const len = typeof text === 'string' ? text.length : 0
+    return len >= min && len <= max
+  })
+  
   if (filtered.length === 0) return 'No text found for this difficulty.'
-  return filtered[Math.floor(Math.random() * filtered.length)].text
+  const item = filtered[Math.floor(Math.random() * filtered.length)]
+  return item.text || item
 }
 
 // Get random words for timed mode
-const getRandomWords = (count = 100) => {
+const getRandomWords = (count = 100, language = 'english') => {
   const words = []
+  const wordList = language === 'nepali' 
+    ? (nepaliData.words || []) 
+    : (timedData.words || [])
+  
+  if (wordList.length === 0) return 'No words available'
+  
   for (let i = 0; i < count; i++) {
-    const idx = Math.floor(Math.random() * timedData.words.length)
-    words.push(timedData.words[idx])
+    const idx = Math.floor(Math.random() * wordList.length)
+    words.push(wordList[idx])
   }
   return words.join(' ')
 }
@@ -136,28 +180,43 @@ const getSymbolText = (difficulty) => {
 }
 
 const ModeSelector = () => {
-  const { lastMode, lastSubMode, setLastMode } = useAppStore()
+  const { lastMode, lastSubMode, lastLanguage, setLastMode, setLastLanguage } = useAppStore()
   
-  const [selectedMode, setSelectedMode] = useState(lastMode || 'english')
+  const [selectedMode, setSelectedMode] = useState(lastMode || 'sentence')
   const [selectedSubMode, setSelectedSubMode] = useState(lastSubMode || 'medium')
+  const [selectedLanguage, setSelectedLanguage] = useState(lastLanguage || 'english')
   const [targetText, setTargetText] = useState('')
   const [customText, setCustomText] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [restartKey, setRestartKey] = useState(0)
+  
+  const languageDropdownRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+        setShowLanguageDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Get time limit for timed mode
   const timeLimit = selectedMode === 'timed' ? parseInt(selectedSubMode) : null
 
-  // Generate text based on mode
+  // Generate text based on mode and language
   const generateText = useCallback(() => {
     let text = ''
     
     switch (selectedMode) {
-      case 'english':
-        text = getRandomQuote(selectedSubMode)
+      case 'sentence':
+        text = getRandomQuote(selectedSubMode, selectedLanguage)
         break
       case 'timed':
-        text = getRandomWords(100)
+        text = getRandomWords(100, selectedLanguage)
         break
       case 'coding':
         text = getRandomCode(selectedSubMode)
@@ -169,18 +228,18 @@ const ModeSelector = () => {
         text = customText || 'Enter your custom text above to start typing...'
         break
       default:
-        text = getRandomQuote('medium')
+        text = getRandomQuote('medium', selectedLanguage)
     }
     
     setTargetText(text)
-  }, [selectedMode, selectedSubMode, customText])
+  }, [selectedMode, selectedSubMode, selectedLanguage, customText])
 
-  // Generate text on mount and mode change
+  // Generate text on mount and mode/language change
   useEffect(() => {
     if (selectedMode !== 'custom') {
       generateText()
     }
-  }, [selectedMode, selectedSubMode, generateText])
+  }, [selectedMode, selectedSubMode, selectedLanguage, generateText])
 
   // Handle mode change
   const handleModeChange = (mode) => {
@@ -197,6 +256,14 @@ const ModeSelector = () => {
   const handleSubModeChange = (subMode) => {
     setSelectedSubMode(subMode)
     setLastMode(selectedMode, subMode)
+    setRestartKey(prev => prev + 1)
+  }
+
+  // Handle language change
+  const handleLanguageChange = (language) => {
+    setSelectedLanguage(language)
+    if (setLastLanguage) setLastLanguage(language)
+    setShowLanguageDropdown(false)
     setRestartKey(prev => prev + 1)
   }
 
@@ -218,11 +285,11 @@ const ModeSelector = () => {
   const currentModeConfig = MODES[selectedMode]
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
       {/* Mode Selector */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         {/* Main Modes */}
-        <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-4">
+        <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 md:gap-3 mb-3 sm:mb-4">
           {Object.entries(MODES).map(([key, mode]) => {
             const Icon = mode.icon
             const isActive = selectedMode === key
@@ -234,7 +301,7 @@ const ModeSelector = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={`
-                  flex items-center gap-2 px-4 py-2 rounded-full font-medium
+                  flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium text-sm sm:text-base
                   transition-all duration-200 border
                   ${isActive 
                     ? 'bg-yellow-400 text-black border-yellow-400 shadow-lg shadow-yellow-400/20' 
@@ -243,7 +310,7 @@ const ModeSelector = () => {
                 `}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{mode.name}</span>
+                <span className="hidden xs:inline sm:inline">{mode.name}</span>
               </motion.button>
             )
           })}
@@ -257,7 +324,7 @@ const ModeSelector = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex flex-wrap justify-center gap-2"
+              className="flex flex-wrap justify-center gap-1.5 sm:gap-2"
             >
               {currentModeConfig.subModes.map((subMode) => {
                 const isActive = selectedSubMode === subMode.key
@@ -267,7 +334,7 @@ const ModeSelector = () => {
                     key={subMode.key}
                     onClick={() => handleSubModeChange(subMode.key)}
                     className={`
-                      px-3 py-1.5 rounded-full text-sm font-medium
+                      px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium
                       transition-all duration-200 border
                       ${isActive 
                         ? 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50' 
@@ -282,6 +349,54 @@ const ModeSelector = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Language Selector Dropdown - show for sentence and timed modes */}
+        {(selectedMode === 'sentence' || selectedMode === 'timed') && (
+          <div className="flex justify-center mt-3 sm:mt-4" ref={languageDropdownRef}>
+            <div className="relative">
+              <button
+                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-lg shadow-yellow-400/20"
+              >
+                <Globe className="w-5 h-5" />
+                <span>{LANGUAGES[selectedLanguage]?.name || 'English'}</span>
+              </button>
+              
+              <AnimatePresence>
+                {showLanguageDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 min-w-[140px]"
+                  >
+                    {Object.entries(LANGUAGES).map(([key, lang]) => {
+                      const isActive = selectedLanguage === key
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => handleLanguageChange(key)}
+                          className={`
+                            w-full flex items-center justify-between px-4 py-2.5 text-sm text-left
+                            transition-all duration-150
+                            ${isActive 
+                              ? 'bg-yellow-400/20 text-yellow-400' 
+                              : 'text-gray-300 hover:bg-gray-700/50'
+                            }
+                          `}
+                        >
+                          <span>{lang.name}</span>
+                          {isActive && <Check className="w-4 h-4" />}
+                        </button>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
 
         {/* Custom Text Input */}
         {selectedMode === 'custom' && (
@@ -314,7 +429,7 @@ const ModeSelector = () => {
       </div>
 
       {/* Special Modes Row */}
-      <div className="flex justify-center gap-3 mb-8">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
         {Object.entries(SPECIAL_MODES).map(([key, mode]) => {
           const Icon = mode.icon
           return (
@@ -323,13 +438,13 @@ const ModeSelector = () => {
               href={`/${key.replace('_', '-')}`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl
                        bg-gradient-to-r from-gray-800 to-gray-700/50
                        border border-gray-600/50 text-gray-300 hover:text-white
                        transition-all duration-200 hover:border-gray-500"
             >
               <Icon className="w-4 h-4 text-yellow-400" />
-              <span className="text-sm font-medium">{mode.name}</span>
+              <span className="text-xs sm:text-sm font-medium">{mode.name}</span>
             </motion.a>
           )
         })}
@@ -341,6 +456,7 @@ const ModeSelector = () => {
         text={targetText}
         mode={selectedMode}
         subMode={selectedSubMode}
+        language={selectedLanguage}
         timeLimit={timeLimit}
         onRestart={handleRestart}
         showLiveStats={true}

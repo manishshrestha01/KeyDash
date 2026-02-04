@@ -374,6 +374,12 @@ const MultiplayerLobby = () => {
   // Start the race (host only)
   const handleStartRace = async () => {
     if (!isHost || !currentRoom?.id) return
+    
+    // Require at least 2 participants
+    if (participants.length < 2) {
+      toast.error('Need at least 2 players to start the race')
+      return
+    }
 
     try {
       // Countdown
@@ -725,14 +731,14 @@ const MultiplayerLobby = () => {
           {/* Start Button (Host only) */}
           {isHost && (
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: participants.length >= 2 ? 1.02 : 1 }}
+              whileTap={{ scale: participants.length >= 2 ? 0.98 : 1 }}
               onClick={handleStartRace}
-              disabled={participants.length < 1}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-yellow-400 text-black rounded-xl font-bold text-lg hover:bg-yellow-300 transition-colors disabled:opacity-50"
+              disabled={participants.length < 2}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-yellow-400 text-black rounded-xl font-bold text-lg hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-6 h-6" />
-              Start Race {participants.length < 2 && '(Waiting for players...)'}
+              {participants.length < 2 ? 'Waiting for players...' : 'Start Race'}
             </motion.button>
           )}
 

@@ -32,9 +32,11 @@ export const useAppStore = create(
       setShowLiveAccuracy: (show) => set({ showLiveAccuracy: show }),
 
       // Typing mode preferences
-      lastMode: 'english',
+      lastMode: 'sentence',
       lastSubMode: 'medium',
+      lastLanguage: 'english',
       setLastMode: (mode, subMode) => set({ lastMode: mode, lastSubMode: subMode }),
+      setLastLanguage: (language) => set({ lastLanguage: language }),
     }),
     {
       name: 'keydash-settings',

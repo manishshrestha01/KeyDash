@@ -11,8 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion'
  * 
  * Props:
  * - text: The target text to type
- * - mode: 'english' | 'nepali' | 'coding' | 'symbols' | 'custom' | 'daily' | 'weekly' | 'monthly' | 'multiplayer' | 'ai_battle'
- * - subMode: specific language or difficulty
+ * - mode: 'sentence' | 'timed' | 'coding' | 'symbols' | 'custom' | 'daily' | 'multiplayer' | 'ai_battle'
+ * - subMode: specific difficulty or time duration
+ * - language: 'english' | 'nepali'
  * - timeLimit: optional time limit in seconds (for timed mode)
  * - onProgress: callback for progress updates (for multiplayer/AI)
  * - onComplete: callback when typing is complete
@@ -21,8 +22,9 @@ import { motion, AnimatePresence } from 'framer-motion'
  */
 const TypingEngine = ({
   text = '',
-  mode = 'english',
+  mode = 'sentence',
   subMode = '',
+  language = 'english',
   timeLimit = null,
   onProgress = null,
   onComplete = null,
@@ -51,6 +53,7 @@ const TypingEngine = ({
   // Tracking
   const [lockedIndex, setLockedIndex] = useState(0)
   const [caretState, setCaretState] = useState('idle')
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
   const wrongIndicesRef = useRef(new Set())
   const correctionsRef = useRef(0)
   const charTimingsRef = useRef([])
@@ -67,43 +70,78 @@ const TypingEngine = ({
   const CARET_ACTIVE_TIMEOUT = 600
   const CARET_POP_DURATION = 160
 
-  // Font size classes
-  const fontSizeClasses = {
-    small: 'text-lg md:text-xl',
-    medium: 'text-xl md:text-2xl',
-    large: 'text-2xl md:text-3xl',
-  }
-
-  // Responsive chars per line
-  const getCharsPerLine = useCallback(() => {
-    if (typeof window === 'undefined') return 50
-    if (window.innerWidth >= 1280) return 55
-    if (window.innerWidth >= 1024) return 45
-    if (window.innerWidth >= 768) return 38
-    if (window.innerWidth >= 640) return 42
-    if (window.innerWidth >= 425) return 36
-    if (window.innerWidth >= 375) return 32
-    if (window.innerWidth >= 320) return 26
-    return 22
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Split text into lines
+  // Font size classes
+  const fontSizeClasses = {
+    small: 'text-base sm:text-lg md:text-xl',
+    medium: 'text-lg sm:text-xl md:text-2xl',
+    large: 'text-xl sm:text-2xl md:text-3xl',
+  }
+
+  // Responsive chars per line - optimized for comfortable mobile reading
+  const getCharsPerLine = useCallback(() => {
+    const width = windowWidth
+    if (width >= 1280) return 52
+    if (width >= 1024) return 45
+    if (width >= 768) return 38
+    if (width >= 640) return 32
+    if (width >= 425) return 28
+    if (width >= 375) return 24
+    if (width >= 320) return 20
+    return 18
+  }, [windowWidth])
+
+  // Split text into lines - preserve exact character positions
   const lines = useMemo(() => {
     if (!text) return []
     const charsPerLine = getCharsPerLine()
-    const words = text.split(' ')
     const result = []
     let currentLine = ''
+    let i = 0
 
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word
-      if (testLine.length <= charsPerLine) {
-        currentLine = testLine
+    while (i < text.length) {
+      // Find the next word boundary
+      let wordEnd = i
+      while (wordEnd < text.length && text[wordEnd] !== ' ') {
+        wordEnd++
+      }
+      
+      const word = text.slice(i, wordEnd)
+      const hasSpaceAfter = text[wordEnd] === ' '
+      
+      // Check if adding this word (plus space if needed) would exceed line length
+      const testLine = currentLine + word + (hasSpaceAfter ? ' ' : '')
+      
+      if (testLine.length <= charsPerLine || currentLine === '') {
+        // Add word to current line
+        currentLine += word
+        if (hasSpaceAfter) {
+          currentLine += ' '
+          i = wordEnd + 1
+        } else {
+          i = wordEnd
+        }
       } else {
-        if (currentLine) result.push(currentLine + ' ')
+        // Start new line with this word
+        if (currentLine) result.push(currentLine)
         currentLine = word
+        if (hasSpaceAfter) {
+          currentLine += ' '
+          i = wordEnd + 1
+        } else {
+          i = wordEnd
+        }
       }
     }
+
     if (currentLine) result.push(currentLine)
     return result
   }, [text, getCharsPerLine])
@@ -255,6 +293,7 @@ const TypingEngine = ({
       corrections: correctionsRef.current,
       mode,
       subMode,
+      language,
     }
 
     // Save to typing history
@@ -264,6 +303,7 @@ const TypingEngine = ({
           user_id: user.id,
           mode,
           sub_mode: subMode,
+          language,
           original_text: text,
           typed_text: finalInput,
           wpm: Math.round(wpmVal),
@@ -435,39 +475,39 @@ const TypingEngine = ({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4">
-      {/* Live Stats Bar */}
+    <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
+      {/* Live Stats Bar - Mobile optimized */}
       {showLiveStats && (showLiveWpm || showLiveAccuracy || timeLimit) && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center gap-6 md:gap-10 mb-6 text-lg md:text-xl"
+          className="flex justify-center flex-wrap gap-3 sm:gap-6 md:gap-10 mb-4 sm:mb-6 text-sm sm:text-lg md:text-xl"
         >
           {timeLimit && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400">Time:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-gray-400 text-xs sm:text-base">Time:</span>
               <span className={`font-mono font-bold ${timeLeft && timeLeft <= 10 ? 'text-red-400' : 'text-yellow-400'}`}>
                 {timeLeft}s
               </span>
             </div>
           )}
           {showLiveWpm && startTime && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400">WPM:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-gray-400 text-xs sm:text-base">WPM:</span>
               <span className="font-mono font-bold text-yellow-400">{wpm}</span>
             </div>
           )}
           {showLiveAccuracy && startTime && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400">Accuracy:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-gray-400 text-xs sm:text-base">Acc:</span>
               <span className={`font-mono font-bold ${accuracy >= 95 ? 'text-green-400' : accuracy >= 80 ? 'text-yellow-400' : 'text-red-400'}`}>
                 {accuracy}%
               </span>
             </div>
           )}
           {startTime && errors > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400">Errors:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-gray-400 text-xs sm:text-base">Err:</span>
               <span className="font-mono font-bold text-red-400">
                 {errors}
               </span>
@@ -481,8 +521,9 @@ const TypingEngine = ({
         ref={containerRef}
         onClick={handleContainerClick}
         className={`
-          relative bg-[#1a1f2e] rounded-xl p-6 md:p-8 cursor-text
+          relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 cursor-text
           border border-gray-700/50 hover:border-gray-600/50 transition-colors
+          min-h-[120px] sm:min-h-[160px]
           ${isFinished ? 'opacity-70' : ''}
         `}
       >
@@ -503,7 +544,7 @@ const TypingEngine = ({
         />
 
         {/* Text Display */}
-        <div className={`${fontSizeClasses[fontSize]} font-mono leading-relaxed tracking-wide select-none`}>
+        <div className={`${fontSizeClasses[fontSize]} font-mono leading-relaxed tracking-wide select-none overflow-hidden`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={visibleLineIndices.startLine}
@@ -523,6 +564,7 @@ const TypingEngine = ({
                   <div 
                     key={actualLineIdx} 
                     className={`
+                      whitespace-pre-wrap break-words
                       ${actualLineIdx === visibleLineIndices.currentLineIdx ? 'opacity-100' : 'opacity-50'}
                       transition-opacity duration-200
                     `}

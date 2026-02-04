@@ -276,7 +276,7 @@ const Navbar = () => {
                     Achievements
                   </NavLink>
                   <NavLink
-                    to="/leaderboard/v2"
+                    to="/leaderboard"
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center px-4 py-3 hover:bg-gray-100"
                   >
