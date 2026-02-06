@@ -68,6 +68,7 @@ const TypingEngine = ({
   const intervalRef = useRef(null)
   const caretIdleTimerRef = useRef(null)
   const caretPopTimerRef = useRef(null)
+  const isFinishingRef = useRef(false) // To handle race conditions on finish
 
   // Measured chars per line (based on actual font metrics)
   const [measuredCharsPerLine, setMeasuredCharsPerLine] = useState(null)
@@ -185,6 +186,7 @@ const TypingEngine = ({
     setErrors(0)
 
     setLockedIndex(0)
+    isFinishingRef.current = false
     wrongIndicesRef.current.clear()
     correctionsRef.current = 0
     charTimingsRef.current = []
@@ -271,8 +273,10 @@ const TypingEngine = ({
 
   // Handle typing finish
   const handleFinish = async (finalInput = input, finishStartTime = startTime, forcedTimeUp = false) => {
-    if (!finishStartTime || isFinished) return
+    if (!finishStartTime || isFinishingRef.current) return
 
+    // Immediately mark as finishing to prevent duplicate calls
+    isFinishingRef.current = true
     setIsFinished(true)
 
     const durationSec = forcedTimeUp && timeLimit 
@@ -397,6 +401,7 @@ const TypingEngine = ({
     setErrors(0)
     setLockedIndex(0)
     setCaretState('idle')
+    isFinishingRef.current = false
     wrongIndicesRef.current.clear()
     correctionsRef.current = 0
     charTimingsRef.current = []
