@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, Save, Trash2, Play, Clock, Target, AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import TypingEngine from '../typing/TypingEngine'
 
 const CustomMode = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [customText, setCustomText] = useState('')
   const [savedTexts, setSavedTexts] = useState([])
   const [selectedText, setSelectedText] = useState(null)
@@ -128,32 +130,15 @@ const CustomMode = () => {
     setIsTyping(true)
   }
 
-  const handleComplete = async (results) => {
-    // Save results to history if logged in
-    if (user?.id) {
-      try {
-        await supabase.from('typing_history').insert({
-          user_id: user.id,
-          mode: 'custom',
-          sub_mode: null,
-          original_text: customText.trim(),
-          typed_text: results.typedText || customText.trim(),
-          wpm: Math.round(results.wpm),
-          raw_wpm: Math.round(results.rawWpm || results.wpm),
-          accuracy: Math.round(results.accuracy * 10) / 10,
-          errors: results.errors || 0,
-          correct_chars: results.correctChars || 0,
-          total_chars: results.totalChars || customText.trim().length,
-          duration_seconds: results.timeTaken || results.durationSec || 0,
-          mistake_indices: results.mistakenIndices || [],
-          corrections: results.corrections || 0,
-          is_completed: true,
-        })
-      } catch (error) {
-        console.error('Error saving results:', error)
-      }
-    }
+  const handleComplete = (results) => {
     setIsTyping(false)
+    navigate('/results', {
+      state: {
+        ...results,
+        mode: 'custom',
+        subMode: null,
+      },
+    })
   }
 
   // Character and word count

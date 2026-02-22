@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { 
   Keyboard, Trophy, LayoutDashboard, User, Settings, 
-  History, LogOut, ChevronDown 
+  History, LogOut, ChevronDown, Swords
 } from "lucide-react";
 
 const NavbarV2 = () => {
@@ -11,9 +11,63 @@ const NavbarV2 = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [inviteAlert, setInviteAlert] = useState(null);
   const menuRef = useRef(null);
+  const inviteChannelRef = useRef(null);
+  const inviteAlertTimerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isInviteTableMissingError = (error) =>
+    error?.code === "42P01" || /multiplayer_invitations/i.test(error?.message || "");
+
+  const fetchPendingInvites = async (targetUserId) => {
+    if (!targetUserId) {
+      setPendingInvites([]);
+      return;
+    }
+
+    const { data: inviteRows, error: inviteError } = await supabase
+      .from("multiplayer_invitations")
+      .select("id, sender_id, room_id, created_at, status")
+      .eq("receiver_id", targetUserId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (inviteError) {
+      if (isInviteTableMissingError(inviteError)) {
+        setPendingInvites([]);
+        return;
+      }
+      console.error("Error fetching pending invites:", inviteError);
+      return;
+    }
+
+    const senderIds = [...new Set((inviteRows || []).map((row) => row.sender_id).filter(Boolean))];
+    let senderMap = new Map();
+
+    if (senderIds.length > 0) {
+      const { data: senderRows, error: senderError } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", senderIds);
+
+      if (senderError) {
+        console.error("Error fetching invite sender names:", senderError);
+      } else {
+        senderMap = new Map((senderRows || []).map((row) => [row.id, row.display_name]));
+      }
+    }
+
+    setPendingInvites(
+      (inviteRows || []).map((row) => ({
+        ...row,
+        senderName: senderMap.get(row.sender_id) || "Player",
+      }))
+    );
+  };
 
   useEffect(() => {
     let polling;
@@ -56,6 +110,70 @@ const NavbarV2 = () => {
       clearInterval(polling);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPendingInvites([]);
+      setInviteAlert(null);
+      if (inviteChannelRef.current) {
+        supabase.removeChannel(inviteChannelRef.current);
+        inviteChannelRef.current = null;
+      }
+      return;
+    }
+
+    fetchPendingInvites(user.id);
+
+    inviteChannelRef.current = supabase
+      .channel(`navbar-invites:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "multiplayer_invitations",
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          await fetchPendingInvites(user.id);
+
+          if (payload.eventType === "INSERT" && payload.new?.status === "pending") {
+            const { data: senderData } = await supabase
+              .from("profiles")
+              .select("display_name")
+              .eq("id", payload.new.sender_id)
+              .maybeSingle();
+
+            const senderName = senderData?.display_name || "Player";
+            setInviteAlert({
+              senderName,
+              roomId: payload.new.room_id,
+              createdAt: Date.now(),
+            });
+
+            if (inviteAlertTimerRef.current) {
+              clearTimeout(inviteAlertTimerRef.current);
+            }
+            inviteAlertTimerRef.current = setTimeout(() => {
+              setInviteAlert(null);
+              inviteAlertTimerRef.current = null;
+            }, 6000);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (inviteChannelRef.current) {
+        supabase.removeChannel(inviteChannelRef.current);
+        inviteChannelRef.current = null;
+      }
+      if (inviteAlertTimerRef.current) {
+        clearTimeout(inviteAlertTimerRef.current);
+        inviteAlertTimerRef.current = null;
+      }
+    };
+  }, [user?.id]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -129,7 +247,7 @@ const NavbarV2 = () => {
         </div>
 
         {/* Right Side - User */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           {loading ? (
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-700 animate-pulse" />
           ) : !user ? (
@@ -140,97 +258,132 @@ const NavbarV2 = () => {
               Login
             </NavLink>
           ) : (
-            <div className="relative" ref={menuRef}>
+            <>
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-full hover:bg-[#1a2332] transition"
+                onClick={() => navigate("/multiplayer")}
+                className="relative flex items-center gap-1 px-2.5 py-2 rounded-full bg-[#1a2332] hover:bg-[#242f3f] transition"
+                title={pendingInvites.length > 0 ? `${pendingInvites.length} pending challenge invite(s)` : "Multiplayer"}
               >
-                <div className="relative w-8 h-8 sm:w-9 sm:h-9">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl?.trim()}
-                      alt="avatar"
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-gray-600"
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null
-                        e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
-                          "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
-                        )}`
-                      }}
-                    />
-                  ) : null}
-                  <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 items-center justify-center ${avatarUrl ? 'hidden' : 'flex'}`}>
-                    {profile?.display_name ? (
-                      <span className="text-xs sm:text-sm font-bold text-black">
-                        {profile.display_name.charAt(0).toUpperCase()}
-                      </span>
-                    ) : (
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-                    )}
-                  </div>
-                </div>
-                <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform hidden sm:block ${menuOpen ? 'rotate-180' : ''}`} />
+                <Swords className="w-4 h-4 text-yellow-400" />
+                {pendingInvites.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-[#101826]">
+                    {pendingInvites.length > 9 ? "9+" : pendingInvites.length}
+                  </span>
+                )}
               </button>
 
-              {/* Dropdown Menu */}
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[#1a2332] rounded-xl shadow-xl border border-gray-700/50 overflow-hidden z-50">
-                  {/* User Info */}
-                  <div className="px-4 py-3 border-b border-gray-700/50">
-                    <p className="text-sm font-medium text-white truncate">
-                      {profile?.display_name || "User"}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {user?.email}
-                    </p>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-full hover:bg-[#1a2332] transition"
+                >
+                  <div className="relative w-8 h-8 sm:w-9 sm:h-9">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl?.trim()}
+                        alt="avatar"
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-gray-600"
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = `data:image/svg+xml;utf8,${encodeURIComponent(
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
+                          )}`
+                        }}
+                      />
+                    ) : null}
+                    <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 items-center justify-center ${avatarUrl ? 'hidden' : 'flex'}`}>
+                      {profile?.display_name ? (
+                        <span className="text-xs sm:text-sm font-bold text-black">
+                          {profile.display_name.charAt(0).toUpperCase()}
+                        </span>
+                      ) : (
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                      )}
+                    </div>
                   </div>
+                  <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform hidden sm:block ${menuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-                  {/* Menu Items */}
-                  <div className="py-1">
-                    <NavLink
-                      to="/profile"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
-                    >
-                      <User className="w-4 h-4" />
-                      Profile
-                    </NavLink>
-                    <NavLink
-                      to="/profile?tab=history"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
-                    >
-                      <History className="w-4 h-4" />
-                      History
-                    </NavLink>
-                    <NavLink
-                      to="/profile?tab=settings"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </NavLink>
-                  </div>
+                {/* Dropdown Menu */}
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-[#1a2332] rounded-xl shadow-xl border border-gray-700/50 overflow-hidden z-50">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-gray-700/50">
+                      <p className="text-sm font-medium text-white truncate">
+                        {profile?.display_name || "User"}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {user?.email}
+                      </p>
+                    </div>
 
-                  {/* Logout */}
-                  <div className="border-t border-gray-700/50 py-1">
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition w-full"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Log Out
-                    </button>
+                    {/* Menu Items */}
+                    <div className="py-1">
+                      <NavLink
+                        to="/profile"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
+                      >
+                        <User className="w-4 h-4" />
+                        Profile
+                      </NavLink>
+                      <NavLink
+                        to="/profile?tab=history"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
+                      >
+                        <History className="w-4 h-4" />
+                        History
+                      </NavLink>
+                      <NavLink
+                        to="/profile?tab=settings"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-[#242f3f] hover:text-white transition"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </NavLink>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-gray-700/50 py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Log Out
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
+      {inviteAlert && user && (
+        <div className="absolute right-4 top-full mt-2 z-50">
+          <button
+            type="button"
+            onClick={() => {
+              setInviteAlert(null);
+              navigate("/multiplayer");
+            }}
+            className="bg-[#1a2332] border border-yellow-400/40 text-gray-100 rounded-xl px-4 py-3 shadow-xl max-w-xs text-left hover:bg-[#242f3f] transition"
+          >
+            <div className="text-xs uppercase tracking-wider text-yellow-300 font-semibold">
+              New Challenge Invite
+            </div>
+            <div className="text-sm mt-1">
+              <span className="font-medium text-white">{inviteAlert.senderName}</span> challenged you.
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Tap to open multiplayer lobby</div>
+          </button>
+        </div>
+      )}
     </nav>
   );
 };

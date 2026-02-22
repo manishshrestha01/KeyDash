@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Trophy, Medal, Crown, TrendingUp, Clock, Target, Zap, ChevronLeft, ChevronRight, Search, Timer, BookOpen } from 'lucide-react'
@@ -59,11 +59,46 @@ const getRankStyle = (rank) => {
   }
 }
 
-// Helper to normalize profiles (handles array vs object from Supabase joins)
-const normalizeProfiles = (profiles) => {
-  if (!profiles) return null
-  if (Array.isArray(profiles)) return profiles[0] || null
-  return profiles
+const FETCH_LIMIT = 400
+const CACHE_TTL_MS = 60 * 1000
+const PROFILE_BATCH_SIZE = 200
+
+const toNumber = (value, fallback = 0) => {
+  const parsed = typeof value === 'string' ? Number(value) : value
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const chunkArray = (arr, size) => {
+  const chunks = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
+const fetchProfilesMap = async (userIds) => {
+  const uniqueIds = [...new Set((userIds || []).filter(Boolean))]
+  if (uniqueIds.length === 0) return new Map()
+
+  const profileBatches = chunkArray(uniqueIds, PROFILE_BATCH_SIZE)
+  const profileResults = await Promise.all(
+    profileBatches.map((batch) =>
+      supabase.from('profiles').select('id, display_name, avatar_url').in('id', batch)
+    )
+  )
+
+  const profileMap = new Map()
+  profileResults.forEach(({ data, error }) => {
+    if (error) {
+      console.error('Error fetching profile batch:', error)
+      return
+    }
+    ;(data || []).forEach((profile) => {
+      profileMap.set(profile.id, profile)
+    })
+  })
+
+  return profileMap
 }
 
 const LeaderboardV2 = () => {
@@ -78,12 +113,28 @@ const LeaderboardV2 = () => {
   const [page, setPage] = useState(1)
   const [userRank, setUserRank] = useState(null)
   const itemsPerPage = 20
+  const leaderboardCacheRef = useRef(new Map())
+  const activeFetchRef = useRef(0)
 
   useEffect(() => {
     fetchLeaderboard()
-  }, [period, mode, timeDuration, difficulty])
+  }, [period, mode, timeDuration, difficulty, user?.id])
 
   const fetchLeaderboard = async () => {
+    const fetchId = ++activeFetchRef.current
+    const cacheKey = `${period}|${mode}|${timeDuration}|${difficulty}`
+    const cached = leaderboardCacheRef.current.get(cacheKey)
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+      setLeaderboard(cached.rows)
+      if (user?.id) {
+        const rank = cached.rows.findIndex((entry) => entry.user_id === user.id)
+        setUserRank(rank >= 0 ? cached.rows[rank] : null)
+      } else {
+        setUserRank(null)
+      }
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       // Calculate date range based on period
@@ -110,252 +161,217 @@ const LeaderboardV2 = () => {
 
       let allData = []
 
-      // For daily/weekly/monthly - fetch ALL results without mode filtering
       if (period !== 'all_time') {
-        // Fetch from typing_history (all modes)
-        let historyQuery = supabase
-          .from('typing_history')
-          .select(`
-            id,
-            user_id,
-            wpm,
-            accuracy,
-            errors,
-            mode,
-            sub_mode,
-            duration_seconds,
-            created_at,
-            profiles:user_id (display_name, avatar_url)
-          `)
-          .gte('created_at', startDate.toISOString())
-          .order('wpm', { ascending: false })
-          .limit(500)
+        const sinceIso = startDate.toISOString()
+        const [historyResult, timedResult, sentenceResult] = await Promise.all([
+          supabase
+            .from('typing_history')
+            .select('id, user_id, wpm, accuracy, errors, mode, sub_mode, duration_seconds, created_at')
+            .gte('created_at', sinceIso)
+            .neq('mode', 'custom')
+            .order('wpm', { ascending: false })
+            .limit(FETCH_LIMIT),
+          supabase
+            .from('leaderboard_timed')
+            .select('id, user_id, wpm, accuracy, time, created_at')
+            .gte('created_at', sinceIso)
+            .order('wpm', { ascending: false })
+            .limit(FETCH_LIMIT),
+          supabase
+            .from('leaderboard_sentence')
+            .select('id, user_id, wpm, accuracy, difficulty, time, created_at')
+            .gte('created_at', sinceIso)
+            .order('wpm', { ascending: false })
+            .limit(FETCH_LIMIT),
+        ])
 
-        const { data: historyData } = await historyQuery
-        if (historyData) {
-          allData = historyData.map(entry => ({
-            ...entry,
-            profiles: normalizeProfiles(entry.profiles),
-            time: Math.round(entry.duration_seconds),
-            source: 'typing_history'
-          }))
+        const { data: historyData, error: historyError } = historyResult
+        const { data: timedData, error: timedError } = timedResult
+        const { data: sentenceData, error: sentenceError } = sentenceResult
+
+        if (historyError) console.error('Error fetching typing_history leaderboard:', historyError)
+        if (timedError) console.error('Error fetching timed leaderboard:', timedError)
+        if (sentenceError) console.error('Error fetching sentence leaderboard:', sentenceError)
+
+        if (historyData?.length) {
+          allData.push(
+            ...historyData.map((entry) => ({
+              ...entry,
+              wpm: Math.round(toNumber(entry.wpm, 0)),
+              accuracy: toNumber(entry.accuracy, 0),
+              errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
+              time: Math.round(toNumber(entry.duration_seconds, 0)),
+              source: 'typing_history',
+            }))
+          )
         }
 
-        // Fetch from leaderboard_timed
-        let timedQuery = supabase
-          .from('leaderboard_timed')
-          .select(`
-            id,
-            user_id,
-            wpm,
-            accuracy,
-            time,
-            created_at,
-            profiles:user_id (display_name, avatar_url)
-          `)
-          .gte('created_at', startDate.toISOString())
-          .order('wpm', { ascending: false })
-          .limit(500)
-
-        const { data: timedData } = await timedQuery
-        if (timedData) {
-          allData = [...allData, ...timedData.map(entry => ({
-            ...entry,
-            profiles: normalizeProfiles(entry.profiles),
-            mode: 'timed',
-            errors: 0,
-            source: 'leaderboard_timed'
-          }))]
+        if (timedData?.length) {
+          allData.push(
+            ...timedData.map((entry) => ({
+              ...entry,
+              wpm: Math.round(toNumber(entry.wpm, 0)),
+              accuracy: toNumber(entry.accuracy, 0),
+              errors: 0,
+              mode: 'timed',
+              source: 'leaderboard_timed',
+            }))
+          )
         }
 
-        // Fetch from leaderboard_sentence
-        let sentenceQuery = supabase
-          .from('leaderboard_sentence')
-          .select(`
-            id,
-            user_id,
-            wpm,
-            accuracy,
-            difficulty,
-            time,
-            created_at,
-            profiles:user_id (display_name, avatar_url)
-          `)
-          .gte('created_at', startDate.toISOString())
-          .order('wpm', { ascending: false })
-          .limit(500)
-
-        const { data: sentenceData } = await sentenceQuery
-        if (sentenceData) {
-          allData = [...allData, ...sentenceData.map(entry => ({
-            ...entry,
-            profiles: normalizeProfiles(entry.profiles),
-            mode: 'sentence',
-            errors: 0,
-            source: 'leaderboard_sentence'
-          }))]
+        if (sentenceData?.length) {
+          allData.push(
+            ...sentenceData.map((entry) => ({
+              ...entry,
+              wpm: Math.round(toNumber(entry.wpm, 0)),
+              accuracy: toNumber(entry.accuracy, 0),
+              errors: 0,
+              mode: 'sentence',
+              source: 'leaderboard_sentence',
+            }))
+          )
         }
-
       } else {
         // All Time - filter by mode
         if (mode === 'timed') {
-          // Fetch from leaderboard_timed (v1 table)
-          let query = supabase
-            .from('leaderboard_timed')
-            .select(`
-              id,
-              user_id,
-              wpm,
-              accuracy,
-              time,
-              created_at,
-              profiles:user_id (display_name, avatar_url)
-            `)
-            .eq('time', timeDuration)
-            .order('wpm', { ascending: false })
-            .limit(500)
+          const [timedResult, historyResult] = await Promise.all([
+            supabase
+              .from('leaderboard_timed')
+              .select('id, user_id, wpm, accuracy, time, created_at')
+              .eq('time', timeDuration)
+              .order('wpm', { ascending: false })
+              .limit(FETCH_LIMIT),
+            supabase
+              .from('typing_history')
+              .select('id, user_id, wpm, accuracy, errors, duration_seconds, created_at')
+              .eq('mode', 'timed')
+              .gte('duration_seconds', timeDuration - 1)
+              .lte('duration_seconds', timeDuration + 1)
+              .order('wpm', { ascending: false })
+              .limit(FETCH_LIMIT),
+          ])
 
-          const { data: timedData, error: timedError } = await query
+          const { data: timedData, error: timedError } = timedResult
+          const { data: historyData, error: historyError } = historyResult
+
           if (timedError) console.error('Error fetching timed leaderboard:', timedError)
-          
-          if (timedData) {
-            allData = timedData.map(entry => ({
-              ...entry,
-              profiles: normalizeProfiles(entry.profiles),
-              errors: 0,
-              source: 'leaderboard_timed'
-            }))
+          if (historyError) console.error('Error fetching timed typing_history leaderboard:', historyError)
+
+          if (timedData?.length) {
+            allData.push(
+              ...timedData.map((entry) => ({
+                ...entry,
+                wpm: Math.round(toNumber(entry.wpm, 0)),
+                accuracy: toNumber(entry.accuracy, 0),
+                errors: 0,
+                source: 'leaderboard_timed',
+              }))
+            )
           }
 
-          // Also fetch from typing_history for v2 data
-          let historyQuery = supabase
-            .from('typing_history')
-            .select(`
-              id,
-              user_id,
-              wpm,
-              accuracy,
-              errors,
-              duration_seconds,
-              created_at,
-              profiles:user_id (display_name, avatar_url)
-            `)
-            .eq('mode', 'timed')
-            .gte('duration_seconds', timeDuration - 1)
-            .lte('duration_seconds', timeDuration + 1)
-            .order('wpm', { ascending: false })
-            .limit(500)
-
-          const { data: historyData } = await historyQuery
-          if (historyData) {
-            const mappedHistoryData = historyData.map(entry => ({
-              ...entry,
-              profiles: normalizeProfiles(entry.profiles),
-              time: Math.round(entry.duration_seconds),
-              source: 'typing_history'
-            }))
-            allData = [...allData, ...mappedHistoryData]
+          if (historyData?.length) {
+            allData.push(
+              ...historyData.map((entry) => ({
+                ...entry,
+                wpm: Math.round(toNumber(entry.wpm, 0)),
+                accuracy: toNumber(entry.accuracy, 0),
+                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
+                time: Math.round(toNumber(entry.duration_seconds, 0)),
+                source: 'typing_history',
+              }))
+            )
           }
-
         } else {
-          // Sentence mode
-          // Fetch from leaderboard_sentence (v1 table)
-          let query = supabase
-            .from('leaderboard_sentence')
-            .select(`
-              id,
-              user_id,
-              wpm,
-              accuracy,
-              difficulty,
-              time,
-              created_at,
-              profiles:user_id (display_name, avatar_url)
-            `)
-            .eq('difficulty', difficulty)
-            .order('wpm', { ascending: false })
-            .limit(500)
+          const [sentenceResult, historyResult] = await Promise.all([
+            supabase
+              .from('leaderboard_sentence')
+              .select('id, user_id, wpm, accuracy, difficulty, time, created_at')
+              .eq('difficulty', difficulty)
+              .order('wpm', { ascending: false })
+              .limit(FETCH_LIMIT),
+            supabase
+              .from('typing_history')
+              .select('id, user_id, wpm, accuracy, errors, sub_mode, duration_seconds, created_at')
+              .eq('mode', 'sentence')
+              .eq('sub_mode', difficulty)
+              .order('wpm', { ascending: false })
+              .limit(FETCH_LIMIT),
+          ])
 
-          const { data: sentenceData, error: sentenceError } = await query
+          const { data: sentenceData, error: sentenceError } = sentenceResult
+          const { data: historyData, error: historyError } = historyResult
+
           if (sentenceError) console.error('Error fetching sentence leaderboard:', sentenceError)
-          
-          if (sentenceData) {
-            allData = sentenceData.map(entry => ({
-              ...entry,
-              profiles: normalizeProfiles(entry.profiles),
-              errors: 0,
-              source: 'leaderboard_sentence'
-            }))
+          if (historyError) console.error('Error fetching sentence typing_history leaderboard:', historyError)
+
+          if (sentenceData?.length) {
+            allData.push(
+              ...sentenceData.map((entry) => ({
+                ...entry,
+                wpm: Math.round(toNumber(entry.wpm, 0)),
+                accuracy: toNumber(entry.accuracy, 0),
+                errors: 0,
+                source: 'leaderboard_sentence',
+              }))
+            )
           }
 
-          // Also fetch from typing_history for v2 data
-          let historyQuery = supabase
-            .from('typing_history')
-            .select(`
-              id,
-              user_id,
-              wpm,
-              accuracy,
-              errors,
-              sub_mode,
-              duration_seconds,
-              created_at,
-              profiles:user_id (display_name, avatar_url)
-            `)
-            .eq('mode', 'sentence')
-            .eq('sub_mode', difficulty)
-            .order('wpm', { ascending: false })
-            .limit(500)
-
-          const { data: historyData } = await historyQuery
-          if (historyData) {
-            const mappedHistoryData = historyData.map(entry => ({
-              ...entry,
-              profiles: normalizeProfiles(entry.profiles),
-              difficulty: entry.sub_mode,
-              time: entry.duration_seconds,
-              source: 'typing_history'
-            }))
-            allData = [...allData, ...mappedHistoryData]
+          if (historyData?.length) {
+            allData.push(
+              ...historyData.map((entry) => ({
+                ...entry,
+                wpm: Math.round(toNumber(entry.wpm, 0)),
+                accuracy: toNumber(entry.accuracy, 0),
+                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
+                difficulty: entry.sub_mode || difficulty,
+                time: Math.round(toNumber(entry.duration_seconds, 0)),
+                source: 'typing_history',
+              }))
+            )
           }
         }
       }
 
       // Also fetch from challenge_attempts for Daily Challenge when period is 'daily'
       if (period === 'daily') {
-        // Get today's active daily challenge
-        const { data: challengeData } = await supabase
+        const today = new Date().toISOString().slice(0, 10)
+        const { data: challengeData, error: challengeError } = await supabase
           .from('challenges')
           .select('id')
           .eq('challenge_type', 'daily')
           .eq('is_active', true)
+          .lte('start_date', today)
+          .gte('end_date', today)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
 
-        if (challengeData) {
-          const { data: attemptData } = await supabase
+        if (challengeError) {
+          console.error('Error fetching daily challenge metadata:', challengeError)
+        }
+
+        if (challengeData?.id) {
+          const { data: attemptData, error: attemptError } = await supabase
             .from('challenge_attempts')
-            .select('*')
+            .select('id, user_id, wpm, accuracy, errors, duration_seconds, created_at')
             .eq('challenge_id', challengeData.id)
             .order('wpm', { ascending: false })
-            .limit(500)
+            .limit(FETCH_LIMIT)
 
-          if (attemptData && attemptData.length > 0) {
-            // Fetch profiles separately
-            const userIds = [...new Set(attemptData.map(d => d.user_id))]
-            const { data: profiles } = await supabase
-              .from('profiles')
-              .select('id, display_name, avatar_url')
-              .in('id', userIds)
-
-            const challengeEntries = attemptData.map(entry => ({
-              ...entry,
-              profiles: profiles?.find(p => p.id === entry.user_id) || null,
-              time: entry.duration_seconds,
-              source: 'challenge_attempts'
-            }))
-            allData = [...allData, ...challengeEntries]
+          if (attemptError) {
+            console.error('Error fetching daily challenge attempts:', attemptError)
+          } else if (attemptData?.length) {
+            allData.push(
+              ...attemptData.map((entry) => ({
+                ...entry,
+                wpm: Math.round(toNumber(entry.wpm, 0)),
+                accuracy: toNumber(entry.accuracy, 0),
+                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
+                mode: 'daily',
+                time: Math.round(toNumber(entry.duration_seconds, 0)),
+                source: 'challenge_attempts',
+              }))
+            )
           }
         }
       }
@@ -363,10 +379,20 @@ const LeaderboardV2 = () => {
       // Group by user and get best scores (deduplicate)
       const userBestScores = {}
       allData.forEach((entry) => {
+        if (!entry?.user_id) return
         const userId = entry.user_id
         if (!userBestScores[userId] || entry.wpm > userBestScores[userId].wpm) {
           userBestScores[userId] = entry
-        } else if (entry.wpm === userBestScores[userId].wpm && entry.accuracy > userBestScores[userId].accuracy) {
+        } else if (
+          entry.wpm === userBestScores[userId].wpm &&
+          entry.accuracy > userBestScores[userId].accuracy
+        ) {
+          userBestScores[userId] = entry
+        } else if (
+          entry.wpm === userBestScores[userId].wpm &&
+          entry.accuracy === userBestScores[userId].accuracy &&
+          (entry.errors || 0) < (userBestScores[userId].errors || 0)
+        ) {
           userBestScores[userId] = entry
         }
       })
@@ -380,17 +406,33 @@ const LeaderboardV2 = () => {
         })
         .map((entry, idx) => ({ ...entry, rank: idx + 1 }))
 
-      setLeaderboard(sortedLeaderboard)
+      const profilesById = await fetchProfilesMap(sortedLeaderboard.map((entry) => entry.user_id))
+      const leaderboardWithProfiles = sortedLeaderboard.map((entry) => ({
+        ...entry,
+        profiles: profilesById.get(entry.user_id) || null,
+      }))
+
+      if (fetchId !== activeFetchRef.current) return
+
+      setLeaderboard(leaderboardWithProfiles)
+      leaderboardCacheRef.current.set(cacheKey, {
+        fetchedAt: Date.now(),
+        rows: leaderboardWithProfiles,
+      })
 
       // Find user rank
       if (user?.id) {
-        const rank = sortedLeaderboard.findIndex((e) => e.user_id === user.id)
-        setUserRank(rank >= 0 ? sortedLeaderboard[rank] : null)
+        const rank = leaderboardWithProfiles.findIndex((e) => e.user_id === user.id)
+        setUserRank(rank >= 0 ? leaderboardWithProfiles[rank] : null)
+      } else {
+        setUserRank(null)
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error)
     } finally {
-      setLoading(false)
+      if (fetchId === activeFetchRef.current) {
+        setLoading(false)
+      }
     }
   }
 
@@ -584,7 +626,7 @@ const LeaderboardV2 = () => {
 
               return (
                 <motion.div
-                  key={entry.id}
+                  key={`${entry.source || 'score'}-${entry.id}-${entry.user_id}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}

@@ -3,45 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Users, Copy, Check, Play, Crown, Loader2, 
-  ArrowLeft, RefreshCw, Trophy, Zap
+  ArrowLeft, Trophy
 } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useMultiplayerStore } from '../../store'
 import toast, { Toaster } from 'react-hot-toast'
 import TypingEngine from '../typing/TypingEngine'
-
-// Generate random room code
-const generateRoomCode = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return code
-}
-
-// Generate race text
-const generateRaceText = () => {
-  const sentences = [
-    "The quick brown fox jumps over the lazy dog.",
-    "Pack my box with five dozen liquor jugs.",
-    "How vexingly quick daft zebras jump!",
-    "The five boxing wizards jump quickly.",
-    "Sphinx of black quartz, judge my vow.",
-    "Two driven jocks help fax my big quiz.",
-    "The jay, pig, fox, zebra and my wolves quack!",
-    "Sympathizing would fix Quaker objectives.",
-  ]
-  
-  const selected = []
-  const count = Math.floor(Math.random() * 2) + 2 // 2-3 sentences
-  for (let i = 0; i < count; i++) {
-    const idx = Math.floor(Math.random() * sentences.length)
-    selected.push(sentences[idx])
-  }
-  return selected.join(' ')
-}
+import { formatDistanceToNow } from 'date-fns'
+import { generateRaceText, generateRoomCode } from './multiplayerUtils'
 
 const MultiplayerLobby = () => {
   const navigate = useNavigate()
@@ -58,9 +28,27 @@ const MultiplayerLobby = () => {
   const [myProgress, setMyProgress] = useState(0)
   const [myWpm, setMyWpm] = useState(0)
   const [finished, setFinished] = useState(false)
-  const [results, setResults] = useState([])
+  const [incomingInvites, setIncomingInvites] = useState([])
+  const [inviteActionLoading, setInviteActionLoading] = useState({})
 
   const channelRef = useRef(null)
+  const inviteChannelRef = useRef(null)
+
+  // Reset local race UI state whenever room changes.
+  useEffect(() => {
+    setFinished(false)
+    setMyProgress(0)
+    setMyWpm(0)
+  }, [currentRoom?.id])
+
+  // Ensure countdown/waiting states always start from a clean local finish state.
+  useEffect(() => {
+    if (status === 'waiting' || status === 'countdown') {
+      setFinished(false)
+      setMyProgress(0)
+      setMyWpm(0)
+    }
+  }, [status])
 
   // Fetch user profile
   useEffect(() => {
@@ -73,6 +61,113 @@ const MultiplayerLobby = () => {
         .then(({ data }) => setProfile(data))
     }
   }, [user])
+
+  const isInviteTableMissingError = (error) =>
+    error?.code === '42P01' || /multiplayer_invitations/i.test(error?.message || '')
+
+  const fetchInvites = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const incomingRes = await supabase
+        .from('multiplayer_invitations')
+        .select('*')
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(12)
+
+      if (incomingRes.error) {
+        if (isInviteTableMissingError(incomingRes.error)) {
+          setIncomingInvites([])
+          return
+        }
+        throw incomingRes.error
+      }
+
+      const incomingRows = incomingRes.data || []
+      const senderIds = [...new Set(incomingRows.map((row) => row.sender_id).filter(Boolean))]
+      const roomIds = [...new Set(incomingRows.map((row) => row.room_id).filter(Boolean))]
+
+      const [senderProfilesRes, roomsRes] = await Promise.all([
+        senderIds.length > 0
+          ? supabase
+              .from('profiles')
+              .select('id, display_name, avatar_url')
+              .in('id', senderIds)
+          : Promise.resolve({ data: [], error: null }),
+        roomIds.length > 0
+          ? supabase
+              .from('multiplayer_rooms')
+              .select('id, room_code, status, max_players, current_players')
+              .in('id', roomIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      if (senderProfilesRes.error) throw senderProfilesRes.error
+      if (roomsRes.error) throw roomsRes.error
+
+      const senderMap = new Map((senderProfilesRes.data || []).map((p) => [p.id, p]))
+      const roomMap = new Map((roomsRes.data || []).map((r) => [r.id, r]))
+
+      setIncomingInvites(
+        incomingRows.map((row) => ({
+          ...row,
+          senderProfile: senderMap.get(row.sender_id) || null,
+          room: roomMap.get(row.room_id) || null,
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching multiplayer invites:', error)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    fetchInvites()
+  }, [fetchInvites])
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    inviteChannelRef.current = supabase
+      .channel(`multiplayer-invites:${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'multiplayer_invitations',
+        filter: `receiver_id=eq.${user.id}`,
+      }, async (payload) => {
+        if (payload.eventType === 'INSERT' && payload.new?.status === 'pending') {
+          toast.success('You received a multiplayer challenge invite')
+        }
+        await fetchInvites()
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'multiplayer_invitations',
+        filter: `sender_id=eq.${user.id}`,
+      }, (payload) => {
+        const previousStatus = payload.old?.status
+        const currentStatus = payload.new?.status
+
+        if (payload.eventType === 'UPDATE' && previousStatus !== currentStatus) {
+          if (currentStatus === 'accepted') {
+            toast.success('Your challenge invite was accepted')
+          } else if (currentStatus === 'declined') {
+            toast.error('Your challenge invite was declined')
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      if (inviteChannelRef.current) {
+        supabase.removeChannel(inviteChannelRef.current)
+        inviteChannelRef.current = null
+      }
+    }
+  }, [fetchInvites, user?.id])
 
   // Check if all players have finished
   useEffect(() => {
@@ -95,48 +190,61 @@ const MultiplayerLobby = () => {
   useEffect(() => {
     if (!currentRoom?.id) return
 
-    // Initial fetch of participants
+    const roomId = currentRoom.id
+    let cancelled = false
+
+    // Keep participants in sync even if a realtime event is missed.
     const fetchParticipants = async () => {
       const { data } = await supabase
         .from('multiplayer_participants')
         .select('*')
-        .eq('room_id', currentRoom.id)
-      if (data) setParticipants(data)
+        .eq('room_id', roomId)
+      if (!cancelled && data) setParticipants(data)
     }
     fetchParticipants()
+    const syncInterval = setInterval(fetchParticipants, 3000)
 
     // Subscribe to room updates
     channelRef.current = supabase
-      .channel(`room:${currentRoom.id}`)
+      .channel(`room:${roomId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'multiplayer_rooms',
-        filter: `id=eq.${currentRoom.id}`,
-      }, (payload) => {
+        filter: `id=eq.${roomId}`,
+      }, async (payload) => {
+        if (payload.eventType === 'DELETE') {
+          toast.error('Room was closed by host')
+          leaveRoom()
+          return
+        }
+
         if (payload.new) {
           setRoom(payload.new)
           setStatus(payload.new.status)
         }
+
+        await fetchParticipants()
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'multiplayer_participants',
-        filter: `room_id=eq.${currentRoom.id}`,
-      }, async (payload) => {
-        // Refresh participants list
-        const { data } = await supabase
-          .from('multiplayer_participants')
-          .select('*')
-          .eq('room_id', currentRoom.id)
-        setParticipants(data || [])
+        filter: `room_id=eq.${roomId}`,
+      }, async () => {
+        await fetchParticipants()
       })
       .on('broadcast', { event: 'countdown' }, ({ payload }) => {
+        setFinished(false)
+        setMyProgress(0)
+        setMyWpm(0)
         setStatus('countdown')
         setCountdown(payload.count)
       })
       .on('broadcast', { event: 'start' }, () => {
+        setFinished(false)
+        setMyProgress(0)
+        setMyWpm(0)
         setStatus('racing')
       })
       .on('broadcast', { event: 'progress' }, ({ payload }) => {
@@ -165,14 +273,46 @@ const MultiplayerLobby = () => {
       .on('presence', { event: 'sync' }, () => {
         // Handle presence sync
       })
-      .subscribe()
+      .subscribe((subscriptionStatus) => {
+        if (subscriptionStatus === 'SUBSCRIBED') {
+          fetchParticipants()
+        }
+      })
 
     return () => {
+      cancelled = true
+      clearInterval(syncInterval)
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
+        channelRef.current = null
       }
     }
-  }, [currentRoom?.id])
+  }, [currentRoom?.id, leaveRoom])
+
+  const resolveCurrentUserIdentity = useCallback(async (fallbackLabel = 'Player') => {
+    let displayName = profile?.display_name
+    let avatarUrl = profile?.avatar_url
+
+    if (!displayName && user?.id) {
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      if (freshProfile) {
+        displayName = freshProfile.display_name
+        avatarUrl = freshProfile.avatar_url
+        setProfile(freshProfile)
+      }
+    }
+
+    if (!displayName) {
+      displayName = user?.email?.split('@')[0] || fallbackLabel
+    }
+
+    return { displayName, avatarUrl }
+  }, [profile?.avatar_url, profile?.display_name, user?.email, user?.id])
 
   // Create a new room
   const handleCreateRoom = async () => {
@@ -189,28 +329,7 @@ const MultiplayerLobby = () => {
       const code = generateRoomCode()
       const text = generateRaceText()
 
-      // Fetch fresh profile data to ensure we have the display name
-      let displayName = profile?.display_name
-      let avatarUrl = profile?.avatar_url
-      
-      if (!displayName) {
-        const { data: freshProfile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('id', user.id)
-          .single()
-        
-        if (freshProfile) {
-          displayName = freshProfile.display_name
-          avatarUrl = freshProfile.avatar_url
-          setProfile(freshProfile)
-        }
-      }
-      
-      // Use email username as fallback
-      if (!displayName) {
-        displayName = user.email?.split('@')[0] || 'Host'
-      }
+      const { displayName, avatarUrl } = await resolveCurrentUserIdentity('Host')
 
       const { data: room, error } = await supabase
         .from('multiplayer_rooms')
@@ -291,7 +410,22 @@ const MultiplayerLobby = () => {
         return
       }
 
-      if (room.current_players >= room.max_players) {
+      // Use live participant count to avoid stale current_players values
+      const { count: participantCount, error: participantCountError } = await supabase
+        .from('multiplayer_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('room_id', room.id)
+
+      if (participantCountError) {
+        console.error('Error checking room capacity:', participantCountError)
+        toast.error('Failed to verify room capacity')
+        setLoading(false)
+        return
+      }
+
+      const currentPlayers = participantCount || 0
+
+      if (currentPlayers >= room.max_players) {
         toast.error('Room is full')
         setLoading(false)
         return
@@ -306,28 +440,7 @@ const MultiplayerLobby = () => {
         .single()
 
       if (!existingParticipant) {
-        // Fetch fresh profile data to ensure we have the display name
-        let displayName = profile?.display_name
-        let avatarUrl = profile?.avatar_url
-        
-        if (!displayName) {
-          const { data: freshProfile } = await supabase
-            .from('profiles')
-            .select('display_name, avatar_url')
-            .eq('id', user.id)
-            .single()
-          
-          if (freshProfile) {
-            displayName = freshProfile.display_name
-            avatarUrl = freshProfile.avatar_url
-            setProfile(freshProfile)
-          }
-        }
-        
-        // Use email username as fallback
-        if (!displayName) {
-          displayName = user.email?.split('@')[0] || 'Player'
-        }
+        const { displayName, avatarUrl } = await resolveCurrentUserIdentity('Player')
 
         // Add self as participant
         const { error: joinError } = await supabase.from('multiplayer_participants').insert({
@@ -345,10 +458,14 @@ const MultiplayerLobby = () => {
         }
 
         // Update room player count
-        await supabase
+        const { error: roomCountError } = await supabase
           .from('multiplayer_rooms')
-          .update({ current_players: room.current_players + 1 })
+          .update({ current_players: currentPlayers + 1 })
           .eq('id', room.id)
+
+        if (roomCountError) {
+          console.error('Error updating room player count:', roomCountError)
+        }
       }
 
       // Fetch all participants
@@ -371,6 +488,145 @@ const MultiplayerLobby = () => {
     }
   }
 
+  const handleDeclineInvite = async (invite) => {
+    if (!user?.id || !invite?.id) return
+
+    setInviteActionLoading((prev) => ({ ...prev, [invite.id]: true }))
+    try {
+      const { error } = await supabase
+        .from('multiplayer_invitations')
+        .update({
+          status: 'declined',
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', invite.id)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+
+      if (error) {
+        if (isInviteTableMissingError(error)) {
+          toast.error('Invite system is not available yet. Please apply latest database migration.')
+          return
+        }
+        throw error
+      }
+
+      toast.success('Challenge declined')
+      await fetchInvites()
+    } catch (error) {
+      console.error('Error declining invite:', error)
+      toast.error('Failed to decline invite')
+    } finally {
+      setInviteActionLoading((prev) => ({ ...prev, [invite.id]: false }))
+    }
+  }
+
+  const handleAcceptInvite = async (invite) => {
+    if (!user?.id || !invite?.id || !invite?.room_id) return
+
+    setInviteActionLoading((prev) => ({ ...prev, [invite.id]: true }))
+    try {
+      const { data: room, error: roomError } = await supabase
+        .from('multiplayer_rooms')
+        .select('*')
+        .eq('id', invite.room_id)
+        .single()
+
+      if (roomError || !room) {
+        toast.error('This challenge room is no longer available')
+        await handleDeclineInvite(invite)
+        return
+      }
+
+      if (room.status !== 'waiting') {
+        toast.error('Challenge already started')
+        await handleDeclineInvite(invite)
+        return
+      }
+
+      const { count: participantCount, error: participantCountError } = await supabase
+        .from('multiplayer_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('room_id', room.id)
+
+      if (participantCountError) throw participantCountError
+      const currentPlayers = participantCount || 0
+
+      if (currentPlayers >= room.max_players) {
+        toast.error('Challenge room is full')
+        await handleDeclineInvite(invite)
+        return
+      }
+
+      const { data: existingParticipant } = await supabase
+        .from('multiplayer_participants')
+        .select('id')
+        .eq('room_id', room.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!existingParticipant) {
+        const { displayName, avatarUrl } = await resolveCurrentUserIdentity('Player')
+        const { error: joinError } = await supabase
+          .from('multiplayer_participants')
+          .insert({
+            room_id: room.id,
+            user_id: user.id,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+          })
+
+        if (joinError) throw joinError
+
+        const { count: syncedCount, error: syncedCountError } = await supabase
+          .from('multiplayer_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', room.id)
+
+        if (!syncedCountError) {
+          await supabase
+            .from('multiplayer_rooms')
+            .update({ current_players: syncedCount || currentPlayers + 1 })
+            .eq('id', room.id)
+        }
+      }
+
+      const { error: inviteUpdateError } = await supabase
+        .from('multiplayer_invitations')
+        .update({
+          status: 'accepted',
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', invite.id)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+
+      if (inviteUpdateError) throw inviteUpdateError
+
+      const { data: participantsData, error: participantFetchError } = await supabase
+        .from('multiplayer_participants')
+        .select('*')
+        .eq('room_id', room.id)
+
+      if (participantFetchError) throw participantFetchError
+
+      setRoom(room)
+      setIsHost(room.host_id === user.id)
+      setParticipants(participantsData || [])
+      toast.success('Challenge accepted. Joined multiplayer room.')
+      await fetchInvites()
+    } catch (error) {
+      if (isInviteTableMissingError(error)) {
+        toast.error('Invite system is not available yet. Please apply latest database migration.')
+      } else {
+        console.error('Error accepting invite:', error)
+        toast.error('Failed to accept invite')
+      }
+    } finally {
+      setInviteActionLoading((prev) => ({ ...prev, [invite.id]: false }))
+    }
+  }
+
   // Start the race (host only)
   const handleStartRace = async () => {
     if (!isHost || !currentRoom?.id) return
@@ -382,6 +638,11 @@ const MultiplayerLobby = () => {
     }
 
     try {
+      setFinished(false)
+      setMyProgress(0)
+      setMyWpm(0)
+      setCountdown(3)
+
       // Countdown
       setStatus('countdown')
       for (let i = 3; i >= 0; i--) {
@@ -408,59 +669,6 @@ const MultiplayerLobby = () => {
     } catch (error) {
       console.error('Error starting race:', error)
       toast.error('Failed to start race')
-    }
-  }
-
-  // Start new race (host only)
-  const handleNewRace = async () => {
-    if (!isHost || !currentRoom?.id) return
-
-    try {
-      setLoading(true)
-      
-      // Generate new text
-      const newText = generateRaceText()
-      
-      // Reset room status and text in database
-      await supabase
-        .from('multiplayer_rooms')
-        .update({ 
-          status: 'waiting', 
-          race_text: newText,
-          started_at: null 
-        })
-        .eq('id', currentRoom.id)
-
-      // Reset all participants' progress
-      await supabase
-        .from('multiplayer_participants')
-        .update({ 
-          progress: 0, 
-          wpm: 0, 
-          finished_at: null 
-        })
-        .eq('room_id', currentRoom.id)
-
-      // Update local state
-      setRoom({ ...currentRoom, status: 'waiting', race_text: newText })
-      setStatus('waiting')
-      setFinished(false)
-      setMyProgress(0)
-      setMyWpm(0)
-
-      // Broadcast new race event
-      await supabase.channel(`room:${currentRoom.id}`).send({
-        type: 'broadcast',
-        event: 'new_race',
-        payload: { text: newText },
-      })
-
-      toast.success('New race ready!')
-    } catch (error) {
-      console.error('Error starting new race:', error)
-      toast.error('Failed to start new race')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -542,28 +750,74 @@ const MultiplayerLobby = () => {
 
   // Leave room
   const handleLeaveRoom = async () => {
-    if (currentRoom?.id && user?.id) {
-      await supabase
+    if (!currentRoom?.id || !user?.id) {
+      leaveRoom()
+      return
+    }
+
+    try {
+      const { error: participantDeleteError } = await supabase
         .from('multiplayer_participants')
         .delete()
         .eq('room_id', currentRoom.id)
         .eq('user_id', user.id)
 
+      if (participantDeleteError) throw participantDeleteError
+
       if (isHost) {
+        // Cancel outstanding invites for this room before deleting it.
+        const { error: inviteCancelError } = await supabase
+          .from('multiplayer_invitations')
+          .update({
+            status: 'declined',
+            responded_at: new Date().toISOString(),
+          })
+          .eq('room_id', currentRoom.id)
+          .eq('sender_id', user.id)
+          .eq('status', 'pending')
+
+        if (inviteCancelError && !isInviteTableMissingError(inviteCancelError)) {
+          console.error('Error cancelling pending invites on room close:', inviteCancelError)
+        }
+
         // Delete room if host leaves
-        await supabase
+        const { error: roomDeleteError } = await supabase
           .from('multiplayer_rooms')
           .delete()
           .eq('id', currentRoom.id)
+
+        if (roomDeleteError) throw roomDeleteError
+      } else {
+        // Keep current_players in sync so rooms don't get stuck as "full"
+        const { count, error: countError } = await supabase
+          .from('multiplayer_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', currentRoom.id)
+
+        if (!countError) {
+          const { error: roomUpdateError } = await supabase
+            .from('multiplayer_rooms')
+            .update({ current_players: count || 0 })
+            .eq('id', currentRoom.id)
+
+          if (roomUpdateError) {
+            console.error('Error syncing room player count on leave:', roomUpdateError)
+          }
+        } else {
+          console.error('Error counting participants on leave:', countError)
+        }
       }
+    } catch (error) {
+      console.error('Error leaving room:', error)
+    } finally {
+      leaveRoom()
     }
-    leaveRoom()
   }
 
   // Not in a room - show lobby
   if (!currentRoom) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-12">
+      <div className="max-w-xl mx-auto px-4 py-8 sm:py-12">
         <Toaster position="top-center" />
 
         <div className="text-center mb-10">
@@ -575,6 +829,56 @@ const MultiplayerLobby = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Incoming Invites */}
+          {incomingInvites.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#1a1f2e] rounded-2xl p-6 border border-yellow-500/30"
+            >
+              <h2 className="text-xl font-semibold mb-4 text-yellow-300">Challenge Invites</h2>
+              <div className="space-y-3">
+                {incomingInvites.map((invite) => {
+                  const senderName = invite.senderProfile?.display_name || 'Player'
+                  const roomCodeLabel = invite.room?.room_code || '------'
+                  const actionBusy = !!inviteActionLoading[invite.id]
+
+                  return (
+                    <div key={invite.id} className="p-4 bg-[#252b3b] rounded-xl border border-gray-700/60">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-white font-medium">{senderName} challenged you</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Room: <span className="font-mono tracking-wider">{roomCodeLabel}</span> ·{' '}
+                            {invite.created_at
+                              ? formatDistanceToNow(new Date(invite.created_at), { addSuffix: true })
+                              : 'recently'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => handleDeclineInvite(invite)}
+                            disabled={actionBusy}
+                            className="flex-1 sm:flex-none px-3 py-1.5 bg-gray-700 text-gray-200 rounded-lg text-sm hover:bg-gray-600 transition disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => handleAcceptInvite(invite)}
+                            disabled={actionBusy}
+                            className="flex-1 sm:flex-none px-3 py-1.5 bg-yellow-400 text-black rounded-lg text-sm font-semibold hover:bg-yellow-300 transition disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
           {/* Create Room */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -612,7 +916,7 @@ const MultiplayerLobby = () => {
             <p className="text-gray-400 mb-4">
               Enter a room code to join an existing race
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={joinCode}
@@ -626,7 +930,7 @@ const MultiplayerLobby = () => {
               <button
                 onClick={handleJoinRoom}
                 disabled={loading || !joinCode.trim()}
-                className="px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 Join
               </button>
@@ -639,25 +943,25 @@ const MultiplayerLobby = () => {
 
   // In a room - show waiting/racing/results
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
       <Toaster position="top-center" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <button
           onClick={handleLeaveRoom}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors self-start"
         >
           <ArrowLeft className="w-5 h-5" />
           Leave Room
         </button>
 
         {/* Room Code */}
-        <div className="flex items-center gap-3">
-          <span className="text-gray-400">Room Code:</span>
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+          <span className="text-gray-400 text-sm sm:text-base">Room Code:</span>
           <button
             onClick={handleCopyCode}
-            className="flex items-center gap-2 px-4 py-2 bg-[#252b3b] rounded-lg font-mono text-xl tracking-widest"
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#252b3b] rounded-lg font-mono text-base sm:text-xl tracking-[0.2em] sm:tracking-widest"
           >
             {roomCode}
             {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -679,7 +983,7 @@ const MultiplayerLobby = () => {
               initial={{ scale: 2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
-              className={`text-9xl font-bold ${countdown === 0 ? 'text-green-400' : 'text-yellow-400'}`}
+              className={`text-7xl sm:text-9xl font-bold ${countdown === 0 ? 'text-green-400' : 'text-yellow-400'}`}
             >
               {countdown === 0 ? 'GO!' : countdown}
             </motion.div>
@@ -701,7 +1005,7 @@ const MultiplayerLobby = () => {
               {participants.map((p, idx) => (
                 <div
                   key={p.user_id}
-                  className="flex items-center gap-3 p-3 bg-[#252b3b] rounded-xl"
+                  className="flex flex-wrap items-center gap-3 p-3 bg-[#252b3b] rounded-xl"
                 >
                   {p.avatar_url ? (
                     <img
@@ -720,9 +1024,9 @@ const MultiplayerLobby = () => {
                       <Users className="w-5 h-5" />
                     </div>
                   )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{p.display_name || 'Player'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium truncate">{p.display_name || 'Player'}</span>
                       {p.user_id === currentRoom.host_id && (
                         <Crown className="w-4 h-4 text-yellow-400" />
                       )}
@@ -771,14 +1075,14 @@ const MultiplayerLobby = () => {
                 .sort((a, b) => (b.progress || 0) - (a.progress || 0))
                 .map((p, idx) => (
                   <div key={p.user_id} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
                         {idx === 0 && <Trophy className="w-4 h-4 text-yellow-400" />}
-                        <span className={p.user_id === user?.id ? 'text-yellow-400' : ''}>
+                        <span className={`truncate ${p.user_id === user?.id ? 'text-yellow-400' : ''}`}>
                           {p.display_name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto text-xs sm:text-sm">
                         <span className="text-yellow-400">{p.wpm || 0} WPM</span>
                         <span className="text-gray-400">{p.progress || 0}%</span>
                       </div>
@@ -840,11 +1144,11 @@ const MultiplayerLobby = () => {
                 .map((p, idx) => (
                   <div
                     key={p.user_id}
-                    className={`flex items-center gap-4 p-4 rounded-xl ${
+                    className={`flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 p-4 rounded-xl ${
                       idx === 0 ? 'bg-yellow-400/10 border border-yellow-400/30' : 'bg-[#252b3b]'
                     }`}
                   >
-                    <div className="text-2xl font-bold w-8">
+                    <div className="text-2xl font-bold w-8 shrink-0">
                       {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
                     </div>
                     {p.avatar_url ? (
@@ -862,11 +1166,13 @@ const MultiplayerLobby = () => {
                     ) : (
                       <div className="w-12 h-12 bg-gray-600 rounded-full" />
                     )}
-                    <div className="flex-1">
-                      <div className="font-semibold">{p.display_name}</div>
-                      <div className="text-sm text-gray-400">{p.accuracy?.toFixed(1)}% accuracy</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{p.display_name}</div>
+                      <div className="text-sm text-gray-400">
+                        {(Number(p.accuracy || 0)).toFixed(1)}% accuracy
+                      </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right w-full sm:w-auto">
                       <div className="text-2xl font-bold text-yellow-400">{p.wpm || 0}</div>
                       <div className="text-sm text-gray-400">WPM</div>
                     </div>
@@ -875,23 +1181,13 @@ const MultiplayerLobby = () => {
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <button
               onClick={handleLeaveRoom}
               className="flex-1 px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-colors"
             >
               Leave
             </button>
-            {isHost && (
-              <button
-                onClick={handleNewRace}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Setting up...' : 'New Race'}
-              </button>
-            )}
           </div>
         </div>
       )}

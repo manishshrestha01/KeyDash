@@ -389,6 +389,7 @@ DROP POLICY IF EXISTS "Anyone can view achievements" ON public.achievements;
 
 -- User achievements policies
 DROP POLICY IF EXISTS "Users can view own achievements" ON public.user_achievements;
+DROP POLICY IF EXISTS "Anyone can view unlocked achievements" ON public.user_achievements;
 DROP POLICY IF EXISTS "System can grant achievements" ON public.user_achievements;
 
 -- Custom texts policies
@@ -560,8 +561,8 @@ CREATE POLICY "Anyone can view achievements" ON public.achievements
   FOR SELECT USING (true);
 
 -- USER ACHIEVEMENTS
-CREATE POLICY "Users can view own achievements" ON public.user_achievements
-  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can view unlocked achievements" ON public.user_achievements
+  FOR SELECT USING (true);
 
 CREATE POLICY "System can grant achievements" ON public.user_achievements
   FOR INSERT WITH CHECK (auth.uid() = user_id);

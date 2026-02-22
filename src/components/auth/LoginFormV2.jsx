@@ -18,8 +18,8 @@ const LoginFormV2 = () => {
   const [loading, setLoading] = useState(false);
 
   // const redirectUrl = "https://keydash.shresthamanish.info.np/";
-  const redirectUrl = "https://v2.shresthamanish.info.np/";
-  // const redirectUrl = "http://localhost:5173/";
+  // const redirectUrl = "https://v2.shresthamanish.info.np/";
+  const redirectUrl = "http://localhost:5173/";
 
   const onSubmit = async (data) => {
     setMessage("");

@@ -7,7 +7,60 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
-import { format, differenceInDays, startOfDay, isToday } from 'date-fns'
+import { format, differenceInDays, startOfDay } from 'date-fns'
+import { fetchUserAchievements } from '../../utils/achievements'
+
+const calculateStreakFromActivity = (activityDates = []) => {
+  const uniqueDays = Array.from(
+    new Set(
+      activityDates
+        .filter(Boolean)
+        .map((date) => format(startOfDay(new Date(date)), 'yyyy-MM-dd'))
+    )
+  )
+
+  if (uniqueDays.length === 0) {
+    return { current: 0, longest: 0, isActive: false }
+  }
+
+  const sortedDays = uniqueDays
+    .map((day) => startOfDay(new Date(`${day}T00:00:00`)))
+    .sort((a, b) => a - b)
+
+  let longest = 1
+  let run = 1
+
+  for (let i = 1; i < sortedDays.length; i += 1) {
+    const dayGap = differenceInDays(sortedDays[i], sortedDays[i - 1])
+    if (dayGap === 1) {
+      run += 1
+      longest = Math.max(longest, run)
+    } else {
+      run = 1
+    }
+  }
+
+  const latestDay = sortedDays[sortedDays.length - 1]
+  const gapFromToday = differenceInDays(startOfDay(new Date()), latestDay)
+  const canContinue = gapFromToday === 0 || gapFromToday === 1
+
+  if (!canContinue) {
+    return { current: 0, longest, isActive: false }
+  }
+
+  let current = 1
+
+  for (let i = sortedDays.length - 2; i >= 0; i -= 1) {
+    const dayGap = differenceInDays(sortedDays[i + 1], sortedDays[i])
+    if (dayGap === 1) {
+      current += 1
+    } else {
+      break
+    }
+  }
+
+  return { current, longest, isActive: gapFromToday === 0 }
+}
 
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth()
@@ -50,29 +103,144 @@ const Dashboard = () => {
       
       setProfile(profileData)
 
-      // Fetch recent typing history from multiple sources
-      // First try typing_history (v2)
-      const { data: historyData } = await supabase
-        .from('typing_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10)
-      
-      // Also fetch from leaderboard_timed and leaderboard_sentence (v1)
-      const { data: timedData } = await supabase
-        .from('leaderboard_timed')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      // Fetch recent test history and activity dates
+      const [
+        { data: historyData },
+        { data: timedData },
+        { data: sentenceData },
+        { data: typingActivityData },
+        { data: challengeActivityData },
+        { data: timedActivityData },
+        { data: sentenceActivityData },
+        { data: historyDurationData },
+        { data: timedDurationData },
+        { data: sentenceDurationData },
+      ] = await Promise.all([
+        supabase
+          .from('typing_history')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('leaderboard_timed')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('leaderboard_sentence')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('typing_history')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('challenge_attempts')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('leaderboard_timed')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('leaderboard_sentence')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('typing_history')
+          .select('duration_seconds, mode')
+          .eq('user_id', user.id)
+          .neq('mode', 'custom'),
+        supabase
+          .from('leaderboard_timed')
+          .select('time')
+          .eq('user_id', user.id),
+        supabase
+          .from('leaderboard_sentence')
+          .select('time')
+          .eq('user_id', user.id),
+      ])
 
-      const { data: sentenceData } = await supabase
-        .from('leaderboard_sentence')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      // Best WPM should only be based on leaderboard-supported modes (timed + sentence)
+      const [
+        { data: bestTimedHistory },
+        { data: bestSentenceHistory },
+        { data: bestTimedLegacy },
+        { data: bestSentenceLegacy },
+      ] = await Promise.all([
+        supabase
+          .from('typing_history')
+          .select('wpm')
+          .eq('user_id', user.id)
+          .eq('mode', 'timed')
+          .order('wpm', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('typing_history')
+          .select('wpm')
+          .eq('user_id', user.id)
+          .eq('mode', 'sentence')
+          .order('wpm', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('leaderboard_timed')
+          .select('wpm')
+          .eq('user_id', user.id)
+          .order('wpm', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('leaderboard_sentence')
+          .select('wpm')
+          .eq('user_id', user.id)
+          .order('wpm', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+
+      const leaderboardModeBestWpm = Math.max(
+        0,
+        Number(bestTimedHistory?.wpm || 0),
+        Number(bestSentenceHistory?.wpm || 0),
+        Number(bestTimedLegacy?.wpm || 0),
+        Number(bestSentenceLegacy?.wpm || 0)
+      )
+
+      const activityDates = [
+        ...(typingActivityData || []).map((entry) => entry.created_at),
+        ...(challengeActivityData || []).map((entry) => entry.created_at),
+        ...(timedActivityData || []).map((entry) => entry.created_at),
+        ...(sentenceActivityData || []).map((entry) => entry.created_at),
+      ]
+      const streak = calculateStreakFromActivity(activityDates)
+      const currentStreak = Math.max(Number(profileData?.current_streak || 0), streak.current)
+      const longestStreak = Math.max(Number(profileData?.longest_streak || 0), streak.longest)
+
+      const historyPracticeSeconds = (historyDurationData || []).reduce(
+        (sum, entry) => sum + (Number(entry?.duration_seconds) || 0),
+        0
+      )
+      const legacyPracticeSeconds = [
+        ...(timedDurationData || []).map((entry) => Number(entry?.time) || 0),
+        ...(sentenceDurationData || []).map((entry) => Number(entry?.time) || 0),
+      ].reduce((sum, duration) => sum + duration, 0)
+      const totalPracticeSeconds = historyPracticeSeconds > 0
+        ? historyPracticeSeconds
+        : legacyPracticeSeconds
 
       // Combine all data sources
       const allHistory = [
@@ -102,15 +270,17 @@ const Dashboard = () => {
         const totalTests = allHistory.length
         const avgWpm = Math.round(allHistory.reduce((acc, t) => acc + (t.wpm || 0), 0) / totalTests)
         const avgAccuracy = (allHistory.reduce((acc, t) => acc + parseFloat(t.accuracy || 0), 0) / totalTests).toFixed(1)
-        const bestWpm = Math.max(...allHistory.map(t => t.wpm || 0))
-        const totalTime = allHistory.reduce((acc, t) => acc + parseFloat(t.duration_seconds || 0), 0)
+        const bestWpm = leaderboardModeBestWpm
 
         setStats({
           totalTests,
           avgWpm,
           avgAccuracy,
           bestWpm,
-          totalTime: Math.round(totalTime / 60), // in minutes
+          totalTime: Math.round(totalPracticeSeconds / 60), // in minutes
+          currentStreak,
+          longestStreak,
+          streakIsActive: streak.isActive,
         })
       } else {
         // Set default stats if no history
@@ -118,22 +288,22 @@ const Dashboard = () => {
           totalTests: 0,
           avgWpm: 0,
           avgAccuracy: '0.0',
-          bestWpm: 0,
-          totalTime: 0,
+          bestWpm: leaderboardModeBestWpm,
+          totalTime: Math.round(totalPracticeSeconds / 60),
+          currentStreak,
+          longestStreak,
+          streakIsActive: streak.isActive,
         })
       }
 
       // Fetch user achievements
-      const { data: achievementData } = await supabase
-        .from('user_achievements')
-        .select(`
-          *,
-          achievements(*)
-        `)
-        .eq('user_id', user.id)
-        .order('unlocked_at', { ascending: false })
-        .limit(6)
-      
+      const { data: achievementData, error: achievementsError } = await fetchUserAchievements({
+        userId: user.id,
+        limit: 6,
+      })
+      if (achievementsError) {
+        console.error('Dashboard achievements fetch error:', achievementsError)
+      }
       setAchievements(achievementData || [])
 
       // Check for daily challenge
@@ -177,27 +347,9 @@ const Dashboard = () => {
     }
   }
 
-  // Check and update streak
-  const checkStreak = () => {
-    if (!profile) return
-
-    const lastActivity = profile.last_activity_date
-    if (!lastActivity) return { current: 0, isActive: false }
-
-    const lastDate = new Date(lastActivity)
-    const today = startOfDay(new Date())
-    const daysDiff = differenceInDays(today, startOfDay(lastDate))
-
-    if (daysDiff === 0) {
-      return { current: profile.current_streak, isActive: true }
-    } else if (daysDiff === 1) {
-      return { current: profile.current_streak, isActive: false }
-    } else {
-      return { current: 0, isActive: false }
-    }
-  }
-
-  const streakInfo = checkStreak()
+  const currentStreak = stats?.currentStreak ?? profile?.current_streak ?? 0
+  const longestStreak = stats?.longestStreak ?? profile?.longest_streak ?? 0
+  const streakIsActive = stats?.streakIsActive ?? false
 
   // Show loading while auth is checking or data is fetching
   if (authLoading || loading) {
@@ -243,15 +395,15 @@ const Dashboard = () => {
             <span className="text-gray-400 text-sm">Current Streak</span>
           </div>
           <div className="text-3xl font-bold text-orange-400">
-            {profile?.current_streak || 0}
+            {currentStreak}
             <span className="text-lg ml-1">days</span>
           </div>
-          {!streakInfo?.isActive && profile?.current_streak > 0 && (
+          {!streakIsActive && currentStreak > 0 && (
             <p className="text-xs text-orange-300 mt-2">Complete a test today to keep your streak!</p>
           )}
         </motion.div>
 
-        {/* Average WPM */}
+        {/* Best WPM */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -260,10 +412,10 @@ const Dashboard = () => {
         >
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-5 h-5 text-yellow-400" />
-            <span className="text-gray-400 text-sm">Average WPM</span>
+            <span className="text-gray-400 text-sm">Best WPM</span>
           </div>
           <div className="text-3xl font-bold text-yellow-400">
-            {stats?.avgWpm || profile?.average_wpm?.toFixed(0) || 0}
+            {stats?.bestWpm || 0}
           </div>
         </motion.div>
 
@@ -377,7 +529,7 @@ const Dashboard = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Longest Streak</span>
-              <span className="font-semibold text-orange-400">{profile?.longest_streak || 0} days</span>
+              <span className="font-semibold text-orange-400">{longestStreak} days</span>
             </div>
           </div>
         </motion.div>

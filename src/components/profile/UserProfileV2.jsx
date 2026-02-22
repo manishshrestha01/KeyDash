@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   User, Globe, Github, Linkedin, Instagram, Youtube, Twitch,
   Clock, Target, Zap, Trophy, BarChart2, Calendar, TrendingUp,
-  Award, Flame, Star, ArrowLeft, ExternalLink
+  Award, Flame, ArrowLeft, ExternalLink
 } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { format, formatDistanceToNow } from 'date-fns'
+import toast, { Toaster } from 'react-hot-toast'
+import { useAuth } from '../../context/AuthContext'
+import { useMultiplayerStore } from '../../store'
+import { generateRaceText, generateRoomCode } from '../multiplayer/multiplayerUtils'
+import { fetchUserAchievements } from '../../utils/achievements'
 
 // Custom X (Twitter) icon
 const XIcon = ({ className }) => (
@@ -24,9 +29,12 @@ const XIcon = ({ className }) => (
 const UserProfileV2 = () => {
   const { userId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { setRoom, setIsHost, setParticipants } = useMultiplayerStore()
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
-  const [recentScores, setRecentScores] = useState([])
+  const [achievements, setAchievements] = useState([])
+  const [sendingInvite, setSendingInvite] = useState(false)
   const [loading, setLoading] = useState(true)
   const [rank, setRank] = useState(null)
   const location = useLocation()
@@ -58,55 +66,80 @@ const UserProfileV2 = () => {
       if (profileError) throw profileError
       setProfile(profileData)
 
-      // Fetch typing history/scores
-      const [timedRes, sentenceRes, historyRes] = await Promise.all([
+      // Fetch history/scores with consistent rules used in profile statistics:
+      // prefer typing_history, exclude custom mode, fallback to legacy leaderboard tables.
+      const [historyRes, timedRes, sentenceRes, achievementsRes] = await Promise.all([
+        supabase
+          .from('typing_history')
+          .select('*')
+          .eq('user_id', userId)
+          .neq('mode', 'custom')
+          .order('created_at', { ascending: false })
+          .limit(1000),
         supabase.from('leaderboard_timed').select('*').eq('user_id', userId),
         supabase.from('leaderboard_sentence').select('*').eq('user_id', userId),
-        supabase.from('typing_history').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(10)
+        fetchUserAchievements({ userId, limit: 12 }),
       ])
 
-      // Combine scores
-      const allScores = [
-        ...(timedRes.data || []).map(s => ({ 
-          ...s, 
+      const historyScores = (historyRes.data || []).filter(
+        (s) => (s.mode || '').toLowerCase() !== 'custom'
+      )
+
+      const fallbackScores = [
+        ...(timedRes.data || []).map(s => ({
+          ...s,
           mode: 'timed',
-          sub_mode: s.time ? `${s.time}s` : '60s'
+          sub_mode: s.time ? `${s.time}s` : '60s',
+          duration_seconds: s.time || 60,
         })),
-        ...(sentenceRes.data || []).map(s => ({ 
-          ...s, 
+        ...(sentenceRes.data || []).map(s => ({
+          ...s,
           mode: 'sentence',
-          sub_mode: s.difficulty || 'medium'
+          sub_mode: s.difficulty || 'medium',
+          duration_seconds: s.time || 0,
         })),
-        ...(historyRes.data || [])
       ]
 
-      // Sort by date and deduplicate
-      const uniqueScores = []
-      const seen = new Set()
-      for (const score of allScores.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))) {
-        const key = `${score.wpm}-${score.accuracy}-${new Date(score.created_at).getTime()}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          uniqueScores.push(score)
-        }
+      const canonicalScores = historyScores.length > 0 ? historyScores : fallbackScores
+      if (achievementsRes?.error) {
+        console.error('Public profile achievements fetch error:', achievementsRes.error)
       }
+      setAchievements(achievementsRes?.data || [])
 
-      setRecentScores(uniqueScores.slice(0, 10))
-
-      // Calculate stats
-      if (uniqueScores.length > 0) {
-        const bestWpm = Math.max(...uniqueScores.map(s => s.wpm || 0))
-        const avgWpm = Math.round(uniqueScores.reduce((sum, s) => sum + (s.wpm || 0), 0) / uniqueScores.length)
-        const avgAccuracy = (uniqueScores.reduce((sum, s) => sum + (s.accuracy || 0), 0) / uniqueScores.length).toFixed(1)
-        const totalTests = uniqueScores.length
-        const totalTime = uniqueScores.reduce((sum, s) => sum + (s.duration_seconds || s.time || 60), 0)
+      if (canonicalScores.length > 0) {
+        const totalTests = canonicalScores.length
+        const avgWpm = Math.round(
+          canonicalScores.reduce((sum, s) => sum + (Number(s.wpm) || 0), 0) / totalTests
+        )
+        const avgAccuracy = (
+          canonicalScores.reduce((sum, s) => sum + (Number(s.accuracy) || 0), 0) / totalTests
+        ).toFixed(1)
+        const leaderboardModes = new Set(['timed', 'sentence'])
+        const leaderboardModeScores = canonicalScores.filter((s) =>
+          leaderboardModes.has(String(s.mode || '').toLowerCase())
+        )
+        const bestWpm = leaderboardModeScores.length > 0
+          ? Math.max(...leaderboardModeScores.map((s) => Number(s.wpm) || 0))
+          : 0
+        const totalTime = canonicalScores.reduce(
+          (sum, s) => sum + (Number(s.duration_seconds) || Number(s.time) || 0),
+          0
+        )
 
         setStats({
           bestWpm,
           avgWpm,
           avgAccuracy,
           totalTests,
-          totalTime: Math.round(totalTime / 60), // Convert to minutes
+          totalTime: Math.round(totalTime / 60),
+        })
+      } else {
+        setStats({
+          bestWpm: 0,
+          avgWpm: 0,
+          avgAccuracy: '0.0',
+          totalTests: 0,
+          totalTime: 0,
         })
       }
 
@@ -137,6 +170,98 @@ const UserProfileV2 = () => {
       console.error('Error fetching user data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const isInviteTableMissingError = (error) =>
+    error?.code === '42P01' || /multiplayer_invitations/i.test(error?.message || '')
+
+  const handleSendChallengeInvite = async () => {
+    if (!user?.id) {
+      navigate('/login')
+      return
+    }
+
+    if (user.id === userId) {
+      toast.error("You can't challenge your own profile")
+      return
+    }
+
+    setSendingInvite(true)
+    try {
+      const code = generateRoomCode()
+      const raceText = generateRaceText()
+
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      const displayName =
+        senderProfile?.display_name ||
+        user.email?.split('@')[0] ||
+        'Host'
+
+      const avatarUrl = senderProfile?.avatar_url || null
+
+      const { data: room, error: roomError } = await supabase
+        .from('multiplayer_rooms')
+        .insert({
+          room_code: code,
+          host_id: user.id,
+          race_text: raceText,
+          status: 'waiting',
+          max_players: 5,
+          current_players: 1,
+        })
+        .select()
+        .single()
+
+      if (roomError) throw roomError
+
+      const { data: participant, error: participantError } = await supabase
+        .from('multiplayer_participants')
+        .insert({
+          room_id: room.id,
+          user_id: user.id,
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          is_ready: true,
+        })
+        .select()
+        .single()
+
+      if (participantError) throw participantError
+
+      const { error: inviteError } = await supabase
+        .from('multiplayer_invitations')
+        .insert({
+          room_id: room.id,
+          sender_id: user.id,
+          receiver_id: userId,
+          status: 'pending',
+        })
+
+      if (inviteError) {
+        if (isInviteTableMissingError(inviteError)) {
+          toast.error('Invite feature requires latest database migration. Room was still created.')
+        } else {
+          throw inviteError
+        }
+      } else {
+        toast.success(`Challenge invite sent to ${profile?.display_name || 'player'}`)
+      }
+
+      setRoom(room)
+      setIsHost(true)
+      setParticipants(participant ? [participant] : [])
+      navigate('/multiplayer')
+    } catch (error) {
+      console.error('Error sending challenge invite:', error)
+      toast.error('Failed to send challenge invite')
+    } finally {
+      setSendingInvite(false)
     }
   }
 
@@ -181,6 +306,7 @@ const UserProfileV2 = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white pb-12" id="profile-root" tabIndex={-1}>
+      <Toaster position="top-center" />
       {/* Header with gradient */}
       <div className="relative">
         <div className="h-48"></div>
@@ -348,7 +474,7 @@ const UserProfileV2 = () => {
         </motion.div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Achievements */}
       <div className="max-w-4xl mx-auto px-4 mt-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -357,56 +483,51 @@ const UserProfileV2 = () => {
           className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-6 border border-gray-800/50"
         >
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-yellow-400" />
-            Recent Activity
+            <Award className="w-5 h-5 text-yellow-400" />
+            Achievements
           </h2>
 
-          {recentScores.length === 0 ? (
+          {achievements.length === 0 ? (
             <div className="text-center py-8">
-              <BarChart2 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No recent activity</p>
+              <Award className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No achievements unlocked yet</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {recentScores.map((score, idx) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {achievements.map((ua, idx) => (
                 <motion.div
-                  key={score.id || idx}
+                  key={ua.id || idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + idx * 0.05 }}
-                  className="flex items-center justify-between p-4 bg-[#252b3b]/50 rounded-xl hover:bg-[#252b3b] transition"
+                  className="p-4 bg-[#252b3b]/50 rounded-xl hover:bg-[#252b3b] transition border border-gray-800/50"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                      score.mode === 'timed' ? 'bg-blue-500/20 text-blue-400' :
-                      score.mode === 'sentence' ? 'bg-green-500/20 text-green-400' :
-                      score.mode === 'coding' ? 'bg-purple-500/20 text-purple-400' :
-                      'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {score.mode || 'Unknown'}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="text-2xl leading-none mt-0.5">
+                        {ua.achievements?.icon || '🏆'}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-white truncate">
+                          {ua.achievements?.name || 'Achievement'}
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                          {ua.achievements?.description || 'Unlocked achievement'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Unlocked {ua.unlocked_at
+                            ? formatDistanceToNow(new Date(ua.unlocked_at), { addSuffix: true })
+                            : 'recently'}
+                        </p>
+                      </div>
                     </div>
-                    {score.sub_mode && (
-                      <span className="text-gray-500 text-sm">{score.sub_mode}</span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <span className="text-yellow-400 font-bold">{score.wpm || '--'}</span>
-                      <span className="text-gray-500 text-sm ml-1">WPM</span>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-medium ${
-                        parseFloat(score.accuracy) >= 95 ? 'text-green-400' :
-                        parseFloat(score.accuracy) >= 80 ? 'text-yellow-400' : 'text-red-400'
-                      }`}>
-                        {score.accuracy ? `${parseFloat(score.accuracy).toFixed(1)}%` : '--'}
+                    <div className="text-right shrink-0">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-500/15 text-yellow-300 border border-yellow-500/30 capitalize">
+                        {ua.achievements?.rarity || 'common'}
                       </span>
-                    </div>
-                    <div className="text-gray-500 text-sm w-24 text-right">
-                      {score.created_at 
-                        ? formatDistanceToNow(new Date(score.created_at), { addSuffix: true })
-                        : '--'}
+                      <p className="text-xs text-gray-500 mt-2">
+                        {(ua.achievements?.points ?? 0)} pts
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -418,13 +539,15 @@ const UserProfileV2 = () => {
 
       {/* Challenge Button */}
       <div className="max-w-4xl mx-auto px-4 mt-8 text-center">
-        <Link
-          to="/multiplayer"
-          className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black rounded-xl font-bold hover:from-yellow-500 hover:to-orange-600 transition shadow-lg shadow-yellow-500/25"
+        <button
+          type="button"
+          onClick={handleSendChallengeInvite}
+          disabled={sendingInvite || !user?.id || user?.id === userId}
+          className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black rounded-xl font-bold hover:from-yellow-500 hover:to-orange-600 transition shadow-lg shadow-yellow-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Flame className="w-5 h-5" />
-          Challenge to a Race
-        </Link>
+          {user?.id === userId ? 'Cannot Challenge Yourself' : sendingInvite ? 'Sending Invite...' : 'Challenge to a Race'}
+        </button>
       </div>
     </div>
   )

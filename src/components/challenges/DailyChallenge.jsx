@@ -61,15 +61,16 @@ const DailyChallenge = () => {
   const fetchChallenge = async () => {
     setLoading(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = format(new Date(), 'yyyy-MM-dd')
       console.log('Fetching challenge for date:', today)
       
-      // Get today's daily challenge from database
-      // First try exact date match
+      // Get today's active daily challenge from database
       let { data: challengeData, error: challengeError } = await supabase
         .from('challenges')
         .select('*')
         .eq('challenge_type', 'daily')
+        .lte('start_date', today)
+        .gte('end_date', today)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -290,7 +291,7 @@ const DailyChallenge = () => {
 
   if (gameState === 'no-challenge') {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
         <Toaster position="top-center" />
         
         <button
@@ -301,7 +302,7 @@ const DailyChallenge = () => {
           Back to Dashboard
         </button>
 
-        <div className="bg-[#1a1f2e] rounded-2xl p-12 border border-gray-700/50 text-center">
+        <div className="bg-[#1a1f2e] rounded-2xl p-6 sm:p-12 border border-gray-700/50 text-center">
           <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-6" />
           <h2 className="text-2xl font-bold mb-4">No Challenge Today</h2>
           <p className="text-gray-400 mb-6">
@@ -319,7 +320,7 @@ const DailyChallenge = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
       <Toaster position="top-center" />
       
       {/* Confetti */}
@@ -334,17 +335,17 @@ const DailyChallenge = () => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors self-start"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
         </button>
-        <div className="text-right">
+        <div className="sm:text-right">
           <p className="text-gray-400 text-sm">Daily Challenge</p>
-          <p className="text-white font-medium">{format(new Date(), 'MMMM d, yyyy')}</p>
+          <p className="text-white font-medium text-sm sm:text-base">{format(new Date(), 'MMMM d, yyyy')}</p>
         </div>
       </div>
 
@@ -355,15 +356,15 @@ const DailyChallenge = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/10 rounded-2xl p-8 border border-yellow-500/30 text-center">
+          <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/10 rounded-2xl p-6 sm:p-8 border border-yellow-500/30 text-center">
             <Calendar className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2">Today's Daily Challenge</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Today's Daily Challenge</h1>
             <p className="text-gray-400 mb-6">
               Complete this challenge to compete on today's leaderboard!
             </p>
             <button
               onClick={handleStartChallenge}
-              className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg shadow-yellow-500/25"
+              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black rounded-xl font-bold text-base sm:text-lg hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg shadow-yellow-500/25"
             >
               Start Challenge
             </button>
@@ -382,9 +383,9 @@ const DailyChallenge = () => {
                     key={entry.id}
                     to={`/users/${entry.user_id}`}
                     state={{ avatar: entry.profiles?.avatar_url }}
-                    className="flex items-center justify-between p-3 bg-[#252b3b] rounded-xl hover:opacity-90"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-[#252b3b] rounded-xl hover:opacity-90"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                         idx === 0 ? 'bg-yellow-400 text-black' :
                         idx === 1 ? 'bg-gray-400 text-black' :
@@ -400,9 +401,9 @@ const DailyChallenge = () => {
                           {(entry.profiles?.display_name || 'U')[0].toUpperCase()}
                         </div>
                       )}
-                      <span className="font-medium">{entry.profiles?.display_name || 'Anonymous'}</span>
+                      <span className="font-medium truncate">{entry.profiles?.display_name || 'Anonymous'}</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto text-sm sm:text-base">
                       <span className="text-yellow-400 font-bold">{entry.wpm} WPM</span>
                       <span className="text-gray-400">{entry.accuracy}%</span>
                     </div>
@@ -421,13 +422,13 @@ const DailyChallenge = () => {
           animate={{ opacity: 1 }}
           className="space-y-6"
         >
-          <div className="bg-[#1a1f2e] rounded-2xl p-6 border border-gray-700/50">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-[#1a1f2e] rounded-2xl p-4 sm:p-6 border border-gray-700/50">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-yellow-400" />
                 Daily Challenge
               </h2>
-              <span className="text-gray-400">One attempt only!</span>
+              <span className="text-gray-400 text-sm sm:text-base">One attempt only!</span>
             </div>
             
             <TypingEngine
@@ -451,11 +452,11 @@ const DailyChallenge = () => {
           className="space-y-6"
         >
           {/* Results Card */}
-          <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/10 rounded-2xl p-8 border border-green-500/30 text-center">
+          <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/10 rounded-2xl p-6 sm:p-8 border border-green-500/30 text-center">
             <div className="text-6xl mb-4">🏆</div>
-            <h2 className="text-3xl font-bold mb-2">Challenge Completed!</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Challenge Completed!</h2>
             {userRank && (
-              <p className="text-xl text-green-400 mb-4">
+              <p className="text-lg sm:text-xl text-green-400 mb-4">
                 You ranked #{userRank} today!
               </p>
             )}
@@ -484,7 +485,7 @@ const DailyChallenge = () => {
           </div>
 
           {/* Full Leaderboard */}
-          <div className="bg-[#1a1f2e] rounded-2xl p-6 border border-gray-700/50">
+          <div className="bg-[#1a1f2e] rounded-2xl p-4 sm:p-6 border border-gray-700/50">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-400" />
               Today's Leaderboard
@@ -501,11 +502,15 @@ const DailyChallenge = () => {
                   return (
                     <div
                       key={entry.id}
-                      className={`flex items-center justify-between p-3 rounded-xl ${
+                      className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-xl ${
                         isCurrentUser ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-[#252b3b]'
                       }`}
                     >
-                      <Link to={`/users/${entry.user_id}`} state={{ avatar: entry.profiles?.avatar_url }} className="flex items-center gap-3">
+                      <Link
+                        to={`/users/${entry.user_id}`}
+                        state={{ avatar: entry.profiles?.avatar_url }}
+                        className="flex items-center gap-3 min-w-0"
+                      >
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                           idx === 0 ? 'bg-yellow-400 text-black' :
                           idx === 1 ? 'bg-gray-400 text-black' :
@@ -525,15 +530,15 @@ const DailyChallenge = () => {
                             {(entry.profiles?.display_name || 'U')[0].toUpperCase()}
                           </div>
                         )}
-                        <span className={`font-medium ${isCurrentUser ? 'text-yellow-400' : ''}`}>
+                        <span className={`font-medium truncate ${isCurrentUser ? 'text-yellow-400' : ''}`}>
                           {entry.profiles?.display_name || 'Anonymous'}
                           {isCurrentUser && ' (You)'}
                         </span>
                       </Link>
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto text-sm sm:text-base">
                         <span className="text-yellow-400 font-bold">{entry.wpm} WPM</span>
                         <span className="text-gray-400">{entry.accuracy}%</span>
-                        <span className="text-gray-500 text-sm">
+                        <span className="text-gray-500 text-xs sm:text-sm">
                           {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                         </span>
                       </div>
@@ -545,16 +550,16 @@ const DailyChallenge = () => {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-colors"
+              className="w-full sm:w-auto px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition-colors"
             >
               Back to Dashboard
             </button>
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-3 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-300 transition-colors"
+              className="w-full sm:w-auto px-6 py-3 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-300 transition-colors"
             >
               Practice More
             </button>

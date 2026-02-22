@@ -11,6 +11,7 @@ import {
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { format, formatDistanceToNow } from 'date-fns'
+import { fetchUserAchievements } from '../../utils/achievements'
 
 const ProfileHub = () => {
   const { user, loading: authLoading } = useAuth()
@@ -70,6 +71,7 @@ const ProfileHub = () => {
   // Achievements data
   const [achievements, setAchievements] = useState([])
   const [achievementsLoading, setAchievementsLoading] = useState(false)
+  const [achievementsError, setAchievementsError] = useState('')
   
   // File input ref
   const fileInputRef = useRef(null)
@@ -97,7 +99,9 @@ const ProfileHub = () => {
     
     // Fetch tab-specific data on initial load based on URL
     const initialTab = getTabFromUrl()
-    if (initialTab === 'history') fetchHistory()
+    if (initialTab === 'history') {
+      fetchHistory()
+    }
     if (initialTab === 'achievements') fetchAchievements()
   }, [user?.id, authLoading])
 
@@ -112,7 +116,9 @@ const ProfileHub = () => {
     }
     
     // Fetch tab-specific data
-    if (activeTab === 'history') fetchHistory()
+    if (activeTab === 'history') {
+      fetchHistory()
+    }
     if (activeTab === 'achievements') fetchAchievements()
     if (activeTab === 'stats') fetchStats()
   }, [activeTab, user?.id, authLoading])
@@ -224,18 +230,18 @@ const ProfileHub = () => {
   const fetchAchievements = async () => {
     if (!user?.id) return
     setAchievementsLoading(true)
+    setAchievementsError('')
 
     try {
-      const { data, error } = await supabase
-        .from('user_achievements')
-        .select(`*, achievements(*)`)
-        .eq('user_id', user.id)
-        .order('unlocked_at', { ascending: false })
-
-      if (error) throw error
+      const { data, error } = await fetchUserAchievements({ userId: user.id, limit: 50 })
+      if (error) {
+        console.error('Achievements fetch error:', error)
+        setAchievementsError('Could not load achievements right now')
+      }
       setAchievements(data || [])
     } catch (err) {
       console.error('Achievements fetch error:', err)
+      setAchievementsError('Could not load achievements right now')
     } finally {
       setAchievementsLoading(false)
     }
@@ -250,6 +256,7 @@ const ProfileHub = () => {
         .from('typing_history')
         .select('*')
         .eq('user_id', user.id)
+        .neq('mode', 'custom')
 
       if (historyData && historyData.length > 0) {
         calculateStats(historyData)
@@ -295,10 +302,19 @@ const ProfileHub = () => {
     const totalTests = data.length
     const avgWpm = Math.round(data.reduce((acc, t) => acc + (t.wpm || 0), 0) / totalTests)
     const avgAccuracy = (data.reduce((acc, t) => acc + parseFloat(t.accuracy || 0), 0) / totalTests).toFixed(1)
-    const bestWpm = Math.max(...data.map(t => t.wpm || 0))
+    const leaderboardModes = new Set(['timed', 'sentence'])
+    const leaderboardModeEntries = data.filter((t) =>
+      leaderboardModes.has(String(t.mode || '').toLowerCase())
+    )
+    const bestWpm = leaderboardModeEntries.length > 0
+      ? Math.max(...leaderboardModeEntries.map((t) => Number(t.wpm) || 0))
+      : 0
     const worstWpm = Math.min(...data.map(t => t.wpm || 0))
     const totalTime = data.reduce((acc, t) => acc + parseFloat(t.duration_seconds || t.time || 0), 0)
-    const totalChars = data.reduce((acc, t) => acc + (t.total_characters || t.characters || 0), 0)
+    const totalChars = data.reduce((acc, t) => {
+      const charCount = t.total_chars ?? t.total_characters ?? t.characters ?? t.typed_text?.length ?? 0
+      return acc + (Number(charCount) || 0)
+    }, 0)
     const totalErrors = data.reduce((acc, t) => acc + (t.mistakes || t.errors || 0), 0)
 
     // Mode breakdown
@@ -466,6 +482,51 @@ const ProfileHub = () => {
       setMessage({ text: 'Failed to delete', type: 'error' })
     }
     setTimeout(() => setMessage({ text: '', type: '' }), 2000)
+  }
+
+  const toFiniteNumber = (value, fallback = 0) => {
+    const parsed = typeof value === 'string' ? Number(value) : value
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+
+  const parseMistakeIndices = (value) => {
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
+  const viewHistoryResult = (item) => {
+    const targetText = typeof item.original_text === 'string' ? item.original_text : ''
+    const typedText = typeof item.typed_text === 'string' ? item.typed_text : ''
+
+    if (!targetText && !typedText) {
+      setMessage({ text: 'Detailed result is not available for this legacy entry', type: 'error' })
+      setTimeout(() => setMessage({ text: '', type: '' }), 2500)
+      return
+    }
+
+    navigate('/results', {
+      state: {
+        target: targetText,
+        input: typedText,
+        durationSec: toFiniteNumber(item.duration_seconds, toFiniteNumber(item.time, 0)),
+        wpm: Math.round(toFiniteNumber(item.wpm, 0)),
+        acc: toFiniteNumber(item.accuracy, 0),
+        mistakes: Math.max(0, Math.round(toFiniteNumber(item.errors, toFiniteNumber(item.mistakes, 0)))),
+        mistakenIndices: parseMistakeIndices(item.mistake_indices),
+        corrections: Math.max(0, Math.round(toFiniteNumber(item.corrections, 0))),
+        mode: item.mode || 'unknown',
+        subMode: item.sub_mode || null,
+        language: item.language || null,
+      },
+    })
   }
 
   // Mode options for history filter
@@ -656,7 +717,7 @@ const ProfileHub = () => {
             <div className="flex gap-4 md:gap-6">
               <div className="text-center">
                 <div className="text-2xl md:text-3xl font-bold text-yellow-400">
-                  {stats?.bestWpm ?? profile?.best_wpm ?? '--'}
+                  {stats?.bestWpm ?? '--'}
                 </div>
                 <div className="text-xs text-gray-400 uppercase tracking-wider">Best WPM</div>
               </div>
@@ -1091,13 +1152,22 @@ const ProfileHub = () => {
                                 : '--'}
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <button
-                                onClick={() => deleteHistoryItem(item.id)}
-                                className="text-gray-500 hover:text-red-400 transition p-1"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  onClick={() => viewHistoryResult(item)}
+                                  className="text-gray-400 hover:text-blue-400 transition p-1"
+                                  title="View Result"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => deleteHistoryItem(item.id)}
+                                  className="text-gray-500 hover:text-red-400 transition p-1"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1169,6 +1239,17 @@ const ProfileHub = () => {
                   <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-yellow-400 border-t-transparent"></div>
                   </div>
+                ) : achievementsError ? (
+                  <div className="text-center py-12">
+                    <Trophy className="w-12 h-12 text-red-300 mx-auto mb-4" />
+                    <p className="text-red-300 mb-2">{achievementsError}</p>
+                    <button
+                      onClick={fetchAchievements}
+                      className="mt-2 px-6 py-2 bg-[#0f1219] text-white rounded-xl font-medium border border-gray-700 hover:border-gray-500 transition"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 ) : achievements.length === 0 ? (
                   <div className="text-center py-12">
                     <Trophy className="w-12 h-12 text-gray-600 mx-auto mb-4" />
@@ -1216,10 +1297,10 @@ const ProfileHub = () => {
                 {/* Overview Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total Tests', value: stats?.totalTests || 0, icon: Target, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-                    { label: 'Average WPM', value: stats?.avgWpm || 0, icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-                    { label: 'Best WPM', value: stats?.bestWpm || 0, icon: Trophy, color: 'text-green-400', bg: 'bg-green-400/10' },
-                    { label: 'Avg Accuracy', value: `${stats?.avgAccuracy || 0}%`, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+                    { label: 'Best WPM', value: stats?.bestWpm || 0, icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+                    { label: 'Average WPM', value: stats?.avgWpm || 0, icon: Zap, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+                    { label: 'Avg Accuracy', value: `${stats?.avgAccuracy || 0}%`, icon: Target, color: 'text-green-400', bg: 'bg-green-400/10' },
+                    { label: 'Total Tests', value: stats?.totalTests || 0, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/10' },
                   ].map((stat, idx) => (
                     <motion.div
                       key={stat.label}

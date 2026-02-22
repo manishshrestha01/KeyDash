@@ -187,7 +187,7 @@ const ModeSelector = () => {
   const [selectedLanguage, setSelectedLanguage] = useState(lastLanguage || 'english')
   const [targetText, setTargetText] = useState('')
   const [customText, setCustomText] = useState('')
-  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customTypingActive, setCustomTypingActive] = useState(false)
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [restartKey, setRestartKey] = useState(0)
   
@@ -225,14 +225,14 @@ const ModeSelector = () => {
         text = getSymbolText(selectedSubMode)
         break
       case 'custom':
-        text = customText || 'Enter your custom text above to start typing...'
+        text = customTypingActive ? customText.trim() : ''
         break
       default:
         text = getRandomQuote('medium', selectedLanguage)
     }
     
     setTargetText(text)
-  }, [selectedMode, selectedSubMode, selectedLanguage, customText])
+  }, [selectedMode, selectedSubMode, selectedLanguage, customText, customTypingActive])
 
   // Generate text on mount and mode/language change
   useEffect(() => {
@@ -247,7 +247,10 @@ const ModeSelector = () => {
     // If switching to custom mode and user hasn't provided any custom text,
     // ensure the typing area is empty instead of showing the previous mode text.
     if (mode === 'custom') {
-      setTargetText(customText.trim() || '')
+      setCustomTypingActive(false)
+      setTargetText('')
+    } else {
+      setCustomTypingActive(false)
     }
     const modeConfig = MODES[mode]
     if (modeConfig?.subModes?.length > 0) {
@@ -274,6 +277,9 @@ const ModeSelector = () => {
 
   // Handle restart
   const handleRestart = () => {
+    if (selectedMode === 'custom' && !customTypingActive) {
+      return
+    }
     generateText()
     setRestartKey(prev => prev + 1)
   }
@@ -282,17 +288,10 @@ const ModeSelector = () => {
   const handleCustomTextSubmit = () => {
     if (customText.trim()) {
       setTargetText(customText.trim())
-      setShowCustomInput(false)
+      setCustomTypingActive(true)
       setRestartKey(prev => prev + 1)
     }
   }
-
-  // Keep targetText in sync when editing custom text so users get a live preview
-  useEffect(() => {
-    if (selectedMode === 'custom') {
-      setTargetText(customText.trim())
-    }
-  }, [customText, selectedMode])
 
   const currentModeConfig = MODES[selectedMode]
 
@@ -420,7 +419,11 @@ const ModeSelector = () => {
             <div className="relative">
               <textarea
                 value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
+                onChange={(e) => {
+                  setCustomText(e.target.value)
+                  // Editing custom text should not auto-run the typing engine.
+                  setCustomTypingActive(false)
+                }}
                 placeholder="Paste or type your custom text here..."
                 className="w-full h-32 p-4 bg-[#1a1f2e] border border-gray-700 rounded-xl 
                          text-white placeholder-gray-500 resize-none
@@ -463,7 +466,7 @@ const ModeSelector = () => {
       </div>
 
       {/* Typing Engine */}
-      {selectedMode === 'custom' && !customText.trim() ? (
+      {selectedMode === 'custom' && !customTypingActive ? (
         // Empty placeholder when user hasn't entered custom text yet
         <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
           <div className="relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 cursor-text border border-gray-700/50 min-h-[120px] sm:min-h-[160px]">

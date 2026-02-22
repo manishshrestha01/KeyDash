@@ -287,6 +287,7 @@ const TypingEngine = ({
     const mistakesVal = wrongIndicesRef.current.size
     const adjustedCorrect = Math.max(0, totalTyped - mistakesVal)
     const wpmVal = durationSec > 0 ? (adjustedCorrect / 5) / (durationSec / 60) : 0
+    const rawWpmVal = durationSec > 0 ? (totalTyped / 5) / (durationSec / 60) : 0
     const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0
 
     const resultData = {
@@ -294,11 +295,18 @@ const TypingEngine = ({
       input: finalInput,
       durationSec,
       wpm: Math.round(wpmVal),
-      rawWpm: rawWpm,
+      rawWpm: Math.round(rawWpm || rawWpmVal),
       acc: parseFloat(accVal.toFixed(1)),
       mistakes: mistakesVal,
       mistakenIndices: Array.from(wrongIndicesRef.current),
       corrections: correctionsRef.current,
+      charTimings: charTimingsRef.current.map((entry) => ({
+        index: entry.index,
+        char: entry.char,
+        type: entry.type || 'insert',
+        time: entry.time,
+        correct: entry.correct,
+      })),
       mode,
       subMode,
       language,
@@ -315,7 +323,7 @@ const TypingEngine = ({
           original_text: text,
           typed_text: finalInput,
           wpm: Math.round(wpmVal),
-          raw_wpm: Math.round(rawWpm),
+          raw_wpm: Math.round(rawWpm || rawWpmVal),
           accuracy: parseFloat(accVal.toFixed(1)),
           errors: mistakesVal,
           correct_chars: adjustedCorrect,
@@ -341,6 +349,7 @@ const TypingEngine = ({
   const handleInput = (e) => {
     if (disabled || isFinished) return
 
+    const previousInput = input
     const val = e.target.value
 
     // Start timer on first character
@@ -349,8 +358,67 @@ const TypingEngine = ({
     }
 
     // Track corrections (backspace usage)
-    if (val.length < input.length) {
-      correctionsRef.current += 1
+    if (val.length < previousInput.length) {
+      correctionsRef.current += (previousInput.length - val.length)
+    }
+
+    // Record per-character timings for inserted/replaced characters.
+    if (val !== previousInput) {
+      let firstDiff = 0
+      const sharedLength = Math.min(previousInput.length, val.length)
+      while (firstDiff < sharedLength && previousInput[firstDiff] === val[firstDiff]) {
+        firstDiff += 1
+      }
+
+      const now = Date.now()
+      // Capture characters the user newly produced in this event.
+      if (val.length > previousInput.length) {
+        const insertedCount = val.length - previousInput.length
+        const endIdx = Math.min(val.length, firstDiff + insertedCount)
+        for (let i = firstDiff; i < endIdx; i++) {
+          charTimingsRef.current.push({
+            type: 'insert',
+            index: i,
+            char: val[i],
+            time: now + (i - firstDiff),
+            correct: val[i] === text[i],
+          })
+        }
+      } else if (val.length < previousInput.length) {
+        // Track deleted characters so results can show what the user erased.
+        let prevEnd = previousInput.length - 1
+        let valEnd = val.length - 1
+        while (
+          prevEnd >= firstDiff &&
+          valEnd >= firstDiff &&
+          previousInput[prevEnd] === val[valEnd]
+        ) {
+          prevEnd -= 1
+          valEnd -= 1
+        }
+
+        const removed = previousInput.slice(firstDiff, prevEnd + 1)
+        for (let i = 0; i < removed.length; i++) {
+          charTimingsRef.current.push({
+            type: 'delete',
+            index: firstDiff + i,
+            char: removed[i],
+            time: now + i,
+            correct: null,
+          })
+        }
+      } else if (val.length === previousInput.length) {
+        for (let i = firstDiff; i < val.length; i++) {
+          if (val[i] === previousInput[i]) continue
+          charTimingsRef.current.push({
+            type: 'insert',
+            index: i,
+            char: val[i],
+            time: now + (i - firstDiff),
+            correct: val[i] === text[i],
+          })
+        }
+      }
     }
 
     // Update caret state
@@ -364,13 +432,6 @@ const TypingEngine = ({
         setCaretState('idle')
       }, CARET_POP_DURATION)
     }, CARET_ACTIVE_TIMEOUT)
-
-    // Record timing
-    charTimingsRef.current.push({
-      char: val[val.length - 1],
-      time: Date.now(),
-      correct: val.length > 0 && val[val.length - 1] === text[val.length - 1],
-    })
 
     setInput(val)
   }
