@@ -1,47 +1,5 @@
 {
-  "categories": [
-    {
-      "name": "Basic Symbols",
-      "symbols": "! @ # $ % ^ & * ( ) - _ = + [ ] { } | \\ : ; \" ' < > , . ? / `"
-    },
-    {
-      "name": "Programming Operators",
-      "symbols": "== != <= >= && || ++ -- += -= *= /= %= &= |= ^= << >> === !== => -> :: ... ?? ?. #{ %{ ${ @{ {{ }} }}"
-    },
-    {
-      "name": "Brackets Mix",
-      "symbols": "( ) [ ] { } < > (( )) [[ ]] {{ }} << >> </ > /> <? ?> <% %> /* */ <!-- --> [[ ]] (( ))"
-    },
-    {
-      "name": "Math Symbols",
-      "symbols": "+ - * / % ^ = < > <= >= != == += -= *= /= %= ^= ** // %% && || ! ~ & | ^ << >>"
-    },
-    {
-      "name": "String Delimiters",
-      "symbols": "\" \" ' ' ` ` \"\" '' `` \\\" \\' \\` \\\\ \\n \\t \\r \\0 ${ } #{ } %{ }"
-    },
-    {
-      "name": "Special Characters",
-      "symbols": "@ # $ % ^ & * ~ ` | \\ / ? ! ; : , . _ - + = [ ] { } ( ) < > \" '"
-    },
-    {
-      "name": "Code Comments",
-      "symbols": "// /* */ # <!-- --> ''' \"\"\" =begin =end --[[ ]] (* *) {- -} // // /* /* */ */"
-    },
-    {
-      "name": "Web & URLs",
-      "symbols": ":// www. .com .org .net .io https:// http:// ftp:// mailto: tel: @domain #anchor ?query=value &param=1"
-    },
-    {
-      "name": "Regex Patterns",
-      "symbols": "^ $ . * + ? [ ] { } ( ) | \\ / ^$ .* .+ .? [a-z] [A-Z] [0-9] \\d \\w \\s \\b (?:) (?=) (?!)"
-    },
-    {
-      "name": "Terminal & Shell",
-      "symbols": "$ # ~ > >> < << | && || ; & ! * ? [ ] { } ` \" ' \\ / - -- = += $( ) ${ } %{ }"
-    }
-  ],
-  "practice_texts": [
+ "practice_texts": [
     {
       "id": 1,
       "text": "const result = (a && b) || (c != d);",
@@ -141,6 +99,83 @@
       "id": 20,
       "text": "INSERT INTO users (name, email) VALUES ('John', 'john@example.com');",
       "difficulty": "medium"
+    }
+  ],
+  "grammar_practice_texts": [
+    {
+      "id": 101,
+      "text": "Hello, world! Are you ready? Yes; let's begin.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 102,
+      "text": "She said, \"Type slowly,\" and he replied, 'Okay.'",
+      "difficulty": "easy"
+    },
+    {
+      "id": 103,
+      "text": "Wait, what? I missed a key; now it's fixed.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 104,
+      "text": "If it's raining, stay in; if it's sunny, go out.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 105,
+      "text": "No pressure: breathe, focus, type; then check.",
+      "difficulty": "easy"
+    },
+    {
+      "id": 106,
+      "text": "Why rush? Accuracy first; speed comes later.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 107,
+      "text": "He asked, \"Can we finish today?\" I answered, \"Yes; we can.\"",
+      "difficulty": "medium"
+    },
+    {
+      "id": 108,
+      "text": "Use commas, periods, and semicolons; avoid random mistakes.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 109,
+      "text": "When errors appear, don't panic: pause, correct, continue.",
+      "difficulty": "medium"
+    },
+    {
+      "id": 110,
+      "text": "This line uses symbols: [ ] { } ( ) < > / \\ | ; : ' \" ? !",
+      "difficulty": "medium"
+    },
+    {
+      "id": 111,
+      "text": "\"Is this correct?\" she asked; he said, \"Check it again; then submit.\"",
+      "difficulty": "hard"
+    },
+    {
+      "id": 112,
+      "text": "Practice note: \"Don't skip punctuation; it's part of grammar, too!\"",
+      "difficulty": "hard"
+    },
+    {
+      "id": 113,
+      "text": "Report: item #1 passed; item #2 failed; item #3 needs review.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 114,
+      "text": "Path test: C:\\temp\\logs\\app.txt; URL test: https://site.com/?q=a&x=1.",
+      "difficulty": "hard"
+    },
+    {
+      "id": 115,
+      "text": "Final check: \"Are 'quotes', (brackets), and semicolons; all correct?\" Yes!",
+      "difficulty": "hard"
     }
   ]
 }

@@ -210,7 +210,7 @@ export const useAIBattleStore = create((set, get) => ({
   difficulty: 'medium',
   aiProgress: 0,
   aiWpm: 0,
-  aiName: 'AI Bot',
+  aiName: 'AI',
   userProgress: 0,
   userWpm: 0,
   winner: null,

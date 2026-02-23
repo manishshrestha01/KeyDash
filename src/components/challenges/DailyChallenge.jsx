@@ -26,6 +26,16 @@ const DAILY_TEXTS = [
   "The best error message is the one that never shows up. Testing leads to failure, and failure leads to understanding."
 ]
 
+const FALLBACK_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239CA3AF'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-9 1.67-9 5v1h18v-1c0-3.33-5.69-5-9-5z'/></svg>"
+)}`
+
+const getSafeAvatarUrl = (value) => {
+  if (!value || typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 const DailyChallenge = () => {
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
@@ -394,8 +404,18 @@ const DailyChallenge = () => {
                       }`}>
                         {idx + 1}
                       </span>
-                      {entry.profiles?.avatar_url ? (
-                        <img src={entry.profiles.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      {getSafeAvatarUrl(entry.profiles?.avatar_url) ? (
+                        <img
+                          src={getSafeAvatarUrl(entry.profiles?.avatar_url)}
+                          alt={entry.profiles?.display_name || ''}
+                          className="w-8 h-8 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null
+                            e.currentTarget.src = FALLBACK_AVATAR
+                          }}
+                        />
                       ) : (
                         <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
                           {(entry.profiles?.display_name || 'U')[0].toUpperCase()}
@@ -519,11 +539,17 @@ const DailyChallenge = () => {
                         }`}>
                           {idx + 1}
                         </span>
-                        {entry.profiles?.avatar_url ? (
+                        {getSafeAvatarUrl(entry.profiles?.avatar_url) ? (
                           <img
-                            src={entry.profiles.avatar_url?.trim()}
+                            src={getSafeAvatarUrl(entry.profiles?.avatar_url)}
                             alt={entry.profiles?.display_name || ''}
                             className="w-8 h-8 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null
+                              e.currentTarget.src = FALLBACK_AVATAR
+                            }}
                           />
                         ) : (
                           <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">

@@ -19,6 +19,9 @@ import { motion, AnimatePresence } from 'framer-motion'
  * - onComplete: callback when typing is complete
  * - showLiveStats: show WPM and accuracy during typing
  * - disabled: disable input
+ * - startImmediately: auto-start timer when mounted (for battle countdown starts)
+ * - historyModeOverride: optional mode used for persisted history/result payload
+ * - opponentCaretIndex: optional rival caret index rendered in typing area (AI/multiplayer)
  */
 const TypingEngine = ({
   text = '',
@@ -30,6 +33,9 @@ const TypingEngine = ({
   onComplete = null,
   showLiveStats = true,
   disabled = false,
+  startImmediately = false,
+  historyModeOverride = null,
+  opponentCaretIndex = null,
   showRestartButton = true,
   onRestart = null,
 }) => {
@@ -40,7 +46,6 @@ const TypingEngine = ({
   // Core state
   const [input, setInput] = useState('')
   const [startTime, setStartTime] = useState(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
   const [isFinished, setIsFinished] = useState(false)
   const [timeLeft, setTimeLeft] = useState(timeLimit)
 
@@ -51,12 +56,12 @@ const TypingEngine = ({
   const [errors, setErrors] = useState(0)
 
   // Tracking
-  const [lockedIndex, setLockedIndex] = useState(0)
   const [caretState, setCaretState] = useState('idle')
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
   const wrongIndicesRef = useRef(new Set())
   const correctionsRef = useRef(0)
   const charTimingsRef = useRef([])
+  const currentIndex = input.length
 
   // Refs
   const textareaRef = useRef(null)
@@ -151,7 +156,7 @@ const TypingEngine = ({
   // Determine visible lines (show 3 lines at a time)
   const visibleLineIndices = useMemo(() => {
     let charCount = 0
-    let currentLineIdx = 0
+    let currentLineIdx = Math.max(0, lines.length - 1)
     for (let i = 0; i < lines.length; i++) {
       if (currentIndex < charCount + lines[i].length) {
         currentLineIdx = i
@@ -162,6 +167,24 @@ const TypingEngine = ({
     const startLine = Math.max(0, currentLineIdx - 1)
     return { startLine, currentLineIdx }
   }, [lines, currentIndex])
+
+  const progressPercent = useMemo(() => {
+    if (!text.length) return 0
+    if (mode !== 'ai_battle') {
+      return Math.min(100, (input.length / text.length) * 100)
+    }
+
+    const maxComparableChars = Math.min(input.length, text.length)
+    let contiguousCorrectChars = 0
+    while (
+      contiguousCorrectChars < maxComparableChars &&
+      input[contiguousCorrectChars] === text[contiguousCorrectChars]
+    ) {
+      contiguousCorrectChars += 1
+    }
+
+    return Math.min(100, (contiguousCorrectChars / text.length) * 100)
+  }, [input, mode, text])
 
   // Update refs
   useEffect(() => {
@@ -176,7 +199,6 @@ const TypingEngine = ({
   useEffect(() => {
     setInput('')
     setStartTime(null)
-    setCurrentIndex(0)
     setIsFinished(false)
     setTimeLeft(timeLimit)
 
@@ -185,7 +207,6 @@ const TypingEngine = ({
     setAccuracy(100)
     setErrors(0)
 
-    setLockedIndex(0)
     isFinishingRef.current = false
     wrongIndicesRef.current.clear()
     correctionsRef.current = 0
@@ -204,6 +225,12 @@ const TypingEngine = ({
       caretPopTimerRef.current = null
     }
   }, [text])
+
+  // Optional auto-start for timed battles that begin after a shared countdown.
+  useEffect(() => {
+    if (!startImmediately || !timeLimit || startTime || isFinished || disabled || !text) return
+    setStartTime(Date.now())
+  }, [startImmediately, timeLimit, startTime, isFinished, disabled, text])
 
   // Timer logic for timed mode
   useEffect(() => {
@@ -232,10 +259,6 @@ const TypingEngine = ({
   // Update stats on input change
   useEffect(() => {
     if (!text || isFinished) return
-    // Skip if input hasn't actually changed from current index
-    if (input.length === currentIndex && input.length > 0) return
-
-    setCurrentIndex(input.length)
 
     // Detect mistakes
     for (let i = 0; i < input.length; i++) {
@@ -247,6 +270,15 @@ const TypingEngine = ({
     const totalTyped = input.length
     const mistakesCount = wrongIndicesRef.current.size
     const adjustedCorrect = Math.max(0, totalTyped - mistakesCount)
+    const exactMatch = input === text
+    const maxComparableChars = Math.min(totalTyped, text.length)
+    let contiguousCorrectChars = 0
+    while (
+      contiguousCorrectChars < maxComparableChars &&
+      input[contiguousCorrectChars] === text[contiguousCorrectChars]
+    ) {
+      contiguousCorrectChars += 1
+    }
 
     setErrors(mistakesCount)
 
@@ -261,15 +293,25 @@ const TypingEngine = ({
 
     // Report progress for multiplayer/AI
     if (onProgress && totalTyped > 0 && text.length > 0) {
-      const progress = Math.floor((totalTyped / text.length) * 100)
-      onProgress(progress, Math.round(wpmVal))
+      const progressBase = mode === 'ai_battle' ? contiguousCorrectChars : totalTyped
+      const progress = Math.floor((progressBase / text.length) * 100)
+      onProgress(progress, Math.round(wpmVal), {
+        rawWpm: Math.round(rawWpmVal),
+        accuracy: parseFloat(accVal.toFixed(1)),
+        errors: mistakesCount,
+        typedText: input,
+        correctChars: adjustedCorrect,
+        totalChars: totalTyped,
+        isExactMatch: exactMatch,
+      })
     }
 
     // Check for completion
-    if (input.length >= text.length && !isFinished) {
+    const canCompleteCurrentMode = mode === 'ai_battle' ? exactMatch : input.length >= text.length
+    if (canCompleteCurrentMode && !isFinished) {
       handleFinish(input, startTime)
     }
-  }, [input, startTime, text, isFinished])
+  }, [input, startTime, text, isFinished, mode, onProgress])
 
   // Handle typing finish
   const handleFinish = async (finalInput = input, finishStartTime = startTime, forcedTimeUp = false) => {
@@ -289,15 +331,20 @@ const TypingEngine = ({
     const wpmVal = durationSec > 0 ? (adjustedCorrect / 5) / (durationSec / 60) : 0
     const rawWpmVal = durationSec > 0 ? (totalTyped / 5) / (durationSec / 60) : 0
     const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0
+    const effectiveMode = historyModeOverride || mode
 
     const resultData = {
       target: text,
       input: finalInput,
+      typedText: finalInput,
       durationSec,
       wpm: Math.round(wpmVal),
       rawWpm: Math.round(rawWpm || rawWpmVal),
       acc: parseFloat(accVal.toFixed(1)),
       mistakes: mistakesVal,
+      correctChars: adjustedCorrect,
+      totalChars: totalTyped,
+      isExactMatch: finalInput === text,
       mistakenIndices: Array.from(wrongIndicesRef.current),
       corrections: correctionsRef.current,
       charTimings: charTimingsRef.current.map((entry) => ({
@@ -307,9 +354,13 @@ const TypingEngine = ({
         time: entry.time,
         correct: entry.correct,
       })),
-      mode,
+      mode: effectiveMode,
       subMode,
       language,
+    }
+
+    if (onComplete) {
+      onComplete(resultData)
     }
 
     // Save to typing history
@@ -317,7 +368,7 @@ const TypingEngine = ({
       try {
         await supabase.from('typing_history').insert({
           user_id: user.id,
-          mode,
+          mode: effectiveMode,
           sub_mode: subMode,
           language,
           original_text: text,
@@ -338,9 +389,7 @@ const TypingEngine = ({
       }
     }
 
-    if (onComplete) {
-      onComplete(resultData)
-    } else {
+    if (!onComplete) {
       navigate('/results', { state: resultData })
     }
   }
@@ -350,7 +399,8 @@ const TypingEngine = ({
     if (disabled || isFinished) return
 
     const previousInput = input
-    const val = e.target.value
+    const rawValue = e.target.value
+    const val = mode === 'ai_battle' ? rawValue.slice(0, text.length) : rawValue
 
     // Start timer on first character
     if (val.length === 1 && !startTime) {
@@ -453,14 +503,12 @@ const TypingEngine = ({
   const handleRestart = () => {
     setInput('')
     setStartTime(null)
-    setCurrentIndex(0)
     setIsFinished(false)
     setTimeLeft(timeLimit)
     setWpm(0)
     setRawWpm(0)
     setAccuracy(100)
     setErrors(0)
-    setLockedIndex(0)
     setCaretState('idle')
     isFinishingRef.current = false
     wrongIndicesRef.current.clear()
@@ -499,8 +547,12 @@ const TypingEngine = ({
     const isCorrect = isTyped && input[idx] === char
     const isError = isTyped && input[idx] !== char
     const isCurrent = idx === currentIndex
+    const hasOpponentIndex = Number.isFinite(opponentCaretIndex)
+    const isOpponentTyped = hasOpponentIndex && idx < opponentCaretIndex
+    const isOpponentCaret = hasOpponentIndex && idx === opponentCaretIndex && !isFinished
 
     let charClass = 'text-gray-500' // untyped
+    if (!isTyped && isOpponentTyped) charClass = 'text-purple-300/70'
     if (isCorrect) charClass = 'text-white'
     if (isError) charClass = 'text-red-500 bg-red-500/20'
 
@@ -514,6 +566,11 @@ const TypingEngine = ({
 
     return (
       <span key={idx} className={`relative ${charClass} transition-colors duration-75`}>
+        {isOpponentCaret && (
+          <span
+            className={`absolute top-0 h-full w-0.5 bg-purple-400/90 animate-pulse ${isCurrent ? 'left-1' : 'left-0'}`}
+          />
+        )}
         {isCurrent && !isFinished && (
           <span
             className={`absolute left-0 top-0 h-full w-0.5 bg-yellow-400 ${getCaretClass()} ${
@@ -649,13 +706,16 @@ const TypingEngine = ({
                 for (let i = 0; i < actualLineIdx; i++) {
                   charOffset += lines[i].length
                 }
+                const lineHasTypedChars = currentIndex > charOffset
+                const lineHasOpponentChars = Number.isFinite(opponentCaretIndex) && opponentCaretIndex > charOffset
+                const shouldDimLine = !lineHasTypedChars && !lineHasOpponentChars && actualLineIdx !== visibleLineIndices.currentLineIdx
 
                 return (
                   <div 
                     key={actualLineIdx} 
                     className={`
                       whitespace-pre-wrap break-normal
-                      ${actualLineIdx === visibleLineIndices.currentLineIdx ? 'opacity-100' : 'opacity-50'}
+                      ${shouldDimLine ? 'opacity-50' : 'opacity-100'}
                       transition-opacity duration-200
                     `}
                     style={{
@@ -690,7 +750,7 @@ const TypingEngine = ({
         <motion.div
           className="h-full bg-gradient-to-r from-yellow-500 to-yellow-400"
           initial={{ width: 0 }}
-          animate={{ width: `${Math.min(100, (input.length / text.length) * 100)}%` }}
+          animate={{ width: `${progressPercent}%` }}
           transition={{ duration: 0.1 }}
         />
       </div>

@@ -174,8 +174,11 @@ const getRandomCode = (language) => {
 
 // Get symbol practice text
 const getSymbolText = (difficulty) => {
-  const filtered = symbolsData.practice_texts.filter(t => t.difficulty === difficulty)
-  if (filtered.length === 0) return symbolsData.practice_texts[0].text
+  const symbolPool = symbolsData.grammar_practice_texts?.length
+    ? symbolsData.grammar_practice_texts
+    : symbolsData.practice_texts
+  const filtered = symbolPool.filter(t => t.difficulty === difficulty)
+  if (filtered.length === 0) return symbolPool[0]?.text || ''
   return filtered[Math.floor(Math.random() * filtered.length)].text
 }
 

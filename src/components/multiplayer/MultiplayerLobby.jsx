@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Users, Copy, Check, Play, Crown, Loader2, 
-  ArrowLeft, Trophy
+  ArrowLeft, Trophy, Settings
 } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
@@ -11,7 +11,7 @@ import { useMultiplayerStore } from '../../store'
 import toast, { Toaster } from 'react-hot-toast'
 import TypingEngine from '../typing/TypingEngine'
 import { formatDistanceToNow } from 'date-fns'
-import { generateRaceText, generateRoomCode } from './multiplayerUtils'
+import { buildRaceFromSettings, decodeRaceText, generateRoomCode } from './multiplayerUtils'
 
 const MultiplayerLobby = () => {
   const navigate = useNavigate()
@@ -20,6 +20,17 @@ const MultiplayerLobby = () => {
     currentRoom, roomCode, isHost, status, participants, raceText, countdown,
     setRoom, setIsHost, setParticipants, setStatus, setCountdown, updateParticipant, leaveRoom
   } = useMultiplayerStore()
+
+  const sentenceOptions = useMemo(
+    () => [
+      { key: 'easy', name: 'Easy' },
+      { key: 'medium', name: 'Medium' },
+      { key: 'hard', name: 'Hard' },
+      { key: 'extreme', name: 'Extreme' },
+    ],
+    []
+  )
+  const timedOptions = useMemo(() => [15, 30, 60, 120], [])
 
   const [joinCode, setJoinCode] = useState('')
   const [copied, setCopied] = useState(false)
@@ -30,9 +41,29 @@ const MultiplayerLobby = () => {
   const [finished, setFinished] = useState(false)
   const [incomingInvites, setIncomingInvites] = useState([])
   const [inviteActionLoading, setInviteActionLoading] = useState({})
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
+  const [roomSettingsSaving, setRoomSettingsSaving] = useState(false)
+  const [roomMode, setRoomMode] = useState('sentence') // sentence | timed | custom
+  const [roomSentenceDifficulty, setRoomSentenceDifficulty] = useState('medium')
+  const [roomTimedDuration, setRoomTimedDuration] = useState(60)
+  const [roomCustomText, setRoomCustomText] = useState('')
 
   const channelRef = useRef(null)
   const inviteChannelRef = useRef(null)
+  const encodedRaceText = raceText || currentRoom?.race_text || ''
+
+  const activeRace = useMemo(() => decodeRaceText(encodedRaceText), [encodedRaceText])
+  const activeRaceText = activeRace.text || ''
+  const isTimedRace = activeRace.mode === 'timed'
+  const raceModeLabel = useMemo(() => {
+    if (activeRace.mode === 'timed') return `Timed ${activeRace.timedDuration}s`
+    if (activeRace.mode === 'custom') return 'Custom'
+    const sentenceLabel = sentenceOptions.find((o) => o.key === activeRace.sentenceDifficulty)?.name || 'Medium'
+    return `Sentence ${sentenceLabel}`
+  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, sentenceOptions])
+
+  const roomCustomTrimmedLength = roomCustomText.trim().length
+  const canApplyRoomSettings = roomMode !== 'custom' || roomCustomTrimmedLength >= 30
 
   // Reset local race UI state whenever room changes.
   useEffect(() => {
@@ -47,6 +78,19 @@ const MultiplayerLobby = () => {
       setFinished(false)
       setMyProgress(0)
       setMyWpm(0)
+    }
+  }, [status])
+
+  useEffect(() => {
+    setRoomMode(activeRace.mode || 'sentence')
+    setRoomSentenceDifficulty(activeRace.sentenceDifficulty || 'medium')
+    setRoomTimedDuration(activeRace.timedDuration || 60)
+    setRoomCustomText(activeRace.mode === 'custom' ? (activeRace.text || '') : '')
+  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text])
+
+  useEffect(() => {
+    if (status !== 'waiting') {
+      setRoomSettingsOpen(false)
     }
   }, [status])
 
@@ -327,7 +371,12 @@ const MultiplayerLobby = () => {
     setLoading(true)
     try {
       const code = generateRoomCode()
-      const text = generateRaceText()
+      const text = buildRaceFromSettings({
+        mode: 'sentence',
+        sentenceDifficulty: 'medium',
+        timedDuration: 60,
+        customText: '',
+      })
 
       const { displayName, avatarUrl } = await resolveCurrentUserIdentity('Host')
 
@@ -374,6 +423,74 @@ const MultiplayerLobby = () => {
       setLoading(false)
     }
   }
+
+  const syncRoomSettingsFromActiveRace = useCallback(() => {
+    setRoomMode(activeRace.mode || 'sentence')
+    setRoomSentenceDifficulty(activeRace.sentenceDifficulty || 'medium')
+    setRoomTimedDuration(activeRace.timedDuration || 60)
+    setRoomCustomText(activeRace.mode === 'custom' ? (activeRace.text || '') : '')
+  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text])
+
+  const handleToggleRoomSettings = useCallback(() => {
+    if (!isHost || status !== 'waiting') return
+    if (!roomSettingsOpen) syncRoomSettingsFromActiveRace()
+    setRoomSettingsOpen((prev) => !prev)
+  }, [isHost, roomSettingsOpen, status, syncRoomSettingsFromActiveRace])
+
+  const handleApplyRoomSettings = useCallback(async () => {
+    if (!isHost || !currentRoom?.id || !user?.id || status !== 'waiting') return
+
+    if (!canApplyRoomSettings) {
+      toast.error('Custom mode needs at least 30 characters')
+      return
+    }
+
+    setRoomSettingsSaving(true)
+    try {
+      const nextRaceText = buildRaceFromSettings({
+        mode: roomMode,
+        sentenceDifficulty: roomSentenceDifficulty,
+        timedDuration: roomTimedDuration,
+        customText: roomCustomText,
+      })
+
+      const { data: updatedRoom, error } = await supabase
+        .from('multiplayer_rooms')
+        .update({ race_text: nextRaceText })
+        .eq('id', currentRoom.id)
+        .eq('host_id', user.id)
+        .eq('status', 'waiting')
+        .select()
+        .single()
+
+      if (error) throw error
+
+      if (updatedRoom) {
+        setRoom(updatedRoom)
+      } else {
+        setRoom({ ...currentRoom, race_text: nextRaceText })
+      }
+
+      setRoomSettingsOpen(false)
+      toast.success('Room settings updated')
+    } catch (error) {
+      console.error('Error updating room settings:', error)
+      toast.error('Failed to update room settings')
+    } finally {
+      setRoomSettingsSaving(false)
+    }
+  }, [
+    canApplyRoomSettings,
+    currentRoom,
+    isHost,
+    roomCustomText,
+    roomMode,
+    roomSentenceDifficulty,
+    roomTimedDuration,
+    setRoom,
+    status,
+    user?.id,
+  ])
 
   // Join a room
   const handleJoinRoom = async () => {
@@ -700,6 +817,16 @@ const MultiplayerLobby = () => {
 
     setFinished(true)
 
+    const raceSubMode =
+      activeRace.mode === 'timed'
+        ? `timed_${activeRace.timedDuration}s`
+        : activeRace.mode === 'custom'
+          ? 'custom'
+          : `sentence_${activeRace.sentenceDifficulty}`
+    const historySubMode = currentRoom?.room_code
+      ? `${currentRoom.room_code}:${raceSubMode}`
+      : raceSubMode
+
     // Update participant record
     await supabase
       .from('multiplayer_participants')
@@ -724,8 +851,8 @@ const MultiplayerLobby = () => {
     await supabase.from('typing_history').insert({
       user_id: user.id,
       mode: 'multiplayer',
-      sub_mode: currentRoom?.room_code || null,
-      original_text: raceText || currentRoom?.race_text || '',
+      sub_mode: historySubMode,
+      original_text: activeRaceText,
       typed_text: resultData.input || '',
       wpm: Math.round(resultData.wpm || 0),
       raw_wpm: Math.round(resultData.rawWpm || resultData.wpm || 0),
@@ -738,7 +865,15 @@ const MultiplayerLobby = () => {
       corrections: resultData.corrections || 0,
       is_completed: true,
     })
-  }, [currentRoom?.id, currentRoom?.room_code, currentRoom?.race_text, user?.id, raceText])
+  }, [
+    activeRace.mode,
+    activeRace.sentenceDifficulty,
+    activeRace.timedDuration,
+    activeRaceText,
+    currentRoom?.id,
+    currentRoom?.room_code,
+    user?.id,
+  ])
 
   // Copy room code
   const handleCopyCode = () => {
@@ -887,8 +1022,9 @@ const MultiplayerLobby = () => {
           >
             <h2 className="text-xl font-semibold mb-4">Create a Room</h2>
             <p className="text-gray-400 mb-4">
-              Start a new race and invite friends with a room code
+              Start a new race, then configure mode from the room settings icon
             </p>
+
             <button
               onClick={handleCreateRoom}
               disabled={loading}
@@ -994,6 +1130,113 @@ const MultiplayerLobby = () => {
       {/* Waiting State */}
       {status === 'waiting' && (
         <div className="space-y-6">
+          <div className="bg-[#1a1f2e] rounded-2xl p-4 border border-gray-700/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-gray-400">Race Mode</span>
+                <div className="font-semibold text-yellow-300">{raceModeLabel}</div>
+              </div>
+              {isHost && (
+                <button
+                  onClick={handleToggleRoomSettings}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-700 bg-[#252b3b] text-gray-200 hover:border-gray-600 transition"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
+              )}
+            </div>
+
+            {isHost && roomSettingsOpen && (
+              <div className="mt-4 pt-4 border-t border-gray-700/70 space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: 'sentence', label: 'Sentence' },
+                    { key: 'timed', label: 'Timed' },
+                    { key: 'custom', label: 'Custom' },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      onClick={() => setRoomMode(option.key)}
+                      className={`px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                        roomMode === option.key
+                          ? 'border-yellow-400/70 bg-yellow-400/10 text-yellow-300'
+                          : 'border-gray-700 text-gray-300 hover:border-gray-600'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {roomMode === 'sentence' && (
+                  <div className="flex flex-wrap gap-2">
+                    {sentenceOptions.map((option) => (
+                      <button
+                        key={option.key}
+                        onClick={() => setRoomSentenceDifficulty(option.key)}
+                        className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                          roomSentenceDifficulty === option.key
+                            ? 'border-yellow-400/70 bg-yellow-400/10 text-yellow-300'
+                            : 'border-gray-700 text-gray-300 hover:border-gray-600'
+                        }`}
+                      >
+                        {option.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {roomMode === 'timed' && (
+                  <div className="flex flex-wrap gap-2">
+                    {timedOptions.map((duration) => (
+                      <button
+                        key={duration}
+                        onClick={() => setRoomTimedDuration(duration)}
+                        className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                          roomTimedDuration === duration
+                            ? 'border-yellow-400/70 bg-yellow-400/10 text-yellow-300'
+                            : 'border-gray-700 text-gray-300 hover:border-gray-600'
+                        }`}
+                      >
+                        {duration}s
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {roomMode === 'custom' && (
+                  <div>
+                    <textarea
+                      value={roomCustomText}
+                      onChange={(e) => setRoomCustomText(e.target.value)}
+                      placeholder="Paste or type custom race text..."
+                      className="w-full min-h-[110px] p-3 bg-[#252b3b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400/50"
+                    />
+                    <p className={`mt-2 text-xs ${roomCustomTrimmedLength >= 30 ? 'text-green-400' : 'text-gray-500'}`}>
+                      {roomCustomTrimmedLength}/30 minimum characters
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleApplyRoomSettings}
+                    disabled={roomSettingsSaving || !canApplyRoomSettings}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black rounded-lg font-semibold hover:bg-yellow-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {roomSettingsSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Settings className="w-4 h-4" />
+                    )}
+                    Apply Setup
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Participants */}
           <div className="bg-[#1a1f2e] rounded-2xl p-6 border border-gray-700/50">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -1069,7 +1312,10 @@ const MultiplayerLobby = () => {
         <div className="space-y-6">
           {/* Progress Bars */}
           <div className="bg-[#1a1f2e] rounded-2xl p-6 border border-gray-700/50">
-            <h2 className="text-lg font-semibold mb-4">Race Progress</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Race Progress</h2>
+              <span className="text-sm text-gray-400">{raceModeLabel}</span>
+            </div>
             <div className="space-y-4">
               {participants
                 .sort((a, b) => (b.progress || 0) - (a.progress || 0))
@@ -1101,10 +1347,14 @@ const MultiplayerLobby = () => {
           </div>
 
           {/* Typing Area */}
-          {!finished && (raceText || currentRoom?.race_text) && (
+          {!finished && activeRaceText && (
             <TypingEngine
-              text={raceText || currentRoom?.race_text}
-              mode="multiplayer"
+              text={activeRaceText}
+              mode={isTimedRace ? 'timed' : 'multiplayer'}
+              subMode={isTimedRace ? `${activeRace.timedDuration}s` : activeRace.mode}
+              timeLimit={isTimedRace ? activeRace.timedDuration : null}
+              startImmediately={isTimedRace}
+              historyModeOverride="multiplayer"
               onProgress={handleProgress}
               onComplete={handleComplete}
               showLiveStats={false}
@@ -1112,7 +1362,7 @@ const MultiplayerLobby = () => {
             />
           )}
 
-          {!finished && !(raceText || currentRoom?.race_text) && (
+          {!finished && !activeRaceText && (
             <div className="text-center py-10 bg-[#1a1f2e] rounded-2xl border border-gray-700/50">
               <Loader2 className="w-10 h-10 text-yellow-400 mx-auto mb-4 animate-spin" />
               <p className="text-gray-400">Loading race text...</p>
