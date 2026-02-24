@@ -23,7 +23,7 @@ const AI_PROFILES = {
   },
   medium: {
     name: 'AI Challenger',
-    avatar: '🤖',
+    avatar: '👾',
     minWpm: 45,
     maxWpm: 65,
     mistakeRate: 0.05,
@@ -32,7 +32,7 @@ const AI_PROFILES = {
   },
   hard: {
     name: 'AI Expert',
-    avatar: '🤖',
+    avatar: '🦾',
     minWpm: 70,
     maxWpm: 95,
     mistakeRate: 0.03,
@@ -41,7 +41,7 @@ const AI_PROFILES = {
   },
   pro: {
     name: 'AI Master',
-    avatar: '🤖',
+    avatar: '👑',
     minWpm: 100,
     maxWpm: 140,
     mistakeRate: 0.01,
@@ -537,7 +537,7 @@ const AIBattle = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500/20 rounded-2xl mb-4">
               <Bot className="w-8 h-8 text-purple-400" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Battle AI</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Battle with AI</h1>
             <p className="text-gray-400">Challenge AI opponents at different difficulty levels</p>
           </div>
 

@@ -539,7 +539,7 @@ const ProfileHub = () => {
     { value: 'custom', label: 'Custom' },
     { value: 'daily', label: 'Daily' },
     { value: 'multiplayer', label: 'Multiplayer' },
-    { value: 'ai_battle', label: 'AI Battle' },
+    { value: 'ai_battle', label: 'Battle with AI' },
   ]
 
   // Filter and sort history

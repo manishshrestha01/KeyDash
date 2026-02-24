@@ -110,7 +110,7 @@ const SPECIAL_MODES = {
     description: 'Race against others',
   },
   ai_battle: {
-    name: 'AI Battle',
+    name: 'Battle with AI',
     icon: Bot,
     description: 'Challenge AI opponents',
   },

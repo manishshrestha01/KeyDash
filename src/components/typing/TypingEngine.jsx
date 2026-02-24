@@ -366,7 +366,7 @@ const TypingEngine = ({
     // Save to typing history
     if (user?.id) {
       try {
-        await supabase.from('typing_history').insert({
+        const { error: historyError } = await supabase.from('typing_history').insert({
           user_id: user.id,
           mode: effectiveMode,
           sub_mode: subMode,
@@ -384,6 +384,9 @@ const TypingEngine = ({
           corrections: correctionsRef.current,
           is_completed: true,
         })
+        if (historyError) {
+          console.error('Failed to save typing history:', historyError)
+        }
       } catch (error) {
         console.error('Failed to save typing history:', error)
       }

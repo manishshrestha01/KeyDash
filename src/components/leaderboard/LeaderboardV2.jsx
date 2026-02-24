@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Trophy, Medal, Crown, TrendingUp, Clock, Target, Zap, ChevronLeft, ChevronRight, Search, Timer, BookOpen } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
+import { getPeriodBounds } from '../../utils/leaderboardPeriods'
 
 // Time period configs
 const TIME_PERIODS = {
@@ -112,6 +113,7 @@ const LeaderboardV2 = () => {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [userRank, setUserRank] = useState(null)
+  const [periodLabel, setPeriodLabel] = useState('')
   const itemsPerPage = 20
   const leaderboardCacheRef = useRef(new Map())
   const activeFetchRef = useRef(0)
@@ -122,10 +124,12 @@ const LeaderboardV2 = () => {
 
   const fetchLeaderboard = async () => {
     const fetchId = ++activeFetchRef.current
-    const cacheKey = `${period}|${mode}|${timeDuration}|${difficulty}`
+    const periodBounds = getPeriodBounds(period, new Date())
+    const cacheKey = `${period}|${periodBounds.cacheKey}|${mode}|${timeDuration}|${difficulty}`
     const cached = leaderboardCacheRef.current.get(cacheKey)
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       setLeaderboard(cached.rows)
+      setPeriodLabel(periodBounds.label)
       if (user?.id) {
         const rank = cached.rows.findIndex((entry) => entry.user_id === user.id)
         setUserRank(rank >= 0 ? cached.rows[rank] : null)
@@ -137,99 +141,54 @@ const LeaderboardV2 = () => {
     }
     setLoading(true)
     try {
-      // Calculate date range based on period
-      const now = new Date()
-      let startDate = null
-
-      switch (period) {
-        case 'daily':
-          startDate = new Date()
-          startDate.setHours(0, 0, 0, 0)
-          break
-        case 'weekly':
-          startDate = new Date()
-          const dayOfWeek = startDate.getDay()
-          startDate.setDate(startDate.getDate() - dayOfWeek)
-          startDate.setHours(0, 0, 0, 0)
-          break
-        case 'monthly':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-          break
-        default:
-          startDate = null // All time
-      }
-
       let allData = []
 
       if (period !== 'all_time') {
-        const sinceIso = startDate.toISOString()
-        const [historyResult, timedResult, sentenceResult] = await Promise.all([
-          supabase
-            .from('typing_history')
-            .select('id, user_id, wpm, accuracy, errors, mode, sub_mode, duration_seconds, created_at')
-            .gte('created_at', sinceIso)
-            .neq('mode', 'custom')
-            .order('wpm', { ascending: false })
-            .limit(FETCH_LIMIT),
-          supabase
-            .from('leaderboard_timed')
-            .select('id, user_id, wpm, accuracy, time, created_at')
-            .gte('created_at', sinceIso)
-            .order('wpm', { ascending: false })
-            .limit(FETCH_LIMIT),
-          supabase
-            .from('leaderboard_sentence')
-            .select('id, user_id, wpm, accuracy, difficulty, time, created_at')
-            .gte('created_at', sinceIso)
-            .order('wpm', { ascending: false })
-            .limit(FETCH_LIMIT),
-        ])
+        const periodTableConfig = {
+          daily: {
+            table: 'leaderboard_daily',
+            column: 'date',
+            value: periodBounds.dailyDate,
+            select: 'id, user_id, wpm, accuracy, errors, duration_seconds, created_at',
+          },
+          weekly: {
+            table: 'leaderboard_weekly',
+            column: 'week_start',
+            value: periodBounds.weeklyStartDate,
+            select: 'id, user_id, wpm, accuracy, errors, total_tests, created_at',
+          },
+          monthly: {
+            table: 'leaderboard_monthly',
+            column: 'month_start',
+            value: periodBounds.monthlyStartDate,
+            select: 'id, user_id, wpm, accuracy, errors, total_tests, month_label, created_at',
+          },
+        }
 
-        const { data: historyData, error: historyError } = historyResult
-        const { data: timedData, error: timedError } = timedResult
-        const { data: sentenceData, error: sentenceError } = sentenceResult
+        const periodConfig = periodTableConfig[period]
 
-        if (historyError) console.error('Error fetching typing_history leaderboard:', historyError)
-        if (timedError) console.error('Error fetching timed leaderboard:', timedError)
-        if (sentenceError) console.error('Error fetching sentence leaderboard:', sentenceError)
+        if (periodConfig?.value) {
+          const { data: periodData, error: periodError } = await supabase
+            .from(periodConfig.table)
+            .select(periodConfig.select)
+            .eq(periodConfig.column, periodConfig.value)
+            .order('wpm', { ascending: false })
+            .order('accuracy', { ascending: false })
+            .order('errors', { ascending: true })
+            .limit(FETCH_LIMIT)
 
-        if (historyData?.length) {
-          allData.push(
-            ...historyData.map((entry) => ({
+          if (periodError) {
+            console.error(`Error fetching ${periodConfig.table}:`, periodError)
+          } else if (periodData?.length) {
+            allData = periodData.map((entry) => ({
               ...entry,
               wpm: Math.round(toNumber(entry.wpm, 0)),
               accuracy: toNumber(entry.accuracy, 0),
               errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
               time: Math.round(toNumber(entry.duration_seconds, 0)),
-              source: 'typing_history',
+              source: periodConfig.table,
             }))
-          )
-        }
-
-        if (timedData?.length) {
-          allData.push(
-            ...timedData.map((entry) => ({
-              ...entry,
-              wpm: Math.round(toNumber(entry.wpm, 0)),
-              accuracy: toNumber(entry.accuracy, 0),
-              errors: 0,
-              mode: 'timed',
-              source: 'leaderboard_timed',
-            }))
-          )
-        }
-
-        if (sentenceData?.length) {
-          allData.push(
-            ...sentenceData.map((entry) => ({
-              ...entry,
-              wpm: Math.round(toNumber(entry.wpm, 0)),
-              accuracy: toNumber(entry.accuracy, 0),
-              errors: 0,
-              mode: 'sentence',
-              source: 'leaderboard_sentence',
-            }))
-          )
+          }
         }
       } else {
         // All Time - filter by mode
@@ -332,50 +291,6 @@ const LeaderboardV2 = () => {
         }
       }
 
-      // Also fetch from challenge_attempts for Daily Challenge when period is 'daily'
-      if (period === 'daily') {
-        const today = new Date().toISOString().slice(0, 10)
-        const { data: challengeData, error: challengeError } = await supabase
-          .from('challenges')
-          .select('id')
-          .eq('challenge_type', 'daily')
-          .eq('is_active', true)
-          .lte('start_date', today)
-          .gte('end_date', today)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (challengeError) {
-          console.error('Error fetching daily challenge metadata:', challengeError)
-        }
-
-        if (challengeData?.id) {
-          const { data: attemptData, error: attemptError } = await supabase
-            .from('challenge_attempts')
-            .select('id, user_id, wpm, accuracy, errors, duration_seconds, created_at')
-            .eq('challenge_id', challengeData.id)
-            .order('wpm', { ascending: false })
-            .limit(FETCH_LIMIT)
-
-          if (attemptError) {
-            console.error('Error fetching daily challenge attempts:', attemptError)
-          } else if (attemptData?.length) {
-            allData.push(
-              ...attemptData.map((entry) => ({
-                ...entry,
-                wpm: Math.round(toNumber(entry.wpm, 0)),
-                accuracy: toNumber(entry.accuracy, 0),
-                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
-                mode: 'daily',
-                time: Math.round(toNumber(entry.duration_seconds, 0)),
-                source: 'challenge_attempts',
-              }))
-            )
-          }
-        }
-      }
-
       // Group by user and get best scores (deduplicate)
       const userBestScores = {}
       allData.forEach((entry) => {
@@ -415,6 +330,7 @@ const LeaderboardV2 = () => {
       if (fetchId !== activeFetchRef.current) return
 
       setLeaderboard(leaderboardWithProfiles)
+      setPeriodLabel(periodBounds.label)
       leaderboardCacheRef.current.set(cacheKey, {
         fetchedAt: Date.now(),
         rows: leaderboardWithProfiles,
@@ -461,6 +377,9 @@ const LeaderboardV2 = () => {
         </div>
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Leaderboard</h1>
         <p className="text-gray-400">Compete with typists worldwide</p>
+        {period !== 'all_time' && periodLabel && (
+          <p className="text-sm text-yellow-400 mt-2">{periodLabel}</p>
+        )}
       </div>
 
       {/* Time Period Tabs */}

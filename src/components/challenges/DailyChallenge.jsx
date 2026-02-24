@@ -253,25 +253,6 @@ const DailyChallenge = () => {
       setTimeout(() => setShowConfetti(false), 5000)
       toast.success('Challenge completed! 🎉')
 
-      // Also save to typing history
-      await supabase.from('typing_history').insert({
-        user_id: user.id,
-        mode: 'daily',
-        sub_mode: format(new Date(), 'yyyy-MM-dd'),
-        original_text: challenge.challenge_text,
-        typed_text: resultData.input,
-        wpm: Math.round(resultData.wpm),
-        raw_wpm: Math.round(resultData.rawWpm || resultData.wpm),
-        accuracy: parseFloat(resultData.acc.toFixed(2)),
-        errors: resultData.mistakes,
-        correct_chars: resultData.correctChars || 0,
-        total_chars: resultData.totalChars || challenge.challenge_text.length,
-        duration_seconds: parseFloat(resultData.durationSec.toFixed(2)),
-        mistake_indices: resultData.mistakenIndices || [],
-        corrections: resultData.corrections || 0,
-        is_completed: true,
-      })
-
     } catch (error) {
       console.error('Error saving challenge attempt:', error)
       // Still show completion even if save fails

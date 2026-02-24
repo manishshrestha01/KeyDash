@@ -848,7 +848,7 @@ const MultiplayerLobby = () => {
     })
 
     // Save to typing history
-    await supabase.from('typing_history').insert({
+    const { error: historyError } = await supabase.from('typing_history').insert({
       user_id: user.id,
       mode: 'multiplayer',
       sub_mode: historySubMode,
@@ -865,6 +865,9 @@ const MultiplayerLobby = () => {
       corrections: resultData.corrections || 0,
       is_completed: true,
     })
+    if (historyError) {
+      console.error('Failed to save multiplayer typing history:', historyError)
+    }
   }, [
     activeRace.mode,
     activeRace.sentenceDifficulty,
