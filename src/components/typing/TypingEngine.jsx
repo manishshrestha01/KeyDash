@@ -366,11 +366,10 @@ const TypingEngine = ({
     // Save to typing history
     if (user?.id) {
       try {
-        const { error: historyError } = await supabase.from('typing_history').insert({
+        const historyInsertPayload = {
           user_id: user.id,
           mode: effectiveMode,
           sub_mode: subMode,
-          language,
           original_text: text,
           typed_text: finalInput,
           wpm: Math.round(wpmVal),
@@ -383,7 +382,25 @@ const TypingEngine = ({
           mistake_indices: Array.from(wrongIndicesRef.current),
           corrections: correctionsRef.current,
           is_completed: true,
-        })
+        }
+        if (language) {
+          historyInsertPayload.language = language
+        }
+
+        let { error: historyError } = await supabase.from('typing_history').insert(historyInsertPayload)
+        if (
+          historyError &&
+          historyInsertPayload.language &&
+          typeof historyError.message === 'string' &&
+          historyError.message.toLowerCase().includes('column') &&
+          historyError.message.toLowerCase().includes('language') &&
+          historyError.message.toLowerCase().includes('does not exist')
+        ) {
+          delete historyInsertPayload.language
+          const retry = await supabase.from('typing_history').insert(historyInsertPayload)
+          historyError = retry.error
+        }
+
         if (historyError) {
           console.error('Failed to save typing history:', historyError)
         }

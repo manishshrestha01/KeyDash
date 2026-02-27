@@ -94,6 +94,7 @@ const ScorePage = () => {
     mistakenIndices,
     charTimings: stateCharTimings,
     corrections: stateCorrections,
+    language: stateLanguage = "",
   } = resultState;
 
   useEffect(() => {
@@ -110,47 +111,36 @@ const ScorePage = () => {
     setSharedResultError("");
 
     const loadSharedResult = async () => {
-      const { data: sharedRow, error: sharedError } = await supabase
-        .from("shared_results")
-        .select("share_code, wpm, accuracy, mode, typing_history_id, user_id, created_at")
-        .eq("share_code", shareCode)
-        .maybeSingle();
+      try {
+        const response = await fetch(`/api/shared-result?code=${encodeURIComponent(shareCode)}`);
+        if (!response.ok) {
+          throw new Error(`Shared result request failed: ${response.status}`);
+        }
 
-      if (!isMounted) return;
+        const payload = await response.json();
+        const sharedRow = payload?.data;
 
-      if (sharedError || !sharedRow) {
-        console.error("Failed to load shared result:", sharedError);
-        setResolvedResultState(null);
-        setSharedResultError("Shared result not found.");
-        setIsLoadingSharedResult(false);
-        return;
-      }
+        if (!sharedRow) {
+          throw new Error("Shared result not found.");
+        }
 
-      let nextState = {
-        target: "",
-        input: "",
-        durationSec: 0,
-        wpm: sharedRow.wpm,
-        acc: Number(sharedRow.accuracy),
-        mistakes: 0,
-        mistakenIndices: [],
-        charTimings: [],
-        corrections: 0,
-        mode: sharedRow.mode || "typing",
-        subMode: "",
-        sharedBy: "",
-      };
+        let nextState = {
+          target: "",
+          input: "",
+          durationSec: 0,
+          wpm: sharedRow.wpm,
+          acc: Number(sharedRow.accuracy),
+          mistakes: 0,
+          mistakenIndices: [],
+          charTimings: [],
+          corrections: 0,
+          mode: sharedRow.mode || "typing",
+          subMode: "",
+          sharedBy: "",
+        };
 
-      if (sharedRow.typing_history_id) {
-        const { data: historyRow, error: historyError } = await supabase
-          .from("typing_history")
-          .select(
-            "mode, sub_mode, original_text, typed_text, wpm, accuracy, errors, duration_seconds, mistake_indices, corrections"
-          )
-          .eq("id", sharedRow.typing_history_id)
-          .maybeSingle();
-
-        if (!historyError && historyRow) {
+        const historyRow = sharedRow.history;
+        if (historyRow) {
           nextState = {
             ...nextState,
             target: historyRow.original_text || "",
@@ -159,30 +149,104 @@ const ScorePage = () => {
             wpm: toNumber(historyRow.wpm, sharedRow.wpm),
             acc: toNumber(historyRow.accuracy, Number(sharedRow.accuracy)),
             mistakes: toNumber(historyRow.errors, 0),
-            mistakenIndices: Array.isArray(historyRow.mistake_indices) ? historyRow.mistake_indices : [],
+            mistakenIndices: Array.isArray(historyRow.mistake_indices)
+              ? historyRow.mistake_indices
+              : [],
             corrections: toNumber(historyRow.corrections, 0),
             mode: historyRow.mode || nextState.mode,
             subMode: historyRow.sub_mode || "",
           };
         }
-      }
 
-      if (sharedRow.user_id) {
-        const { data: ownerProfile, error: ownerError } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", sharedRow.user_id)
-          .maybeSingle();
+        if (sharedRow.owner_name) {
+          nextState.sharedBy = sharedRow.owner_name;
+        }
 
-        if (!ownerError && ownerProfile?.display_name) {
-          nextState.sharedBy = ownerProfile.display_name;
+        if (!isMounted) return;
+        setResolvedResultState(nextState);
+        setSharedResultError("");
+        setIsLoadingSharedResult(false);
+      } catch (error) {
+        console.error("Failed to load shared result from API. Falling back to client query:", error);
+
+        try {
+          const { data: sharedRow, error: sharedError } = await supabase
+            .from("shared_results")
+            .select("share_code, wpm, accuracy, mode, typing_history_id, user_id, created_at")
+            .eq("share_code", shareCode)
+            .maybeSingle();
+
+          if (sharedError || !sharedRow) {
+            throw sharedError || new Error("Shared result not found.");
+          }
+
+          let nextState = {
+            target: "",
+            input: "",
+            durationSec: 0,
+            wpm: sharedRow.wpm,
+            acc: Number(sharedRow.accuracy),
+            mistakes: 0,
+            mistakenIndices: [],
+            charTimings: [],
+            corrections: 0,
+            mode: sharedRow.mode || "typing",
+            subMode: "",
+            sharedBy: "",
+          };
+
+          if (sharedRow.typing_history_id) {
+            const { data: historyRow, error: historyError } = await supabase
+              .from("typing_history")
+              .select(
+                "mode, sub_mode, original_text, typed_text, wpm, accuracy, errors, duration_seconds, mistake_indices, corrections"
+              )
+              .eq("id", sharedRow.typing_history_id)
+              .maybeSingle();
+
+            if (!historyError && historyRow) {
+              nextState = {
+                ...nextState,
+                target: historyRow.original_text || "",
+                input: historyRow.typed_text || "",
+                durationSec: toNumber(historyRow.duration_seconds, 0),
+                wpm: toNumber(historyRow.wpm, sharedRow.wpm),
+                acc: toNumber(historyRow.accuracy, Number(sharedRow.accuracy)),
+                mistakes: toNumber(historyRow.errors, 0),
+                mistakenIndices: Array.isArray(historyRow.mistake_indices)
+                  ? historyRow.mistake_indices
+                  : [],
+                corrections: toNumber(historyRow.corrections, 0),
+                mode: historyRow.mode || nextState.mode,
+                subMode: historyRow.sub_mode || "",
+              };
+            }
+          }
+
+          if (sharedRow.user_id) {
+            const { data: ownerProfile, error: ownerError } = await supabase
+              .from("profiles")
+              .select("display_name")
+              .eq("id", sharedRow.user_id)
+              .maybeSingle();
+
+            if (!ownerError && ownerProfile?.display_name) {
+              nextState.sharedBy = ownerProfile.display_name;
+            }
+          }
+
+          if (!isMounted) return;
+          setResolvedResultState(nextState);
+          setSharedResultError("");
+          setIsLoadingSharedResult(false);
+        } catch (fallbackError) {
+          console.error("Client fallback shared result load failed:", fallbackError);
+          if (!isMounted) return;
+          setResolvedResultState(null);
+          setSharedResultError("Shared result not found.");
+          setIsLoadingSharedResult(false);
         }
       }
-
-      if (!isMounted) return;
-      setResolvedResultState(nextState);
-      setSharedResultError("");
-      setIsLoadingSharedResult(false);
     };
 
     loadSharedResult();
@@ -743,7 +807,8 @@ const ScorePage = () => {
       ? `${window.location.origin}/`
       : "https://keydash.shresthamanish.info.np/";
   const activeShareCode = generatedShareCode || shareCode || "";
-  const shareResultUrl = activeShareCode ? `${baseAppUrl}s/${activeShareCode}` : baseAppUrl;
+  const shareResultUrl = activeShareCode ? `${baseAppUrl}results/${activeShareCode}` : baseAppUrl;
+  const socialPreviewUrl = activeShareCode ? `${baseAppUrl}s/${activeShareCode}` : baseAppUrl;
   const shareOwnerName = stateSharedBy || profile?.display_name || "";
   const shareCaption = useMemo(
     () =>
@@ -752,6 +817,32 @@ const ScorePage = () => {
       )}% accuracy on KeyDash. Can you beat me?`,
     [displayAcc, displayWpm]
   );
+  const shareGraph = useMemo(() => {
+    const width = 320;
+    const height = 86;
+    const padding = 8;
+    const innerWidth = width - padding * 2;
+    const innerHeight = height - padding * 2;
+    const totalPoints = Math.max(1, wpmData.length - 1);
+    const maxWpm = Math.max(1, ...wpmData);
+    const maxErrors = Math.max(1, ...cumulativeMistakes);
+
+    const buildPath = (values, maxValue) =>
+      values
+        .map((value, index) => {
+          const x = padding + (index / totalPoints) * innerWidth;
+          const y = height - padding - (Math.max(0, value) / maxValue) * innerHeight;
+          return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+        })
+        .join(" ");
+
+    return {
+      width,
+      height,
+      wpmPath: buildPath(wpmData, maxWpm),
+      errorsPath: buildPath(cumulativeMistakes, maxErrors),
+    };
+  }, [cumulativeMistakes, wpmData]);
 
   const resolveTypingHistoryIdForShare = async () => {
     if (!user?.id) return null;
@@ -787,50 +878,105 @@ const ScorePage = () => {
     return matchedRow?.id || recentRows[0]?.id || null;
   };
 
+  const createShareLinkViaApi = async () => {
+    const response = await fetch("/api/share-create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user?.id || null,
+        target,
+        input,
+        durationSec: chartDurationSec,
+        wpm: displayWpm,
+        accuracy: Number(displayAcc.toFixed(2)),
+        mode: stateMode || "typing",
+        subMode: stateSubMode || "",
+        language: stateLanguage || "",
+        mistakenIndices: Array.isArray(mistakenIndices) ? mistakenIndices : [],
+        corrections: toNumber(stateCorrections, 0),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Share create request failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const nextCode = typeof payload?.shareCode === "string" ? payload.shareCode : "";
+    if (!nextCode) {
+      throw new Error("Share create response did not include a share code.");
+    }
+
+    return nextCode;
+  };
+
+  const createShareLinkClientFallback = async () => {
+    if (!user?.id) return null;
+
+    const typingHistoryId = await resolveTypingHistoryIdForShare();
+    const modeLabel = stateSubMode ? `${stateMode}:${stateSubMode}` : stateMode || "typing";
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const candidateCode = createShareCode(8);
+      const { error: insertError } = await supabase.from("shared_results").insert({
+        user_id: user.id,
+        typing_history_id: typingHistoryId,
+        share_code: candidateCode,
+        wpm: displayWpm,
+        accuracy: Number(displayAcc.toFixed(2)),
+        mode: modeLabel,
+        image_url: null,
+      });
+
+      if (!insertError) {
+        return candidateCode;
+      }
+
+      if (insertError.code !== "23505") {
+        console.error("Client fallback share create failed:", insertError);
+        break;
+      }
+    }
+
+    return null;
+  };
+
   const ensureShareCode = async () => {
     const existingCode = generatedShareCode || shareCode;
     if (existingCode) return existingCode;
-
-    if (!user?.id) {
-      setShareStatus("Login is required to generate a shareable link preview.");
-      return null;
-    }
 
     setIsCreatingShareLink(true);
     setShareStatus("");
 
     try {
-      const typingHistoryId = await resolveTypingHistoryIdForShare();
-      const modeLabel = stateSubMode ? `${stateMode}:${stateSubMode}` : stateMode || "typing";
+      let nextCode = null;
 
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const candidateCode = createShareCode(8);
-        const { error: insertError } = await supabase.from("shared_results").insert({
-          user_id: user.id,
-          typing_history_id: typingHistoryId,
-          share_code: candidateCode,
-          wpm: displayWpm,
-          accuracy: Number(displayAcc.toFixed(2)),
-          mode: modeLabel,
-          image_url: null,
-        });
+      try {
+        nextCode = await createShareLinkViaApi();
+      } catch (apiError) {
+        console.error("Share create API failed:", apiError);
+      }
 
-        if (!insertError) {
-          setGeneratedShareCode(candidateCode);
-          setShareStatus("Share link is ready.");
-          return candidateCode;
-        }
+      if (!nextCode && user?.id) {
+        nextCode = await createShareLinkClientFallback();
+      }
 
-        if (insertError.code !== "23505") {
-          console.error("Failed to create shared result:", insertError);
-          break;
-        }
+      if (nextCode) {
+        setGeneratedShareCode(nextCode);
+        setShareStatus("Share link is ready.");
+        return nextCode;
       }
     } finally {
       setIsCreatingShareLink(false);
     }
 
-    setShareStatus("Unable to create share link. Please try again.");
+    setShareStatus(
+      user?.id
+        ? "Unable to create share link. Please try again."
+        : "Unable to create share link for guest mode right now."
+    );
     return null;
   };
 
@@ -901,7 +1047,8 @@ const ScorePage = () => {
 
   const handleSocialShare = async (platform) => {
     const code = await ensureShareCode();
-    const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+    if (!code) return;
+    const linkUrl = `${baseAppUrl}s/${code}`;
     const shareUrl = getPlatformShareUrl(platform, linkUrl);
     if (!shareUrl) return;
     window.open(shareUrl, "_blank", "noopener,noreferrer,width=640,height=720");
@@ -910,7 +1057,8 @@ const ScorePage = () => {
   const handleCopyShareText = async () => {
     try {
       const code = await ensureShareCode();
-      const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+      if (!code) return;
+      const linkUrl = `${baseAppUrl}results/${code}`;
       await navigator.clipboard.writeText(`${shareCaption} ${linkUrl}`);
       setShareStatus("Share caption copied to clipboard.");
     } catch (error) {
@@ -927,7 +1075,8 @@ const ScorePage = () => {
 
     try {
       const code = await ensureShareCode();
-      const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+      if (!code) return;
+      const linkUrl = `${baseAppUrl}results/${code}`;
       const imageUrl = shareImageDataUrl || (await generateShareImage());
       if (!imageUrl) return;
 
@@ -1492,7 +1641,43 @@ const ScorePage = () => {
                   </p>
                 </div>
 
-                <div className="relative grid grid-cols-3 gap-2 mt-4">
+                <div className="relative mt-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider mb-1">
+                    <span className="text-gray-400">Performance Graph</span>
+                    <span className="text-yellow-200">WPM vs Errors</span>
+                  </div>
+                  <svg
+                    viewBox={`0 0 ${shareGraph.width} ${shareGraph.height}`}
+                    className="w-full h-16"
+                    role="img"
+                    aria-label="Typing performance graph"
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width={shareGraph.width}
+                      height={shareGraph.height}
+                      rx="8"
+                      fill="rgba(2, 6, 23, 0.35)"
+                    />
+                    <path
+                      d={shareGraph.errorsPath}
+                      fill="none"
+                      stroke="rgba(248, 113, 113, 0.95)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d={shareGraph.wpmPath}
+                      fill="none"
+                      stroke="rgba(250, 204, 21, 1)"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+
+                <div className="relative grid grid-cols-3 gap-2 mt-3">
                   <div className="rounded-xl bg-black/25 border border-white/10 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-gray-400">Accuracy</p>
                     <p className="text-sm sm:text-base font-semibold text-green-300">
@@ -1512,7 +1697,7 @@ const ScorePage = () => {
                 </div>
 
                 <p className="relative mt-3 text-[11px] text-gray-400">
-                  {activeShareCode ? `keydash.shresthamanish.info.np/s/${activeShareCode}` : "Create link to enable rich previews"}
+                  {activeShareCode ? socialPreviewUrl : "Create link to enable rich previews"}
                 </p>
               </div>
             </div>
