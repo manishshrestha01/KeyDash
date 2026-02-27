@@ -1616,7 +1616,7 @@ const ScorePage = () => {
             <div className="rounded-2xl border border-gray-800/60 bg-[#101521] p-3">
               <div
                 ref={shareCardRef}
-                className="relative overflow-hidden rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-[#0e1524] via-[#131d31] to-[#1b2740] p-5 aspect-[16/9] flex flex-col justify-between"
+                className="relative overflow-hidden rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-[#0e1524] via-[#131d31] to-[#1b2740] p-5 flex flex-col justify-between"
               >
                 <div className="pointer-events-none absolute -top-14 -right-14 w-40 h-40 rounded-full bg-yellow-400/15 blur-2xl" />
                 <div className="pointer-events-none absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-blue-500/20 blur-2xl" />
