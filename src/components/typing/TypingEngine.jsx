@@ -92,9 +92,9 @@ const TypingEngine = ({
 
   // Font size classes
   const fontSizeClasses = {
-    small: 'text-base sm:text-lg md:text-xl',
-    medium: 'text-lg sm:text-xl md:text-2xl',
-    large: 'text-xl sm:text-2xl md:text-3xl',
+    small: 'text-base sm:text-lg md:text-xl 2xl:text-2xl',
+    medium: 'text-lg sm:text-xl md:text-2xl 2xl:text-3xl',
+    large: 'text-xl sm:text-2xl md:text-3xl 2xl:text-4xl',
   }
 
   // Responsive chars per line - optimized for comfortable mobile reading
@@ -599,7 +599,8 @@ const TypingEngine = ({
       const charWidth = measureRef.current.getBoundingClientRect().width || 8
       const containerWidth = textDisplayRef.current.getBoundingClientRect().width || windowWidth
       const approx = Math.max(10, Math.floor(containerWidth / charWidth) - 1)
-      setMeasuredCharsPerLine(approx)
+      const clamped = Math.min(72, approx)
+      setMeasuredCharsPerLine(clamped)
     }
 
     measure()
@@ -625,13 +626,13 @@ const TypingEngine = ({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="w-full max-w-4xl 2xl:max-w-6xl mx-auto px-2 sm:px-4 2xl:px-6">
       {/* Live Stats Bar - Mobile optimized */}
       {showLiveStats && (showLiveWpm || showLiveAccuracy || timeLimit) && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center flex-wrap gap-3 sm:gap-6 md:gap-10 mb-4 sm:mb-6 text-sm sm:text-lg md:text-xl"
+          className="flex justify-center flex-wrap gap-3 sm:gap-6 md:gap-10 2xl:gap-12 mb-4 sm:mb-6 2xl:mb-8 text-sm sm:text-lg md:text-xl 2xl:text-2xl"
         >
           {timeLimit && (
             <div className="flex items-center gap-1 sm:gap-2">
@@ -671,9 +672,9 @@ const TypingEngine = ({
         ref={containerRef}
         onClick={handleContainerClick}
         className={`
-          relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 cursor-text
+          relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 2xl:p-10 cursor-text
           border border-gray-700/50 hover:border-gray-600/50 transition-colors
-          min-h-[120px] sm:min-h-[160px]
+          min-h-[120px] sm:min-h-[160px] 2xl:min-h-[220px]
           ${isFinished ? 'opacity-70' : ''}
         `}
       >
@@ -743,7 +744,7 @@ const TypingEngine = ({
         {/* Focus indicator */}
         {document.activeElement !== textareaRef.current && !isFinished && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
-            <span className="text-gray-300 text-lg">Click to focus or press any key</span>
+            <span className="text-gray-300 text-lg 2xl:text-2xl">Click to focus or press any key</span>
           </div>
         )}
       </div>
@@ -760,17 +761,17 @@ const TypingEngine = ({
 
       {/* Restart Button & Hints */}
       {showRestartButton && (
-        <div className="flex justify-center items-center gap-4 mt-6">
+        <div className="flex justify-center items-center gap-4 2xl:gap-5 mt-6 2xl:mt-8">
           <button
             onClick={handleRestart}
-            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-yellow-400 transition-colors"
+            className="flex items-center gap-2 px-4 2xl:px-5 py-2 2xl:py-2.5 text-gray-400 hover:text-yellow-400 transition-colors 2xl:text-lg"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             <span>Restart</span>
           </button>
-          <span className="text-gray-600 text-sm">or press <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd></span>
+          <span className="text-gray-600 text-sm 2xl:text-base">or press <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-gray-400">Tab</kbd></span>
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@
 ### 🎮 Multiple Typing Modes
 - **Language Mode**: Practice typing in English or Nepali (Devanagari script)
 - **Coding Mode**: Practice with real code snippets in JavaScript, Python, Java, C, and C++
-- **Symbols Mode**: Master special characters and programming symbols
+- **Symbols Mode**: Master special characters and grammar punchuations.
 - **Custom Mode**: Paste your own text or code to practice
 
 ### 📊 Comprehensive Stats & Tracking
@@ -37,7 +37,7 @@
 
 ### 📱 Social Sharing
 - Generate beautiful result cards
-- Share to Twitter, Facebook, and WhatsApp
+- Share to Twitter, Facebook, LinkedIn and WhatsApp
 - Download results as images
 
 ## 🛠️ Tech Stack
@@ -53,7 +53,7 @@
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/keydash.git
+git clone https://github.com/manishshrestha01/keydash.git
 cd keydash
 ```
 

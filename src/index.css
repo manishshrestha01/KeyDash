@@ -20,6 +20,10 @@
   --font-sf-text: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
   @apply bg-[#101826] text-white;
   font-family: var(--font-sf);
@@ -96,3 +100,70 @@ body {
 .text-correct { color: var(--correct); }
 .text-error { color: var(--error); }
 .text-muted { color: var(--muted); }
+
+/* Ultra-wide display support (2K/4K/projector screens) */
+@media (min-width: 1920px) {
+  html {
+    font-size: 17px;
+  }
+
+  .max-w-screen-xl {
+    max-width: 96rem;
+  }
+
+  .max-w-6xl {
+    max-width: 90rem;
+  }
+
+  .max-w-5xl {
+    max-width: 84rem;
+  }
+
+  .max-w-4xl {
+    max-width: 78rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  html {
+    font-size: 19px;
+  }
+
+  .max-w-screen-xl {
+    max-width: 110rem;
+  }
+
+  .max-w-6xl {
+    max-width: 102rem;
+  }
+
+  .max-w-5xl {
+    max-width: 94rem;
+  }
+
+  .max-w-4xl {
+    max-width: 86rem;
+  }
+}
+
+@media (min-width: 3840px) {
+  html {
+    font-size: 22px;
+  }
+
+  .max-w-screen-xl {
+    max-width: 128rem;
+  }
+
+  .max-w-6xl {
+    max-width: 118rem;
+  }
+
+  .max-w-5xl {
+    max-width: 108rem;
+  }
+
+  .max-w-4xl {
+    max-width: 98rem;
+  }
+}

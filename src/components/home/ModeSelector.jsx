@@ -299,7 +299,7 @@ const ModeSelector = () => {
   const currentModeConfig = MODES[selectedMode]
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-4 2xl:px-6 py-4 sm:py-6 2xl:py-8">
       {/* Mode Selector */}
       <div className="mb-6 sm:mb-8">
         {/* Main Modes */}
@@ -315,7 +315,7 @@ const ModeSelector = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={`
-                  flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium text-sm sm:text-base
+                  flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 2xl:px-5 py-1.5 sm:py-2 2xl:py-2.5 rounded-full font-medium text-sm sm:text-base 2xl:text-lg
                   transition-all duration-200 border
                   ${isActive 
                     ? 'bg-yellow-400 text-black border-yellow-400 shadow-lg shadow-yellow-400/20' 
@@ -348,7 +348,7 @@ const ModeSelector = () => {
                     key={subMode.key}
                     onClick={() => handleSubModeChange(subMode.key)}
                     className={`
-                      px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium
+                      px-2.5 sm:px-3 2xl:px-4 py-1 sm:py-1.5 2xl:py-2 rounded-full text-xs sm:text-sm 2xl:text-base font-medium
                       transition-all duration-200 border
                       ${isActive 
                         ? 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50' 
@@ -370,7 +370,7 @@ const ModeSelector = () => {
             <div className="relative">
               <button
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-lg shadow-yellow-400/20"
+                className="flex items-center gap-2 px-4 sm:px-5 2xl:px-6 py-2 sm:py-2.5 2xl:py-3 rounded-full text-sm 2xl:text-base font-semibold transition-all duration-200 bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-lg shadow-yellow-400/20"
               >
                 <Globe className="w-5 h-5" />
                 <span>{LANGUAGES[selectedLanguage]?.name || 'English'}</span>
@@ -417,7 +417,7 @@ const ModeSelector = () => {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="mt-4 max-w-2xl mx-auto"
+            className="mt-4 max-w-2xl 2xl:max-w-4xl mx-auto"
           >
             <div className="relative">
               <textarea
@@ -428,14 +428,14 @@ const ModeSelector = () => {
                   setCustomTypingActive(false)
                 }}
                 placeholder="Paste or type your custom text here..."
-                className="w-full h-32 p-4 bg-[#1a1f2e] border border-gray-700 rounded-xl 
+                className="w-full h-32 2xl:h-44 p-4 2xl:p-5 bg-[#1a1f2e] border border-gray-700 rounded-xl 
                          text-white placeholder-gray-500 resize-none
                          focus:outline-none focus:border-yellow-400/50"
               />
               <button
                 onClick={handleCustomTextSubmit}
                 disabled={!customText.trim()}
-                className="absolute bottom-3 right-3 px-4 py-1.5 bg-yellow-400 text-black 
+              className="absolute bottom-3 right-3 px-4 2xl:px-5 py-1.5 2xl:py-2 bg-yellow-400 text-black 
                          rounded-lg font-medium hover:bg-yellow-300 transition-colors
                          disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -456,13 +456,13 @@ const ModeSelector = () => {
               href={`/${key.replace('_', '-')}`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 2xl:px-5 py-1.5 sm:py-2 2xl:py-2.5 rounded-xl
                        bg-gradient-to-r from-gray-800 to-gray-700/50
                        border border-gray-600/50 text-gray-300 hover:text-white
                        transition-all duration-200 hover:border-gray-500"
             >
               <Icon className="w-4 h-4 text-yellow-400" />
-              <span className="text-xs sm:text-sm font-medium">{mode.name}</span>
+              <span className="text-xs sm:text-sm 2xl:text-base font-medium">{mode.name}</span>
             </motion.a>
           )
         })}
@@ -471,8 +471,8 @@ const ModeSelector = () => {
       {/* Typing Engine */}
       {selectedMode === 'custom' && !customTypingActive ? (
         // Empty placeholder when user hasn't entered custom text yet
-        <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
-          <div className="relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 cursor-text border border-gray-700/50 min-h-[120px] sm:min-h-[160px]">
+        <div className="w-full max-w-4xl 2xl:max-w-6xl mx-auto px-2 sm:px-4 2xl:px-6">
+          <div className="relative bg-[#1a1f2e] rounded-xl p-3 sm:p-6 md:p-8 2xl:p-10 cursor-text border border-gray-700/50 min-h-[120px] sm:min-h-[160px] 2xl:min-h-[220px]">
             <div className="font-mono text-sm leading-relaxed tracking-wide select-none text-gray-500 opacity-60">
               {/* intentionally left blank until user provides text */}
               <div className="h-32" />
