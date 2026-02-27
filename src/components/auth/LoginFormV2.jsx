@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../supabaseClient";
-import { Mail, ArrowRight, Keyboard, CheckCircle, AlertCircle } from "lucide-react";
+import { Mail, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 
 const LoginFormV2 = () => {
   const {
@@ -17,9 +17,17 @@ const LoginFormV2 = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // const redirectUrl = "https://keydash.shresthamanish.info.np/";
-  const redirectUrl = "https://v2.shresthamanish.info.np/";
-  // const redirectUrl = "http://localhost:5173/";
+  const allowedRedirectUrls = [
+    "https://keydash.shresthamanish.info.np/",
+    "https://v2.shresthamanish.info.np/",
+    "http://localhost:5173/",
+  ];
+
+  const currentAppUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/` : "";
+  const redirectUrl = allowedRedirectUrls.includes(currentAppUrl)
+    ? currentAppUrl
+    : allowedRedirectUrls[0];
 
   const onSubmit = async (data) => {
     setMessage("");
@@ -72,9 +80,6 @@ const LoginFormV2 = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl mb-4 shadow-lg shadow-yellow-500/20">
-            <Keyboard className="w-8 h-8 text-black" />
-          </div>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome to KeyDash</h1>
           <p className="text-gray-400">Sign in to track your typing progress</p>
         </motion.div>

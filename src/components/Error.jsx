@@ -1,18 +1,34 @@
-import React from 'react'
+import { Link } from "react-router-dom";
 
 const Error = () => {
   return (
-    <section className="bg-white dark:bg-gray-900">
-      <div className="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
-        <div className="mx-auto max-w-xs sm:max-w-md md:max-w-lg lg:max-w-screen-sm text-center">
-          <h2 className="mb-4 text-6xl sm:text-7xl md:text-6xl lg:text-7xl xl:text-9xl tracking-tight font-extrabold text-primary-600 text-[#3b82f5]">404</h2>
-          <p className="mb-4 text-2xl sm:text-4xl md:text-3xl lg:text-3xl xl:text-4xl tracking-tight font-bold text-gray-900 dark:text-white">Something's missing.</p>
-          <p className="mb-4 text-base sm:text-lg md:text-lg lg:text-2xl xl:text-3xl font-light text-gray-500 dark:text-gray-400">Sorry, we can't find that page. You'll find lots to explore on the home page. </p>
-          <a href="/" className="inline-flex text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-base sm:text-lg md:text-lg lg:text-xl xl:text-2xl px-4 sm:px-5 md:px-5 py-2 sm:py-2.5 md:py-2.5 xl:px-5 xl:py-2.5 text-center my-4">Back to Homepage</a>
-        </div>   
+    <section className="min-h-[calc(100vh-80px)] bg-[#0a0f1a] text-white flex items-center">
+      <div className="w-full max-w-2xl mx-auto px-4 text-center py-12">
+        <p className="text-yellow-400 text-xs sm:text-sm font-semibold tracking-[0.18em] uppercase mb-3">
+          Error 404
+        </p>
+        <h1 className="text-4xl sm:text-5xl font-bold mb-4">Page not found</h1>
+        <p className="text-gray-400 text-base sm:text-lg mb-8">
+          The page you are looking for does not exist or was moved.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-xl px-5 py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold transition"
+          >
+            Back to Home
+          </Link>
+          <Link
+            to="/leaderboard"
+            className="inline-flex items-center justify-center rounded-xl px-5 py-3 border border-white/20 text-white hover:bg-white/10 font-semibold transition"
+          >
+            View Leaderboard
+          </Link>
+        </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default Error
+export default Error;
