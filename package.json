@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/og": "^0.9.0",
     "chart.js": "^4.5.0",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.18.2",

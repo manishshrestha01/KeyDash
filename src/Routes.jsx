@@ -25,6 +25,8 @@ const Routes = () => {
             <Route index element={<Homes />} />
             <Route path="/login" element={<Login/>} />
             <Route path="/results" element={<ScorePage />} />
+            <Route path="/results/:shareCode" element={<ScorePage />} />
+            <Route path="/s/:shareCode" element={<ScorePage />} />
             <Route path="/profile" element={<ProfileHub />} />
             <Route path="/settings" element={<ProfileHub />} />
             <Route path="/history" element={<Navigate to="/profile?tab=history" replace />} />

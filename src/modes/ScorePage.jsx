@@ -1,7 +1,10 @@
-import { useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Line } from "react-chartjs-2";
 import { motion } from "framer-motion";
+import { toPng } from "html-to-image";
+import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -53,11 +56,31 @@ const toVisibleChar = (char, emptySymbol = "·") => {
   return char || emptySymbol;
 };
 
+const createShareCode = (length = 8) => {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return result;
+};
+
 const ScorePage = () => {
+  const { user, profile } = useAuth();
+  const { shareCode } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [shareStatus, setShareStatus] = useState("");
+  const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
+  const [shareImageDataUrl, setShareImageDataUrl] = useState("");
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+  const [generatedShareCode, setGeneratedShareCode] = useState(shareCode || "");
+  const [resolvedResultState, setResolvedResultState] = useState(null);
+  const [isLoadingSharedResult, setIsLoadingSharedResult] = useState(false);
+  const [sharedResultError, setSharedResultError] = useState("");
+  const shareCardRef = useRef(null);
 
-  const resultState = location.state || {};
+  const resultState = location.state || resolvedResultState || {};
   const {
     target = "",
     input = "",
@@ -65,10 +88,109 @@ const ScorePage = () => {
     wpm: stateWpm,
     acc: stateAcc,
     mistakes: stateMistakes,
+    mode: stateMode = "typing",
+    subMode: stateSubMode = "",
+    sharedBy: stateSharedBy = "",
     mistakenIndices,
     charTimings: stateCharTimings,
     corrections: stateCorrections,
   } = resultState;
+
+  useEffect(() => {
+    if (shareCode) {
+      setGeneratedShareCode(shareCode);
+    }
+  }, [shareCode]);
+
+  useEffect(() => {
+    if (!shareCode || location.state) return;
+
+    let isMounted = true;
+    setIsLoadingSharedResult(true);
+    setSharedResultError("");
+
+    const loadSharedResult = async () => {
+      const { data: sharedRow, error: sharedError } = await supabase
+        .from("shared_results")
+        .select("share_code, wpm, accuracy, mode, typing_history_id, user_id, created_at")
+        .eq("share_code", shareCode)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (sharedError || !sharedRow) {
+        console.error("Failed to load shared result:", sharedError);
+        setResolvedResultState(null);
+        setSharedResultError("Shared result not found.");
+        setIsLoadingSharedResult(false);
+        return;
+      }
+
+      let nextState = {
+        target: "",
+        input: "",
+        durationSec: 0,
+        wpm: sharedRow.wpm,
+        acc: Number(sharedRow.accuracy),
+        mistakes: 0,
+        mistakenIndices: [],
+        charTimings: [],
+        corrections: 0,
+        mode: sharedRow.mode || "typing",
+        subMode: "",
+        sharedBy: "",
+      };
+
+      if (sharedRow.typing_history_id) {
+        const { data: historyRow, error: historyError } = await supabase
+          .from("typing_history")
+          .select(
+            "mode, sub_mode, original_text, typed_text, wpm, accuracy, errors, duration_seconds, mistake_indices, corrections"
+          )
+          .eq("id", sharedRow.typing_history_id)
+          .maybeSingle();
+
+        if (!historyError && historyRow) {
+          nextState = {
+            ...nextState,
+            target: historyRow.original_text || "",
+            input: historyRow.typed_text || "",
+            durationSec: toNumber(historyRow.duration_seconds, 0),
+            wpm: toNumber(historyRow.wpm, sharedRow.wpm),
+            acc: toNumber(historyRow.accuracy, Number(sharedRow.accuracy)),
+            mistakes: toNumber(historyRow.errors, 0),
+            mistakenIndices: Array.isArray(historyRow.mistake_indices) ? historyRow.mistake_indices : [],
+            corrections: toNumber(historyRow.corrections, 0),
+            mode: historyRow.mode || nextState.mode,
+            subMode: historyRow.sub_mode || "",
+          };
+        }
+      }
+
+      if (sharedRow.user_id) {
+        const { data: ownerProfile, error: ownerError } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", sharedRow.user_id)
+          .maybeSingle();
+
+        if (!ownerError && ownerProfile?.display_name) {
+          nextState.sharedBy = ownerProfile.display_name;
+        }
+      }
+
+      if (!isMounted) return;
+      setResolvedResultState(nextState);
+      setSharedResultError("");
+      setIsLoadingSharedResult(false);
+    };
+
+    loadSharedResult();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.state, shareCode]);
 
   const durationSec = toNumber(stateDurationSec, 0);
 
@@ -607,6 +729,231 @@ const ScorePage = () => {
   };
 
   const rating = getPerformanceRating();
+  const shareDateLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    []
+  );
+  const baseAppUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/`
+      : "https://keydash.shresthamanish.info.np/";
+  const activeShareCode = generatedShareCode || shareCode || "";
+  const shareResultUrl = activeShareCode ? `${baseAppUrl}s/${activeShareCode}` : baseAppUrl;
+  const shareOwnerName = stateSharedBy || profile?.display_name || "";
+  const shareCaption = useMemo(
+    () =>
+      `I just scored ${displayWpm} WPM with ${displayAcc.toFixed(
+        1
+      )}% accuracy on KeyDash. Can you beat me?`,
+    [displayAcc, displayWpm]
+  );
+
+  const resolveTypingHistoryIdForShare = async () => {
+    if (!user?.id) return null;
+
+    const { data: recentRows, error: recentError } = await supabase
+      .from("typing_history")
+      .select("id, wpm, accuracy, duration_seconds, errors, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(12);
+
+    if (recentError || !Array.isArray(recentRows) || recentRows.length === 0) {
+      return null;
+    }
+
+    const targetAcc = Number(displayAcc.toFixed(2));
+    const targetDuration = Number(chartDurationSec.toFixed(2));
+    const targetErrors = Number(displayMistakes);
+
+    const matchedRow = recentRows.find((row) => {
+      const rowAcc = Number(row.accuracy);
+      const rowDuration = Number(row.duration_seconds);
+      const rowErrors = Number(row.errors || 0);
+
+      return (
+        Math.abs(Number(row.wpm) - displayWpm) <= 1 &&
+        Math.abs(rowAcc - targetAcc) <= 0.25 &&
+        Math.abs(rowDuration - targetDuration) <= 3 &&
+        Math.abs(rowErrors - targetErrors) <= 2
+      );
+    });
+
+    return matchedRow?.id || recentRows[0]?.id || null;
+  };
+
+  const ensureShareCode = async () => {
+    const existingCode = generatedShareCode || shareCode;
+    if (existingCode) return existingCode;
+
+    if (!user?.id) {
+      setShareStatus("Login is required to generate a shareable link preview.");
+      return null;
+    }
+
+    setIsCreatingShareLink(true);
+    setShareStatus("");
+
+    try {
+      const typingHistoryId = await resolveTypingHistoryIdForShare();
+      const modeLabel = stateSubMode ? `${stateMode}:${stateSubMode}` : stateMode || "typing";
+
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const candidateCode = createShareCode(8);
+        const { error: insertError } = await supabase.from("shared_results").insert({
+          user_id: user.id,
+          typing_history_id: typingHistoryId,
+          share_code: candidateCode,
+          wpm: displayWpm,
+          accuracy: Number(displayAcc.toFixed(2)),
+          mode: modeLabel,
+          image_url: null,
+        });
+
+        if (!insertError) {
+          setGeneratedShareCode(candidateCode);
+          setShareStatus("Share link is ready.");
+          return candidateCode;
+        }
+
+        if (insertError.code !== "23505") {
+          console.error("Failed to create shared result:", insertError);
+          break;
+        }
+      }
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+
+    setShareStatus("Unable to create share link. Please try again.");
+    return null;
+  };
+
+  const generateShareImage = async () => {
+    if (!shareCardRef.current) {
+      setShareStatus("Share card is not ready yet. Please try again.");
+      return null;
+    }
+
+    setIsGeneratingShareImage(true);
+    setShareStatus("");
+
+    try {
+      const pixelRatio =
+        typeof window !== "undefined"
+          ? Math.min(4, Math.max(2, window.devicePixelRatio || 2))
+          : 2;
+
+      const imageUrl = await toPng(shareCardRef.current, {
+        cacheBust: true,
+        pixelRatio,
+        backgroundColor: "#0a0f1a",
+      });
+
+      setShareImageDataUrl(imageUrl);
+      return imageUrl;
+    } catch (error) {
+      console.error("Failed to generate share image:", error);
+      setShareStatus("Unable to generate image right now. Please try again.");
+      return null;
+    } finally {
+      setIsGeneratingShareImage(false);
+    }
+  };
+
+  const handleDownloadShareImage = async () => {
+    const imageUrl = shareImageDataUrl || (await generateShareImage());
+    if (!imageUrl) return;
+
+    const safeAcc = displayAcc.toFixed(1).replace(".", "-");
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `keydash-result-${displayWpm}wpm-${safeAcc}acc.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setShareStatus("Result card downloaded.");
+  };
+
+  const getPlatformShareUrl = (platform, linkUrl) => {
+    const text = encodeURIComponent(shareCaption);
+    const url = encodeURIComponent(linkUrl || baseAppUrl);
+
+    switch (platform) {
+      case "twitter":
+        return `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+      case "facebook":
+        return `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`;
+      case "linkedin":
+        return `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+      case "whatsapp":
+        return `https://wa.me/?text=${encodeURIComponent(`${shareCaption} ${linkUrl || baseAppUrl}`)}`;
+      default:
+        return "";
+    }
+  };
+
+  const handleSocialShare = async (platform) => {
+    const code = await ensureShareCode();
+    const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+    const shareUrl = getPlatformShareUrl(platform, linkUrl);
+    if (!shareUrl) return;
+    window.open(shareUrl, "_blank", "noopener,noreferrer,width=640,height=720");
+  };
+
+  const handleCopyShareText = async () => {
+    try {
+      const code = await ensureShareCode();
+      const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+      await navigator.clipboard.writeText(`${shareCaption} ${linkUrl}`);
+      setShareStatus("Share caption copied to clipboard.");
+    } catch (error) {
+      console.error("Failed to copy share caption:", error);
+      setShareStatus("Unable to copy caption. Please copy it manually.");
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator === "undefined" || !navigator.share) {
+      setShareStatus("Native share is not supported on this device.");
+      return;
+    }
+
+    try {
+      const code = await ensureShareCode();
+      const linkUrl = code ? `${baseAppUrl}s/${code}` : baseAppUrl;
+      const imageUrl = shareImageDataUrl || (await generateShareImage());
+      if (!imageUrl) return;
+
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `keydash-result-${displayWpm}wpm.png`, {
+        type: "image/png",
+      });
+
+      const sharePayload = {
+        title: "My KeyDash Result",
+        text: shareCaption,
+        url: linkUrl,
+      };
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ ...sharePayload, files: [file] });
+      } else {
+        await navigator.share(sharePayload);
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      console.error("Native share failed:", error);
+      setShareStatus("Share failed. Try downloading the image instead.");
+    }
+  };
 
   const renderTypedWord = (word) => {
     const maxLen = Math.max(word.expected.length, word.typed.length);
@@ -750,7 +1097,41 @@ const ScorePage = () => {
     [paragraphAnalysis.chars]
   );
 
-  if (!location.state) {
+  const hasResolvedResult = Boolean(location.state || resolvedResultState);
+
+  if (isLoadingSharedResult) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center min-h-screen text-center p-6"
+        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" }}
+      >
+        <h2 className="text-3xl font-bold mb-2 text-white">Loading Shared Result</h2>
+        <p className="text-gray-400">Fetching score data...</p>
+      </div>
+    );
+  }
+
+  if (shareCode && !hasResolvedResult && sharedResultError) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center min-h-screen text-center p-6"
+        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" }}
+      >
+        <h2 className="text-3xl font-bold mb-2 text-white">Shared Result Not Found</h2>
+        <p className="text-gray-400 mb-6">
+          This share link may be invalid or expired.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="px-6 py-3 bg-yellow-400 text-black rounded-full font-semibold hover:bg-yellow-500 transition"
+        >
+          Go to Typing Test
+        </button>
+      </div>
+    );
+  }
+
+  if (!hasResolvedResult) {
     return (
       <div
         className="flex flex-col items-center justify-center min-h-screen text-center p-6"
@@ -1063,6 +1444,171 @@ const ScorePage = () => {
             </div>
           </div>
         </motion.div>
+      </motion.div>
+
+      {/* Social Sharing */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.34 }}
+        className="mt-6 w-full max-w-4xl"
+      >
+        <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-4 md:p-6 border border-gray-800/50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h3 className="text-gray-300 text-sm font-medium uppercase tracking-wider">
+              Social Sharing
+            </h3>
+            <p className="text-xs text-gray-500">
+              Generate a result card, download it, and share your score.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-gray-800/60 bg-[#101521] p-3">
+              <div
+                ref={shareCardRef}
+                className="relative overflow-hidden rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-[#0e1524] via-[#131d31] to-[#1b2740] p-5 aspect-[16/9] flex flex-col justify-between"
+              >
+                <div className="pointer-events-none absolute -top-14 -right-14 w-40 h-40 rounded-full bg-yellow-400/15 blur-2xl" />
+                <div className="pointer-events-none absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-blue-500/20 blur-2xl" />
+
+                <div className="relative flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-yellow-300 font-semibold">
+                      KeyDash Result
+                    </p>
+                    <p className={`mt-1 text-xs font-medium ${rating.color}`}>{rating.text}</p>
+                    {shareOwnerName && (
+                      <p className="mt-1 text-[11px] text-gray-400">By {shareOwnerName}</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400">{shareDateLabel}</p>
+                </div>
+
+                <div className="relative mt-2">
+                  <p className="text-4xl sm:text-5xl font-bold text-yellow-300 leading-none">
+                    {displayWpm}
+                    <span className="text-lg sm:text-xl text-yellow-100 ml-1">WPM</span>
+                  </p>
+                </div>
+
+                <div className="relative grid grid-cols-3 gap-2 mt-4">
+                  <div className="rounded-xl bg-black/25 border border-white/10 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400">Accuracy</p>
+                    <p className="text-sm sm:text-base font-semibold text-green-300">
+                      {displayAcc.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-black/25 border border-white/10 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400">Errors</p>
+                    <p className="text-sm sm:text-base font-semibold text-red-300">{displayMistakes}</p>
+                  </div>
+                  <div className="rounded-xl bg-black/25 border border-white/10 px-2.5 py-2 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400">Time</p>
+                    <p className="text-sm sm:text-base font-semibold text-purple-300">
+                      {chartDurationSec.toFixed(1)}s
+                    </p>
+                  </div>
+                </div>
+
+                <p className="relative mt-3 text-[11px] text-gray-400">
+                  {activeShareCode ? `keydash.shresthamanish.info.np/s/${activeShareCode}` : "Create link to enable rich previews"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={ensureShareCode}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-yellow-400/40 bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  {isCreatingShareLink ? "Preparing Link..." : activeShareCode ? "Link Ready" : "Create Share Link"}
+                </button>
+                <button
+                  onClick={handleCopyShareText}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-gray-700 bg-[#0f141f] hover:bg-[#1b2333] text-gray-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  {isCreatingShareLink ? "Preparing..." : "Copy Caption + Link"}
+                </button>
+              </div>
+
+              {activeShareCode && (
+                <div className="rounded-xl border border-gray-700/80 bg-[#0f141f] px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Share URL</p>
+                  <p className="text-xs text-gray-200 break-all">{shareResultUrl}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleSocialShare("twitter")}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-gray-700 bg-[#0f141f] hover:bg-black text-white text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  Share on X
+                </button>
+                <button
+                  onClick={() => handleSocialShare("facebook")}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-blue-400/40 bg-[#1877F2]/20 hover:bg-[#1877F2]/30 text-blue-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  Share on Facebook
+                </button>
+                <button
+                  onClick={() => handleSocialShare("linkedin")}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-sky-400/40 bg-[#0A66C2]/20 hover:bg-[#0A66C2]/30 text-sky-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  Share on LinkedIn
+                </button>
+                <button
+                  onClick={() => handleSocialShare("whatsapp")}
+                  disabled={isCreatingShareLink}
+                  className="rounded-xl border border-emerald-400/40 bg-[#25D366]/20 hover:bg-[#25D366]/30 text-emerald-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  Share on WhatsApp
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={handleDownloadShareImage}
+                  disabled={isGeneratingShareImage || isCreatingShareLink}
+                  className="rounded-xl bg-yellow-400 text-black hover:bg-yellow-500 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  {isGeneratingShareImage ? "Generating..." : "Download Card"}
+                </button>
+                <button
+                  onClick={handleNativeShare}
+                  disabled={isGeneratingShareImage || isCreatingShareLink}
+                  className="rounded-xl border border-gray-700 bg-[#0f141f] hover:bg-[#1b2333] text-gray-200 text-sm font-semibold px-4 py-2.5 transition disabled:opacity-60"
+                >
+                  Share Image
+                </button>
+                <button
+                  onClick={() => navigate(activeShareCode ? `/results/${activeShareCode}` : "/results")}
+                  className="rounded-xl border border-gray-700 bg-[#0f141f] hover:bg-[#1b2333] text-gray-200 text-sm font-semibold px-4 py-2.5 transition"
+                >
+                  Open Shared Page
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500">
+                Tip: use <span className="text-gray-300 font-medium">Download Card</span> to post the
+                image directly on any platform.
+              </p>
+
+              {shareStatus && (
+                <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-xs text-yellow-200">
+                  {shareStatus}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* Action Buttons */}
