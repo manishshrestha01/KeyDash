@@ -207,11 +207,23 @@ CREATE TABLE IF NOT EXISTS public.multiplayer_rooms (
   status TEXT DEFAULT 'waiting',
   race_text TEXT,
   max_players INTEGER DEFAULT 5,
+  max_observers INTEGER NOT NULL DEFAULT 10,
   current_players INTEGER DEFAULT 0,
   started_at TIMESTAMP WITH TIME ZONE,
   finished_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.multiplayer_rooms
+  ADD COLUMN IF NOT EXISTS max_observers INTEGER DEFAULT 10;
+
+UPDATE public.multiplayer_rooms
+SET max_observers = 10
+WHERE max_observers IS NULL;
+
+ALTER TABLE public.multiplayer_rooms
+  ALTER COLUMN max_observers SET DEFAULT 10,
+  ALTER COLUMN max_observers SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON public.multiplayer_rooms(status);
 CREATE INDEX IF NOT EXISTS idx_rooms_code ON public.multiplayer_rooms(room_code);
@@ -225,6 +237,7 @@ CREATE TABLE IF NOT EXISTS public.multiplayer_participants (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   display_name TEXT,
   avatar_url TEXT,
+  is_observer BOOLEAN NOT NULL DEFAULT false,
   progress INTEGER DEFAULT 0,
   current_position INTEGER DEFAULT 0,
   wpm INTEGER DEFAULT 0,
@@ -236,6 +249,13 @@ CREATE TABLE IF NOT EXISTS public.multiplayer_participants (
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(room_id, user_id)
 );
+
+-- Backward-compatible multiplayer observer support.
+ALTER TABLE public.multiplayer_participants
+  ADD COLUMN IF NOT EXISTS is_observer BOOLEAN DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_multiplayer_participants_room_observer
+  ON public.multiplayer_participants(room_id, is_observer);
 
 -- ============================================
 -- AI BATTLES
@@ -379,6 +399,8 @@ DROP POLICY IF EXISTS "Anyone can view participants" ON public.multiplayer_parti
 DROP POLICY IF EXISTS "Authenticated users can join rooms" ON public.multiplayer_participants;
 DROP POLICY IF EXISTS "Users can update own participant data" ON public.multiplayer_participants;
 DROP POLICY IF EXISTS "Users can leave rooms" ON public.multiplayer_participants;
+DROP POLICY IF EXISTS "Host can moderate participants" ON public.multiplayer_participants;
+DROP POLICY IF EXISTS "Host can remove participants" ON public.multiplayer_participants;
 
 -- AI battles policies
 DROP POLICY IF EXISTS "Users can view own AI battles" ON public.ai_battles;
@@ -548,6 +570,36 @@ CREATE POLICY "Users can update own participant data" ON public.multiplayer_part
 
 CREATE POLICY "Users can leave rooms" ON public.multiplayer_participants
   FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Host can moderate participants" ON public.multiplayer_participants
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.multiplayer_rooms
+      WHERE multiplayer_rooms.id = multiplayer_participants.room_id
+        AND multiplayer_rooms.host_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.multiplayer_rooms
+      WHERE multiplayer_rooms.id = multiplayer_participants.room_id
+        AND multiplayer_rooms.host_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Host can remove participants" ON public.multiplayer_participants
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.multiplayer_rooms
+      WHERE multiplayer_rooms.id = multiplayer_participants.room_id
+        AND multiplayer_rooms.host_id = auth.uid()
+    )
+  );
 
 -- AI BATTLES
 CREATE POLICY "Users can view own AI battles" ON public.ai_battles
