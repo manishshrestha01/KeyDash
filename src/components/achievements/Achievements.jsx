@@ -4,6 +4,7 @@ import { Award, Lock, Star, Trophy, Zap, Target, Flame, Code, Hash, Users, Bot }
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { AchievementIcon } from '../../utils/achievementIcons'
+import { syncUserAchievements } from '../../utils/achievements'
 
 // Category icons mapping
 const CATEGORY_ICONS = {
@@ -51,44 +52,74 @@ const Achievements = () => {
     fetchAchievements()
   }, [user])
 
+  const applyUnlockedState = (allAchievements = [], unlockedRows = []) => {
+    const unlockedIds = new Set((unlockedRows || []).map((row) => row.achievement_id))
+    setUserAchievements(unlockedIds)
+
+    const totalPoints = (allAchievements || [])
+      .filter((achievement) => unlockedIds.has(achievement.id))
+      .reduce((sum, achievement) => sum + (achievement.points || 0), 0)
+
+    setStats({
+      total: allAchievements?.length || 0,
+      unlocked: unlockedIds.size,
+      points: totalPoints,
+    })
+  }
+
   const fetchAchievements = async () => {
     try {
-      // Fetch all achievements
-      const { data: allAchievements, error: achievementsError } = await supabase
+      const achievementsPromise = supabase
         .from('achievements')
-        .select('*')
+        .select('id, name, description, icon, category, requirement_value, points, rarity')
         .order('category')
         .order('requirement_value')
         .order('name')
 
+      const unlockedPromise = user?.id
+        ? supabase
+            .from('user_achievements')
+            .select('achievement_id')
+            .eq('user_id', user.id)
+        : Promise.resolve({ data: [], error: null })
+
+      const [{ data: allAchievements, error: achievementsError }, { data: unlocked, error: unlockedError }] =
+        await Promise.all([achievementsPromise, unlockedPromise])
+
       if (achievementsError) throw achievementsError
+      if (unlockedError) throw unlockedError
+
       setAchievements(allAchievements || [])
-      setStats((prev) => ({
-        ...prev,
-        total: allAchievements?.length || 0,
-      }))
 
       // Fetch user's unlocked achievements
       if (user?.id) {
-        const { data: unlocked, error: unlockedError } = await supabase
-          .from('user_achievements')
-          .select('achievement_id')
-          .eq('user_id', user.id)
+        applyUnlockedState(allAchievements || [], unlocked || [])
 
-        if (unlockedError) throw unlockedError
-        
-        const unlockedIds = new Set((unlocked || []).map(u => u.achievement_id))
-        setUserAchievements(unlockedIds)
+        // Run unlock sync in background to avoid slowing down page load.
+        syncUserAchievements({ userId: user.id })
+          .then(async (syncRes) => {
+            if (syncRes?.error) {
+              console.error('Achievement sync error:', syncRes.error)
+              return
+            }
 
-        // Calculate stats
-        const unlockedAchievements = (allAchievements || []).filter(a => unlockedIds.has(a.id))
-        const totalPoints = unlockedAchievements.reduce((acc, a) => acc + (a.points || 0), 0)
+            if (!syncRes?.unlockedCount) return
 
-        setStats({
-          total: allAchievements?.length || 0,
-          unlocked: unlockedIds.size,
-          points: totalPoints,
-        })
+            const latestUnlockedRes = await supabase
+              .from('user_achievements')
+              .select('achievement_id')
+              .eq('user_id', user.id)
+
+            if (latestUnlockedRes.error) {
+              console.error('Achievement refresh error:', latestUnlockedRes.error)
+              return
+            }
+
+            applyUnlockedState(allAchievements || [], latestUnlockedRes.data || [])
+          })
+          .catch((error) => {
+            console.error('Achievement sync error:', error)
+          })
       } else {
         setUserAchievements(new Set())
         setStats({

@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useAppStore } from '../../store'
 import { motion, AnimatePresence } from 'framer-motion'
+import { syncUserAchievements } from '../../utils/achievements'
 
 /**
  * Core Typing Engine Component
@@ -403,6 +404,16 @@ const TypingEngine = ({
 
         if (historyError) {
           console.error('Failed to save typing history:', historyError)
+        } else {
+          syncUserAchievements({ userId: user.id })
+            .then((unlockRes) => {
+              if (unlockRes?.error) {
+                console.error('Failed to sync achievements:', unlockRes.error)
+              }
+            })
+            .catch((unlockError) => {
+              console.error('Failed to sync achievements:', unlockError)
+            })
         }
       } catch (error) {
         console.error('Failed to save typing history:', error)

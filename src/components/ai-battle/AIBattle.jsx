@@ -9,6 +9,7 @@ import Confetti from 'react-confetti'
 import toast, { Toaster } from 'react-hot-toast'
 import sentenceData from '../../assets/english/english.json'
 import timedData from '../../assets/english/timed.json'
+import { syncUserAchievements } from '../../utils/achievements'
 
 // AI opponent profiles
 const AI_PROFILES = {
@@ -431,7 +432,7 @@ const AIBattle = () => {
     // Save battle result
     if (user?.id) {
       try {
-        await supabase.from('ai_battles').insert({
+        const { error: battleError } = await supabase.from('ai_battles').insert({
           user_id: user.id,
           difficulty,
           race_text: battleText,
@@ -444,6 +445,19 @@ const AIBattle = () => {
           winner: raceWinner,
         })
 
+        if (battleError) {
+          console.error('Error saving battle result:', battleError)
+        } else {
+          syncUserAchievements({ userId: user.id })
+            .then((unlockRes) => {
+              if (unlockRes?.error) {
+                console.error('Failed to sync achievements:', unlockRes.error)
+              }
+            })
+            .catch((unlockError) => {
+              console.error('Failed to sync achievements:', unlockError)
+            })
+        }
       } catch (error) {
         console.error('Error saving battle result:', error)
       }

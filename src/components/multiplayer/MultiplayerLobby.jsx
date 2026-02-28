@@ -12,6 +12,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import TypingEngine from '../typing/TypingEngine'
 import { formatDistanceToNow } from 'date-fns'
 import { buildRaceFromSettings, decodeRaceText, generateRoomCode } from './multiplayerUtils'
+import { syncUserAchievements } from '../../utils/achievements'
 
 const MultiplayerLobby = () => {
   const navigate = useNavigate()
@@ -867,6 +868,16 @@ const MultiplayerLobby = () => {
     })
     if (historyError) {
       console.error('Failed to save multiplayer typing history:', historyError)
+    } else {
+      syncUserAchievements({ userId: user.id })
+        .then((unlockRes) => {
+          if (unlockRes?.error) {
+            console.error('Failed to sync achievements:', unlockRes.error)
+          }
+        })
+        .catch((unlockError) => {
+          console.error('Failed to sync achievements:', unlockError)
+        })
     }
   }, [
     activeRace.mode,
