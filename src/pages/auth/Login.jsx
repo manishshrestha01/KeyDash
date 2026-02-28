@@ -1,5 +1,5 @@
 import React from 'react'
-import LoginForm from '../../components/auth/LoginForm'
+import LoginFormV2 from '../../components/auth/LoginFormV2'
 import Meta from '../../components/Meta'
 
 const Login = () => {
@@ -10,7 +10,7 @@ const Login = () => {
         description="Log in or sign up to KeyDash using email or Google OAuth and track your typing progress."
         url="https://keydash.shresthamanish.info.np/login"
       />
-      <LoginForm />
+      <LoginFormV2 />
     </section>
   )
 }

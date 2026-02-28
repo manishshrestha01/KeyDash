@@ -1,5 +1,7 @@
 {
     "rewrites": [
+        { "source": "/s/:code", "destination": "/api/share?code=:code" },
+        { "source": "/api/(.*)", "destination": "/api/$1" },
         { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
         { "source": "/robots.txt", "destination": "/robots.txt" },
         { "source": "/BingSiteAuth.xml", "destination": "/BingSiteAuth.xml" },
