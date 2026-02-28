@@ -83,7 +83,7 @@ const MODES = {
   symbols: {
     name: 'Symbols',
     icon: Hash,
-    description: 'Master keyboard symbols',
+    description: 'Master special characters and grammar punctuation',
     subModes: [
       { key: 'easy', name: 'Easy' },
       { key: 'medium', name: 'Medium' },
@@ -118,27 +118,45 @@ const SPECIAL_MODES = {
 
 // Get random sentence from quotes based on difficulty and language
 const getRandomQuote = (difficulty = 'medium', language = 'english') => {
+  const normalizedDifficulty = ['easy', 'medium', 'hard', 'extreme'].includes(difficulty)
+    ? difficulty
+    : 'medium'
+
   const ranges = {
     easy: [0, 100],
     medium: [101, 300],
     hard: [301, 600],
     extreme: [601, 9999],
   }
-  const [min, max] = ranges[difficulty] || ranges.medium
+  const [min, max] = ranges[normalizedDifficulty] || ranges.medium
   
   // Select data based on language
   const data = language === 'nepali' ? nepaliData : englishData
   const quotes = data.quotes || data.sentences || []
-  
-  const filtered = quotes.filter(q => {
-    const text = q.text || q
+
+  const getText = (item) => (typeof item === 'string' ? item : item?.text || '')
+
+  // Prefer explicit difficulty tags when available (used by Nepali sentence packs).
+  const taggedMatches = quotes.filter((item) => {
+    if (!item || typeof item !== 'object') return false
+    return (item.difficulty || '').toLowerCase() === normalizedDifficulty
+  })
+
+  if (taggedMatches.length > 0) {
+    const item = taggedMatches[Math.floor(Math.random() * taggedMatches.length)]
+    return getText(item)
+  }
+
+  // Backward-compatible behavior for datasets without difficulty tags.
+  const lengthFiltered = quotes.filter((item) => {
+    const text = getText(item)
     const len = typeof text === 'string' ? text.length : 0
     return len >= min && len <= max
   })
-  
-  if (filtered.length === 0) return 'No text found for this difficulty.'
-  const item = filtered[Math.floor(Math.random() * filtered.length)]
-  return item.text || item
+
+  if (lengthFiltered.length === 0) return 'No text found for this difficulty.'
+  const item = lengthFiltered[Math.floor(Math.random() * lengthFiltered.length)]
+  return getText(item)
 }
 
 // Get random words for timed mode
@@ -174,10 +192,24 @@ const getRandomCode = (language) => {
 
 // Get symbol practice text
 const getSymbolText = (difficulty) => {
+  const normalizedDifficulty = ['easy', 'medium', 'hard'].includes(difficulty)
+    ? difficulty
+    : 'medium'
+
+  const groupedPool = Array.isArray(symbolsData?.[normalizedDifficulty])
+    ? symbolsData[normalizedDifficulty]
+    : []
+
+  if (groupedPool.length > 0) {
+    const item = groupedPool[Math.floor(Math.random() * groupedPool.length)]
+    return item?.text || item || ''
+  }
+
+  // Backward compatibility for the previous symbols.json shape.
   const symbolPool = symbolsData.grammar_practice_texts?.length
     ? symbolsData.grammar_practice_texts
     : symbolsData.practice_texts
-  const filtered = symbolPool.filter(t => t.difficulty === difficulty)
+  const filtered = symbolPool.filter(t => t.difficulty === normalizedDifficulty)
   if (filtered.length === 0) return symbolPool[0]?.text || ''
   return filtered[Math.floor(Math.random() * filtered.length)].text
 }

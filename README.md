@@ -9,7 +9,7 @@
 ### 🎮 Multiple Typing Modes
 - **Language Mode**: Practice typing in English or Nepali (Devanagari script)
 - **Coding Mode**: Practice with real code snippets in JavaScript, Python, Java, C, and C++
-- **Symbols Mode**: Master special characters and grammar punchuations.
+- **Symbols Mode**: Master special characters and grammar punctuation (easy, medium, and hard).
 - **Custom Mode**: Paste your own text or code to practice
 
 ### 📊 Comprehensive Stats & Tracking
