@@ -46,8 +46,6 @@ const Timed = ({ time }) => {
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [mistakes, setMistakes] = useState(0);
-  // Index (one past) up to which input is locked (user cannot delete past this point)
-  const [lockedIndex, setLockedIndex] = useState(0);
   // Caret state: 'moving' while typing (solid), 'popping' briefly when transitioning to idle, 'idle' when blinking
   const [caretState, setCaretState] = useState("idle");
   const caretIdleTimerRef = useRef(null);
@@ -228,26 +226,9 @@ const Timed = ({ time }) => {
     if (isTimeUp) return;
     const val = e.target.value;
 
-    // If this is a deletion (shorter value), ensure it doesn't delete into the locked area
-    if (val.length < input.length) {
-      // Find first index where input and val differ
-      let i = 0;
-      while (i < val.length && input[i] === val[i]) i++;
-
-      // If the change touches locked area, ignore it
-      if (i < lockedIndex) {
-        return;
-      }
-    }
-
     // Start timer on first character
     if (val.length > 0 && !startTime) {
       setStartTime(Date.now());
-    }
-
-    // If user added a space at the end, lock everything up to the new length
-    if (val.length > input.length && val.endsWith(" ")) {
-      setLockedIndex(val.length);
     }
 
     if (
@@ -278,41 +259,10 @@ const Timed = ({ time }) => {
     }, CARET_ACTIVE_TIMEOUT);
   };
 
-  // Prevent Backspace and Delete keys from deleting into locked area
   const handleKeyDown = (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
       return;
-    }
-
-    if (e.key === "Backspace" || e.key === "Delete") {
-      const targetEl = e.target;
-      const selStart = targetEl.selectionStart ?? input.length;
-      const selEnd = targetEl.selectionEnd ?? input.length;
-
-      let removeStart, removeEnd;
-
-      if (selStart === selEnd) {
-        // No selection -> single-character delete
-        if (e.key === "Backspace") {
-          removeStart = selStart - 1;
-          removeEnd = selStart;
-        } else {
-          // Delete key
-          removeStart = selStart;
-          removeEnd = selStart + 1;
-        }
-      } else {
-        // Range delete
-        removeStart = selStart;
-        removeEnd = selEnd;
-      }
-
-      // Prevent deletion if it would touch the locked area or out of bounds
-      if (removeStart < 0 || removeStart < lockedIndex) {
-        e.preventDefault();
-        return;
-      }
     }
   };
 
@@ -459,7 +409,7 @@ const Timed = ({ time }) => {
 
         <textarea
           ref={textareaRef}
-          className="absolute inset-0 opacity-0 resize-none text-2xl pointer-events-none"
+          className="absolute inset-0 opacity-0 resize-none text-2xl "
           value={input}
           onChange={handleInput}
           onPaste={(e) => e.preventDefault()}
