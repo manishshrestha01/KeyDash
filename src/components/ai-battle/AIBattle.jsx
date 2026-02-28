@@ -508,7 +508,13 @@ const AIBattle = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div
+      className="max-w-4xl mx-auto px-4 py-8"
+      style={{
+        '--kd-opponent-trail': 'rgba(234, 179, 8, 0.72)',
+        '--kd-opponent-caret': 'rgba(250, 204, 21, 0.94)',
+      }}
+    >
       <Toaster position="top-center" />
       
       {/* Confetti */}
@@ -518,7 +524,7 @@ const AIBattle = () => {
           height={windowSize.height}
           recycle={false}
           numberOfPieces={200}
-          colors={['#facc15', '#22c55e', '#3b82f6', '#8b5cf6']}
+          colors={['#facc15', '#22c55e', '#3b82f6', '#eab308']}
         />
       )}
 
@@ -548,8 +554,8 @@ const AIBattle = () => {
       {battleState === 'select' && (
         <div>
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500/20 rounded-2xl mb-4">
-              <Bot className="w-8 h-8 text-purple-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400/15 rounded-2xl mb-4">
+              <Bot className="w-8 h-8 text-yellow-400" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Battle with AI</h1>
             <p className="text-gray-400">Challenge AI opponents at different difficulty levels</p>
@@ -563,12 +569,12 @@ const AIBattle = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSelectDifficulty(key)}
                 className="bg-[#1a1f2e] rounded-2xl p-6 border border-gray-700/50 
-                         hover:border-purple-500/50 transition-all text-left group"
+                         hover:border-yellow-400/50 transition-all text-left group"
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="text-4xl">{profile.avatar}</div>
                   <div>
-                    <h3 className="text-xl font-bold group-hover:text-purple-400 transition-colors">
+                    <h3 className="text-xl font-bold group-hover:text-yellow-300 transition-colors">
                       {profile.name}
                     </h3>
                     <p className="text-sm text-gray-400 capitalize">{key} Difficulty</p>
@@ -577,7 +583,7 @@ const AIBattle = () => {
                 <p className="text-gray-400 mb-4">{profile.description}</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Speed: {profile.minWpm}-{profile.maxWpm} WPM</span>
-                  <span className="text-purple-400 group-hover:text-purple-300">
+                  <span className="text-yellow-400 group-hover:text-yellow-300">
                     Setup →
                   </span>
                 </div>
@@ -665,7 +671,7 @@ const AIBattle = () => {
                       onClick={() => setTimedDuration(seconds)}
                       className={`px-4 py-2 rounded-lg border transition ${
                         timedDuration === seconds
-                          ? 'border-purple-400 bg-purple-500/15 text-purple-300'
+                          ? 'border-yellow-400 bg-yellow-400/15 text-yellow-300'
                           : 'border-gray-700 text-gray-300 hover:border-gray-600'
                       }`}
                     >
@@ -760,16 +766,16 @@ const AIBattle = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-purple-400 font-medium">{aiProfile.name}</span>
+                    <span className="text-yellow-400 font-medium">{aiProfile.name}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-purple-400 font-bold">{aiWpm} WPM</span>
+                    <span className="text-yellow-400 font-bold">{aiWpm} WPM</span>
                     <span className="text-gray-400">{Math.round(aiProgress)}%</span>
                   </div>
                 </div>
                 <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-purple-500 to-purple-400"
+                    className="h-full bg-gradient-to-r from-yellow-500 to-yellow-400"
                     animate={{ width: `${aiProgress}%` }}
                     transition={{ duration: 0.1 }}
                   />
@@ -852,13 +858,13 @@ const AIBattle = () => {
 
             {/* AI Stats */}
             <div className={`bg-[#1a1f2e] rounded-2xl p-6 border ${
-              winner === 'ai' ? 'border-purple-500/50 bg-purple-500/5' : 'border-gray-700/50'
+              winner === 'ai' ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-gray-700/50'
             }`}>
               <div className="text-center mb-4">
                 <div className="text-2xl mb-2">{aiProfile.avatar}</div>
                 <h3 className="text-xl font-bold">{aiProfile.name}</h3>
                 {winner === 'ai' && (
-                  <span className="inline-block px-2 py-1 bg-purple-400/20 text-purple-400 rounded text-sm mt-2">
+                  <span className="inline-block px-2 py-1 bg-yellow-400/20 text-yellow-400 rounded text-sm mt-2">
                     Winner!
                   </span>
                 )}
@@ -866,7 +872,7 @@ const AIBattle = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-400">WPM</span>
-                  <span className="font-bold text-purple-400">{aiStats.wpm || aiWpm}</span>
+                  <span className="font-bold text-yellow-400">{aiStats.wpm || aiWpm}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Difficulty</span>
