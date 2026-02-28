@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Globe, Code, Hash, FileText, Clock, Trophy, Users, Bot,
   ChevronDown, Flame, Target, Zap, Check
 } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { useAppStore } from '../../store'
 import TypingEngine from '../typing/TypingEngine'
 
@@ -116,6 +117,62 @@ const SPECIAL_MODES = {
   },
 }
 
+const normalizeModeConfig = (rawConfig) => {
+  if (!rawConfig || typeof rawConfig !== 'object') return null
+
+  const modeValue = typeof rawConfig.mode === 'string' ? rawConfig.mode.toLowerCase() : ''
+  const mode = Object.prototype.hasOwnProperty.call(MODES, modeValue) ? modeValue : null
+  if (!mode) return null
+
+  const language = rawConfig.language === 'nepali' ? 'nepali' : 'english'
+  const subModeValue = rawConfig.subMode
+
+  if (mode === 'timed') {
+    const parsedTimedSubMode =
+      typeof subModeValue === 'number' ? subModeValue : Number.parseInt(subModeValue, 10)
+    const subMode = [15, 30, 60, 120].includes(parsedTimedSubMode) ? parsedTimedSubMode : 60
+    return { mode, subMode, language }
+  }
+
+  if (mode === 'sentence') {
+    const sentenceSubMode =
+      typeof subModeValue === 'string' ? subModeValue.toLowerCase() : ''
+    const subMode = ['easy', 'medium', 'hard', 'extreme'].includes(sentenceSubMode)
+      ? sentenceSubMode
+      : 'medium'
+    return { mode, subMode, language }
+  }
+
+  if (mode === 'coding') {
+    const codingSubModeValue = typeof subModeValue === 'string' ? subModeValue.toLowerCase() : ''
+    const normalizedCodingSubMode = codingSubModeValue === 'c++' ? 'cpp' : codingSubModeValue
+    const subMode = ['javascript', 'python', 'java', 'c', 'cpp'].includes(normalizedCodingSubMode)
+      ? normalizedCodingSubMode
+      : 'javascript'
+    return { mode, subMode, language }
+  }
+
+  if (mode === 'symbols') {
+    const symbolsSubMode = typeof subModeValue === 'string' ? subModeValue.toLowerCase() : ''
+    const subMode = ['easy', 'medium', 'hard'].includes(symbolsSubMode)
+      ? symbolsSubMode
+      : 'medium'
+    return { mode, subMode, language }
+  }
+
+  return { mode: 'custom', subMode: '', language }
+}
+
+const normalizeRetryConfig = (rawRetryConfig) => {
+  const modeConfig = normalizeModeConfig(rawRetryConfig)
+  if (!modeConfig) return null
+
+  const targetText = typeof rawRetryConfig.targetText === 'string' ? rawRetryConfig.targetText : ''
+  if (targetText.length === 0) return null
+
+  return { ...modeConfig, targetText }
+}
+
 // Get random sentence from quotes based on difficulty and language
 const getRandomQuote = (difficulty = 'medium', language = 'english') => {
   const normalizedDifficulty = ['easy', 'medium', 'hard', 'extreme'].includes(difficulty)
@@ -215,14 +272,38 @@ const getSymbolText = (difficulty) => {
 }
 
 const ModeSelector = () => {
+  const location = useLocation()
   const { lastMode, lastSubMode, lastLanguage, setLastMode, setLastLanguage } = useAppStore()
+
+  const initialRetryConfig = useMemo(
+    () => normalizeRetryConfig(location.state?.retryConfig),
+    [location.state?.retryConfig]
+  )
+
+  const initialNextTestConfig = useMemo(
+    () => normalizeModeConfig(location.state?.nextTestConfig),
+    [location.state?.nextTestConfig]
+  )
   
-  const [selectedMode, setSelectedMode] = useState(lastMode || 'sentence')
-  const [selectedSubMode, setSelectedSubMode] = useState(lastSubMode || 'medium')
-  const [selectedLanguage, setSelectedLanguage] = useState(lastLanguage || 'english')
-  const [targetText, setTargetText] = useState('')
-  const [customText, setCustomText] = useState('')
-  const [customTypingActive, setCustomTypingActive] = useState(false)
+  const [selectedMode, setSelectedMode] = useState(
+    () => initialRetryConfig?.mode || initialNextTestConfig?.mode || lastMode || 'sentence'
+  )
+  const [selectedSubMode, setSelectedSubMode] = useState(() => {
+    if (initialRetryConfig) return initialRetryConfig.subMode
+    if (initialNextTestConfig) return initialNextTestConfig.subMode
+    return lastSubMode || 'medium'
+  })
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    () => initialRetryConfig?.language || initialNextTestConfig?.language || lastLanguage || 'english'
+  )
+  const [targetText, setTargetText] = useState(() => initialRetryConfig?.targetText || '')
+  const [customText, setCustomText] = useState(
+    () => (initialRetryConfig?.mode === 'custom' ? initialRetryConfig.targetText : '')
+  )
+  const [customTypingActive, setCustomTypingActive] = useState(
+    () => initialRetryConfig?.mode === 'custom'
+  )
+  const [isRetrySeeded, setIsRetrySeeded] = useState(() => Boolean(initialRetryConfig))
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [restartKey, setRestartKey] = useState(0)
   
@@ -271,13 +352,15 @@ const ModeSelector = () => {
 
   // Generate text on mount and mode/language change
   useEffect(() => {
+    if (isRetrySeeded) return
     if (selectedMode !== 'custom') {
       generateText()
     }
-  }, [selectedMode, selectedSubMode, selectedLanguage, generateText])
+  }, [selectedMode, selectedSubMode, selectedLanguage, generateText, isRetrySeeded])
 
   // Handle mode change
   const handleModeChange = (mode) => {
+    setIsRetrySeeded(false)
     setSelectedMode(mode)
     // If switching to custom mode and user hasn't provided any custom text,
     // ensure the typing area is empty instead of showing the previous mode text.
@@ -297,6 +380,7 @@ const ModeSelector = () => {
 
   // Handle sub-mode change
   const handleSubModeChange = (subMode) => {
+    setIsRetrySeeded(false)
     setSelectedSubMode(subMode)
     setLastMode(selectedMode, subMode)
     setRestartKey(prev => prev + 1)
@@ -304,6 +388,7 @@ const ModeSelector = () => {
 
   // Handle language change
   const handleLanguageChange = (language) => {
+    setIsRetrySeeded(false)
     setSelectedLanguage(language)
     if (setLastLanguage) setLastLanguage(language)
     setShowLanguageDropdown(false)
@@ -315,6 +400,7 @@ const ModeSelector = () => {
     if (selectedMode === 'custom' && !customTypingActive) {
       return
     }
+    setIsRetrySeeded(false)
     generateText()
     setRestartKey(prev => prev + 1)
   }
@@ -322,6 +408,7 @@ const ModeSelector = () => {
   // Handle custom text submit
   const handleCustomTextSubmit = () => {
     if (customText.trim()) {
+      setIsRetrySeeded(false)
       setTargetText(customText.trim())
       setCustomTypingActive(true)
       setRestartKey(prev => prev + 1)
@@ -455,6 +542,7 @@ const ModeSelector = () => {
               <textarea
                 value={customText}
                 onChange={(e) => {
+                  setIsRetrySeeded(false)
                   setCustomText(e.target.value)
                   // Editing custom text should not auto-run the typing engine.
                   setCustomTypingActive(false)

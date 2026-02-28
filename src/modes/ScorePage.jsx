@@ -782,7 +782,31 @@ const ScorePage = () => {
     wordAnalysis,
   ]);
 
-  const handlePlayAgain = () => navigate("/");
+  const handleRepeatSameTest = () => {
+    const retryConfig = {
+      targetText: typeof target === "string" ? target : "",
+      mode: stateMode,
+      subMode: stateSubMode,
+      language: stateLanguage,
+    };
+
+    if (retryConfig.targetText.length > 0) {
+      navigate("/", { state: { retryConfig } });
+      return;
+    }
+
+    navigate("/");
+  };
+
+  const handleNextTest = () => {
+    const nextTestConfig = {
+      mode: stateMode,
+      subMode: stateSubMode,
+      language: stateLanguage,
+    };
+
+    navigate("/", { state: { nextTestConfig } });
+  };
 
   const getPerformanceRating = () => {
     if (displayWpm >= 80 && displayAcc >= 98) return { text: "Exceptional!", color: "text-purple-400" };
@@ -1511,7 +1535,7 @@ const ScorePage = () => {
               Paragraph Review (Spaces Visible)
             </h3>
             <p className="text-xs text-gray-500">
-              ␣ = space, ↵ = newline, · = missing, red text = incorrect typed, yellow highlight = corrected mistake
+              ␣ = space, red text = incorrect typed, yellow highlight = corrected mistake
             </p>
           </div>
 
@@ -1804,10 +1828,16 @@ const ScorePage = () => {
         className="mt-8 flex flex-col sm:flex-row gap-4"
       >
         <button
-          onClick={handlePlayAgain}
+          onClick={handleRepeatSameTest}
           className="px-8 py-4 rounded-full bg-yellow-400 text-black text-lg font-semibold hover:bg-yellow-500 hover:scale-105 transition-all duration-200 shadow-lg shadow-yellow-400/20"
         >
-          Try Again
+          Repeat Same Test
+        </button>
+        <button
+          onClick={handleNextTest}
+          className="px-8 py-4 rounded-full bg-transparent text-white text-lg font-semibold border border-yellow-400/50 hover:border-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
+        >
+          Next Test
         </button>
         <button
           onClick={() => navigate("/leaderboard")}
