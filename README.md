@@ -29,6 +29,7 @@
 - **AI Battles**: Challenge AI opponents at Easy, Medium, Hard, or Pro difficulty
 
 ### 🏅 Achievements & Badges
+- 1200+ tiered achievements across speed, streak, coding, symbols, multiplayer, AI, and overall progress
 - Speed milestones (30+ WPM, 50+ WPM, 70+ WPM, etc.)
 - Accuracy achievements (95%+, 98%+, 100%)
 - Streak milestones (7 days, 30 days, 100 days)

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Award, Lock, Star, Trophy, Zap, Target, Flame, Code, Hash, Users, Bot } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
+import { AchievementIcon } from '../../utils/achievementIcons'
 
 // Category icons mapping
 const CATEGORY_ICONS = {
@@ -31,12 +32,15 @@ const RARITY_BG = {
   legendary: 'bg-yellow-500/10 border-yellow-500/30',
 }
 
+const CATEGORY_BATCH_SIZE = 24
+
 const Achievements = () => {
   const { user } = useAuth()
   const [achievements, setAchievements] = useState([])
   const [userAchievements, setUserAchievements] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [visibleByCategory, setVisibleByCategory] = useState({})
   const [stats, setStats] = useState({
     total: 0,
     unlocked: 0,
@@ -54,10 +58,15 @@ const Achievements = () => {
         .from('achievements')
         .select('*')
         .order('category')
-        .order('rarity')
+        .order('requirement_value')
+        .order('name')
 
       if (achievementsError) throw achievementsError
       setAchievements(allAchievements || [])
+      setStats((prev) => ({
+        ...prev,
+        total: allAchievements?.length || 0,
+      }))
 
       // Fetch user's unlocked achievements
       if (user?.id) {
@@ -79,6 +88,13 @@ const Achievements = () => {
           total: allAchievements?.length || 0,
           unlocked: unlockedIds.size,
           points: totalPoints,
+        })
+      } else {
+        setUserAchievements(new Set())
+        setStats({
+          total: allAchievements?.length || 0,
+          unlocked: 0,
+          points: 0,
         })
       }
     } catch (error) {
@@ -207,6 +223,9 @@ const Achievements = () => {
         if (!categoryAchievements || categoryAchievements.length === 0) return null
 
         const CategoryIcon = CATEGORY_ICONS[category] || Award
+        const visibleLimit = visibleByCategory[category] || CATEGORY_BATCH_SIZE
+        const visibleAchievements = categoryAchievements.slice(0, visibleLimit)
+        const hasMore = categoryAchievements.length > visibleLimit
 
         return (
           <div key={category} className="mb-10">
@@ -216,7 +235,7 @@ const Achievements = () => {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {categoryAchievements.map((achievement, idx) => {
+              {visibleAchievements.map((achievement, idx) => {
                 const isUnlocked = userAchievements.has(achievement.id)
                 const rarityColor = RARITY_COLORS[achievement.rarity] || RARITY_COLORS.common
                 const rarityBg = RARITY_BG[achievement.rarity] || RARITY_BG.common
@@ -245,13 +264,13 @@ const Achievements = () => {
                     {/* Achievement Icon */}
                     <div className="flex items-center gap-4 mb-3">
                       <div className={`
-                        w-12 h-12 rounded-xl flex items-center justify-center text-2xl
+                        w-12 h-12 rounded-xl flex items-center justify-center
                         ${isUnlocked 
                           ? `bg-gradient-to-br ${rarityColor} text-white` 
                           : 'bg-gray-700 text-gray-500'
                         }
                       `}>
-                        {achievement.icon}
+                        <AchievementIcon achievement={achievement} className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className={`font-semibold ${isUnlocked ? '' : 'text-gray-400'}`}>
@@ -287,6 +306,22 @@ const Achievements = () => {
                 )
               })}
             </div>
+
+            {hasMore && (
+              <div className="mt-5 flex justify-center">
+                <button
+                  onClick={() =>
+                    setVisibleByCategory((prev) => ({
+                      ...prev,
+                      [category]: (prev[category] || CATEGORY_BATCH_SIZE) + CATEGORY_BATCH_SIZE,
+                    }))
+                  }
+                  className="px-4 py-2 rounded-full text-sm font-medium border border-gray-600 text-gray-300 hover:border-yellow-400 hover:text-yellow-400 transition-all"
+                >
+                  Load more ({visibleAchievements.length}/{categoryAchievements.length})
+                </button>
+              </div>
+            )}
           </div>
         )
       })}

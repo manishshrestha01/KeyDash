@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useMultiplayerStore } from '../../store'
 import { generateRaceText, generateRoomCode } from '../multiplayer/multiplayerUtils'
 import { fetchUserAchievements } from '../../utils/achievements'
+import { AchievementIcon } from '../../utils/achievementIcons'
 
 // Custom X (Twitter) icon
 const XIcon = ({ className }) => (
@@ -504,8 +505,8 @@ const UserProfileV2 = () => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="text-2xl leading-none mt-0.5">
-                        {ua.achievements?.icon || '🏆'}
+                      <div className="w-10 h-10 rounded-lg bg-[#1f2535] border border-gray-700/60 flex items-center justify-center text-yellow-300 shrink-0">
+                        <AchievementIcon achievement={ua.achievements} className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-white truncate">

@@ -9,6 +9,7 @@ import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays, startOfDay } from 'date-fns'
 import { fetchUserAchievements } from '../../utils/achievements'
+import { AchievementIcon } from '../../utils/achievementIcons'
 
 const calculateStreakFromActivity = (activityDates = []) => {
   const uniqueDays = Array.from(
@@ -610,7 +611,9 @@ const Dashboard = () => {
                   className="text-center p-3 bg-[#252b3b] rounded-xl hover:bg-[#2a3142] transition-colors"
                   title={ua.achievements?.description}
                 >
-                  <div className="text-2xl mb-1">{ua.achievements?.icon || '🏆'}</div>
+                  <div className="w-8 h-8 mx-auto mb-1 rounded-md bg-[#1a1f2e] border border-gray-700/70 flex items-center justify-center text-yellow-300">
+                    <AchievementIcon achievement={ua.achievements} className="w-4 h-4" />
+                  </div>
                   <div className="text-xs text-gray-400 truncate">{ua.achievements?.name}</div>
                 </div>
               ))}
