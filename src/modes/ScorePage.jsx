@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Line } from "react-chartjs-2";
 import { motion } from "framer-motion";
 import { toPng } from "html-to-image";
+import { Check, Copy } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -86,6 +87,7 @@ const ScorePage = () => {
   const [resolvedResultState, setResolvedResultState] = useState(null);
   const [isLoadingSharedResult, setIsLoadingSharedResult] = useState(false);
   const [sharedResultError, setSharedResultError] = useState("");
+  const [isShareUrlCopied, setIsShareUrlCopied] = useState(false);
   const shareCardRef = useRef(null);
 
   const resultState = location.state || resolvedResultState || {};
@@ -1289,6 +1291,19 @@ const ScorePage = () => {
     }
   };
 
+  const handleCopyShareUrl = async () => {
+    if (!activeShareCode) return;
+    try {
+      await navigator.clipboard.writeText(shareResultUrl);
+      setShareStatus("Share URL copied.");
+      setIsShareUrlCopied(true);
+      setTimeout(() => setIsShareUrlCopied(false), 1600);
+    } catch (error) {
+      console.error("Failed to copy share URL:", error);
+      setShareStatus("Unable to copy share URL. Please copy it manually.");
+    }
+  };
+
   const handleNativeShare = async () => {
     if (typeof navigator === "undefined" || !navigator.share) {
       setShareStatus("Native share is not supported on this device.");
@@ -1975,7 +1990,17 @@ const ScorePage = () => {
 
               {activeShareCode && (
                 <div className="rounded-xl border border-gray-700/80 bg-[#0f141f] px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Share URL</p>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-[11px] uppercase tracking-wider text-gray-500">Share URL</p>
+                    <button
+                      onClick={handleCopyShareUrl}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-700 bg-[#111827] hover:bg-[#1f2937] text-gray-300 hover:text-white transition"
+                      title="Copy share URL"
+                      aria-label="Copy share URL"
+                    >
+                      {isShareUrlCopied ? <Check className="w-3.5 h-3.5 text-green-300" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-200 break-all">{shareResultUrl}</p>
                 </div>
               )}
