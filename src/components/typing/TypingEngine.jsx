@@ -325,6 +325,7 @@ const TypingEngine = ({
     const durationSec = forcedTimeUp && timeLimit 
       ? timeLimit 
       : (Date.now() - finishStartTime) / 1000
+    const completedAt = new Date().toISOString()
 
     const totalTyped = finalInput.length
     const mistakesVal = wrongIndicesRef.current.size
@@ -333,6 +334,14 @@ const TypingEngine = ({
     const rawWpmVal = durationSec > 0 ? (totalTyped / 5) / (durationSec / 60) : 0
     const accVal = totalTyped > 0 ? (adjustedCorrect / totalTyped) * 100 : 0
     const effectiveMode = historyModeOverride || mode
+    const sortedCharEvents = [...charTimingsRef.current].sort((a, b) => {
+      const aTime = Number(a?.time || 0)
+      const bTime = Number(b?.time || 0)
+      return aTime - bTime
+    })
+    const firstKeystrokeTime = sortedCharEvents.length > 0 ? Number(sortedCharEvents[0]?.time) : null
+    const lastKeystrokeTime =
+      sortedCharEvents.length > 0 ? Number(sortedCharEvents[sortedCharEvents.length - 1]?.time) : null
 
     const resultData = {
       target: text,
@@ -358,70 +367,76 @@ const TypingEngine = ({
       mode: effectiveMode,
       subMode,
       language,
+      testDate: completedAt,
+      completedAt,
+      firstKeystrokeTime,
+      lastKeystrokeTime,
     }
 
     if (onComplete) {
       onComplete(resultData)
     }
 
-    // Save to typing history
-    if (user?.id) {
-      try {
-        const historyInsertPayload = {
-          user_id: user.id,
-          mode: effectiveMode,
-          sub_mode: subMode,
-          original_text: text,
-          typed_text: finalInput,
-          wpm: Math.round(wpmVal),
-          raw_wpm: Math.round(rawWpm || rawWpmVal),
-          accuracy: parseFloat(accVal.toFixed(1)),
-          errors: mistakesVal,
-          correct_chars: adjustedCorrect,
-          total_chars: totalTyped,
-          duration_seconds: durationSec,
-          mistake_indices: Array.from(wrongIndicesRef.current),
-          corrections: correctionsRef.current,
-          is_completed: true,
-        }
-        if (language) {
-          historyInsertPayload.language = language
-        }
-
-        let { error: historyError } = await supabase.from('typing_history').insert(historyInsertPayload)
-        if (
-          historyError &&
-          historyInsertPayload.language &&
-          typeof historyError.message === 'string' &&
-          historyError.message.toLowerCase().includes('column') &&
-          historyError.message.toLowerCase().includes('language') &&
-          historyError.message.toLowerCase().includes('does not exist')
-        ) {
-          delete historyInsertPayload.language
-          const retry = await supabase.from('typing_history').insert(historyInsertPayload)
-          historyError = retry.error
-        }
-
-        if (historyError) {
-          console.error('Failed to save typing history:', historyError)
-        } else {
-          syncUserAchievements({ userId: user.id })
-            .then((unlockRes) => {
-              if (unlockRes?.error) {
-                console.error('Failed to sync achievements:', unlockRes.error)
-              }
-            })
-            .catch((unlockError) => {
-              console.error('Failed to sync achievements:', unlockError)
-            })
-        }
-      } catch (error) {
-        console.error('Failed to save typing history:', error)
-      }
-    }
-
     if (!onComplete) {
       navigate('/results', { state: resultData })
+    }
+
+    // Save to typing history in background so result navigation stays instant.
+    if (user?.id) {
+      const historyInsertPayload = {
+        user_id: user.id,
+        mode: effectiveMode,
+        sub_mode: subMode,
+        original_text: text,
+        typed_text: finalInput,
+        wpm: Math.round(wpmVal),
+        raw_wpm: Math.round(rawWpm || rawWpmVal),
+        accuracy: parseFloat(accVal.toFixed(1)),
+        errors: mistakesVal,
+        correct_chars: adjustedCorrect,
+        total_chars: totalTyped,
+        duration_seconds: durationSec,
+        mistake_indices: Array.from(wrongIndicesRef.current),
+        corrections: correctionsRef.current,
+        is_completed: true,
+      }
+      if (language) {
+        historyInsertPayload.language = language
+      }
+
+      void (async () => {
+        try {
+          let { error: historyError } = await supabase.from('typing_history').insert(historyInsertPayload)
+          if (
+            historyError &&
+            historyInsertPayload.language &&
+            typeof historyError.message === 'string' &&
+            historyError.message.toLowerCase().includes('column') &&
+            historyError.message.toLowerCase().includes('language') &&
+            historyError.message.toLowerCase().includes('does not exist')
+          ) {
+            delete historyInsertPayload.language
+            const retry = await supabase.from('typing_history').insert(historyInsertPayload)
+            historyError = retry.error
+          }
+
+          if (historyError) {
+            console.error('Failed to save typing history:', historyError)
+          } else {
+            syncUserAchievements({ userId: user.id })
+              .then((unlockRes) => {
+                if (unlockRes?.error) {
+                  console.error('Failed to sync achievements:', unlockRes.error)
+                }
+              })
+              .catch((unlockError) => {
+                console.error('Failed to sync achievements:', unlockError)
+              })
+          }
+        } catch (error) {
+          console.error('Failed to save typing history:', error)
+        }
+      })()
     }
   }
 

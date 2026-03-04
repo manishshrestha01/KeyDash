@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext'
 import { format, differenceInDays, startOfDay } from 'date-fns'
 import { fetchUserAchievements } from '../../utils/achievements'
 import { AchievementIcon } from '../../utils/achievementIcons'
+import { getPeriodBounds } from '../../utils/leaderboardPeriods'
 
 const calculateStreakFromActivity = (activityDates = []) => {
   const uniqueDays = Array.from(
@@ -63,6 +64,11 @@ const calculateStreakFromActivity = (activityDates = []) => {
   return { current, longest, isActive: gapFromToday === 0 }
 }
 
+const toNumber = (value, fallback = 0) => {
+  const parsed = typeof value === 'string' ? Number(value) : value
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -75,6 +81,12 @@ const Dashboard = () => {
   const [dailyCompleted, setDailyCompleted] = useState(false)
   const [leaderboardRank, setLeaderboardRank] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  const isMissingColumnError = (error, columnName) =>
+    error?.code === 'PGRST204' &&
+    String(error?.message || '')
+      .toLowerCase()
+      .includes(`'${String(columnName || '').toLowerCase()}'`)
 
   useEffect(() => {
     // Wait for auth to finish loading before checking user
@@ -228,8 +240,47 @@ const Dashboard = () => {
         ...(sentenceActivityData || []).map((entry) => entry.created_at),
       ]
       const streak = calculateStreakFromActivity(activityDates)
-      const currentStreak = Math.max(Number(profileData?.current_streak || 0), streak.current)
-      const longestStreak = Math.max(Number(profileData?.longest_streak || 0), streak.longest)
+      const profileCurrentStreak = Number(profileData?.current_streak || 0)
+      const profileLongestStreak = Number(profileData?.longest_streak || 0)
+      const currentStreak = Math.max(profileCurrentStreak, streak.current)
+      const longestStreak = Math.max(profileLongestStreak, streak.longest)
+      const supportsStoredStreak =
+        profileData &&
+        Object.prototype.hasOwnProperty.call(profileData, 'current_streak') &&
+        Object.prototype.hasOwnProperty.call(profileData, 'longest_streak')
+
+      // Keep profile streak fields in sync so public profile viewers see the same streak.
+      if (
+        supportsStoredStreak &&
+        (
+          profileCurrentStreak !== currentStreak ||
+          profileLongestStreak !== longestStreak
+        )
+      ) {
+        const { error: streakSyncError } = await supabase
+          .from('profiles')
+          .update({
+            current_streak: currentStreak,
+            longest_streak: longestStreak,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+
+        if (streakSyncError) {
+          if (
+            !isMissingColumnError(streakSyncError, 'current_streak') &&
+            !isMissingColumnError(streakSyncError, 'longest_streak')
+          ) {
+            console.error('Failed to sync profile streak:', streakSyncError)
+          }
+        } else {
+          setProfile((prev) => (
+            prev
+              ? { ...prev, current_streak: currentStreak, longest_streak: longestStreak }
+              : prev
+          ))
+        }
+      }
 
       const historyPracticeSeconds = (historyDurationData || []).reduce(
         (sum, entry) => sum + (Number(entry?.duration_seconds) || 0),
@@ -309,37 +360,103 @@ const Dashboard = () => {
 
       // Check for daily challenge
       const today = new Date().toISOString().split('T')[0]
-      const { data: challengeData } = await supabase
+      const { data: challengeRows } = await supabase
         .from('challenges')
         .select('*')
         .eq('challenge_type', 'daily')
         .lte('start_date', today)
         .gte('end_date', today)
         .eq('is_active', true)
-        .single()
+        .limit(1)
+      const challengeData = Array.isArray(challengeRows) ? challengeRows[0] : null
       
       setDailyChallenge(challengeData)
 
       if (challengeData) {
         // Check if user completed daily challenge
-        const { data: attemptData } = await supabase
+        const { data: attemptRows } = await supabase
           .from('challenge_attempts')
           .select('id')
           .eq('user_id', user.id)
           .eq('challenge_id', challengeData.id)
-          .single()
+          .limit(1)
         
-        setDailyCompleted(!!attemptData)
+        setDailyCompleted(Array.isArray(attemptRows) && attemptRows.length > 0)
       }
 
-      // Get leaderboard rank (simplified - based on best WPM)
-      // This would ideally be a database function for efficiency
-      const { count: betterCount } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .gt('average_wpm', profileData?.average_wpm || 0)
-      
-      setLeaderboardRank((betterCount || 0) + 1)
+      // Global rank from current month leaderboard.
+      // If user has no row in the monthly board, show NA.
+      const currentMonthStart = getPeriodBounds('monthly', new Date()).monthlyStartDate
+      const { data: userMonthlyRow, error: userMonthlyError } = await supabase
+        .from('leaderboard_monthly')
+        .select('user_id, wpm, accuracy, errors, created_at')
+        .eq('month_start', currentMonthStart)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (userMonthlyError) {
+        console.error('Failed to fetch user monthly rank row:', userMonthlyError)
+        setLeaderboardRank(null)
+      } else if (!userMonthlyRow) {
+        setLeaderboardRank(null)
+      } else {
+        const userWpm = Math.round(toNumber(userMonthlyRow.wpm, 0))
+        const userAccuracy = toNumber(userMonthlyRow.accuracy, 0)
+        const userErrors = Math.max(0, Math.round(toNumber(userMonthlyRow.errors, 0)))
+        const userCreatedAt = userMonthlyRow.created_at || new Date().toISOString()
+
+        const [
+          { count: higherWpmCount, error: higherWpmError },
+          { count: higherAccuracyCount, error: higherAccuracyError },
+          { count: lowerErrorCount, error: lowerErrorCountError },
+          { count: earlierCreatedAtCount, error: earlierCreatedAtError },
+        ] = await Promise.all([
+          supabase
+            .from('leaderboard_monthly')
+            .select('user_id', { count: 'exact', head: true })
+            .eq('month_start', currentMonthStart)
+            .gt('wpm', userWpm),
+          supabase
+            .from('leaderboard_monthly')
+            .select('user_id', { count: 'exact', head: true })
+            .eq('month_start', currentMonthStart)
+            .eq('wpm', userWpm)
+            .gt('accuracy', userAccuracy),
+          supabase
+            .from('leaderboard_monthly')
+            .select('user_id', { count: 'exact', head: true })
+            .eq('month_start', currentMonthStart)
+            .eq('wpm', userWpm)
+            .eq('accuracy', userAccuracy)
+            .lt('errors', userErrors),
+          supabase
+            .from('leaderboard_monthly')
+            .select('user_id', { count: 'exact', head: true })
+            .eq('month_start', currentMonthStart)
+            .eq('wpm', userWpm)
+            .eq('accuracy', userAccuracy)
+            .eq('errors', userErrors)
+            .lt('created_at', userCreatedAt),
+        ])
+
+        if (higherWpmError || higherAccuracyError || lowerErrorCountError || earlierCreatedAtError) {
+          console.error('Failed to fetch monthly rank counts:', {
+            higherWpmError,
+            higherAccuracyError,
+            lowerErrorCountError,
+            earlierCreatedAtError,
+          })
+          setLeaderboardRank(null)
+        } else {
+          const rank =
+            (higherWpmCount || 0) +
+            (higherAccuracyCount || 0) +
+            (lowerErrorCount || 0) +
+            (earlierCreatedAtCount || 0) +
+            1
+          setLeaderboardRank(rank)
+        }
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -448,7 +565,7 @@ const Dashboard = () => {
             <span className="text-gray-400 text-sm">Global Rank</span>
           </div>
           <div className="text-3xl font-bold text-purple-400">
-            #{leaderboardRank || '—'}
+            {leaderboardRank ? `#${leaderboardRank}` : 'NA'}
           </div>
         </motion.div>
       </div>

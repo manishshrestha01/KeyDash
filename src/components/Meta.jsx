@@ -34,10 +34,28 @@ const Meta = ({ title, description, url, keywords }) => {
       element.setAttribute("content", content);
     };
 
+    const upsertPropertyMeta = (property, content) => {
+      if (!property) return;
+      let element = document.head.querySelector(`meta[property="${property}"]`);
+      if (!element) {
+        element = document.createElement("meta");
+        element.setAttribute("property", property);
+        document.head.appendChild(element);
+      }
+      element.setAttribute("content", content);
+    };
+
     upsertMeta("description", resolvedDescription);
     upsertMeta("viewport", "width=device-width, initial-scale=1");
     upsertMeta("keywords", keywords || "");
     upsertMeta("robots", "index, follow");
+    upsertMeta("twitter:card", "summary_large_image");
+    upsertMeta("twitter:title", resolvedTitle);
+    upsertMeta("twitter:description", resolvedDescription);
+    upsertPropertyMeta("og:title", resolvedTitle);
+    upsertPropertyMeta("og:description", resolvedDescription);
+    upsertPropertyMeta("og:url", resolvedUrl);
+    upsertPropertyMeta("og:type", "website");
 
     let canonicalLink = document.head.querySelector('link[rel="canonical"]');
     if (!canonicalLink) {

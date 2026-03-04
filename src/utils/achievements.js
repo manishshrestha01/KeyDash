@@ -28,14 +28,28 @@ const toDayNumber = (value) => {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000)
 }
 
-const calculateCurrentStreak = (rows = []) => {
-  const dayNumbers = Array.from(
+const ACHIEVEMENT_MODE_WHITELIST = new Set([
+  'sentence',
+  'timed',
+  'coding',
+  'symbols',
+  'multiplayer',
+  'ai_battle',
+])
+
+const normalizeMode = (value) => String(value || '').trim().toLowerCase()
+
+const getUniqueDayNumbers = (rows = []) =>
+  Array.from(
     new Set(
       (rows || [])
         .map((row) => toDayNumber(row?.created_at))
         .filter((day) => Number.isFinite(day))
     )
   ).sort((a, b) => a - b)
+
+const calculateCurrentStreak = (rows = []) => {
+  const dayNumbers = getUniqueDayNumbers(rows)
 
   if (dayNumbers.length === 0) return 0
 
@@ -55,6 +69,40 @@ const calculateCurrentStreak = (rows = []) => {
   return streak
 }
 
+const calculateLongestStreak = (rows = []) => {
+  const dayNumbers = getUniqueDayNumbers(rows)
+  if (dayNumbers.length === 0) return 0
+
+  let longest = 1
+  let run = 1
+
+  for (let i = 1; i < dayNumbers.length; i += 1) {
+    if (dayNumbers[i] - dayNumbers[i - 1] === 1) {
+      run += 1
+      longest = Math.max(longest, run)
+    } else {
+      run = 1
+    }
+  }
+
+  return longest
+}
+
+const getAiDifficultyFromAchievement = (achievement = {}) => {
+  const haystack = [
+    achievement?.name || '',
+    achievement?.description || '',
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  if (/\beasy\b/.test(haystack)) return 'easy'
+  if (/\bmedium\b/.test(haystack)) return 'medium'
+  if (/\bhard\b/.test(haystack)) return 'hard'
+  if (/\bpro\b/.test(haystack)) return 'pro'
+  return null
+}
+
 const getTypingStats = async (userId) => {
   const { data, error } = await supabase
     .from('typing_history')
@@ -63,36 +111,88 @@ const getTypingStats = async (userId) => {
 
   if (error) {
     if (isTableMissingError(error, 'typing_history')) {
-      return { testsCount: 0, maxWpm: 0, maxAccuracy: 0, streak: 0, multiplayerCompletions: 0 }
+      return {
+        testsCount: 0,
+        maxWpm: 0,
+        maxAccuracy: 0,
+        streak: 0,
+        maxStreak: 0,
+        sentenceTestsCount: 0,
+        timedTestsCount: 0,
+        codingTestsCount: 0,
+        symbolsTestsCount: 0,
+        aiBattleTestsCount: 0,
+        multiplayerTestsCount: 0,
+        perfectAccuracyCount: 0,
+        multiplayerCompletions: 0,
+      }
     }
     throw error
   }
 
   const rows = data || []
-  const testsCount = rows.length
-  const maxWpm = rows.reduce((max, row) => Math.max(max, toNumber(row?.wpm, 0)), 0)
-  const maxAccuracy = rows.reduce((max, row) => Math.max(max, toNumber(row?.accuracy, 0)), 0)
-  const streak = calculateCurrentStreak(rows)
+  const eligibleRows = rows.filter((row) => ACHIEVEMENT_MODE_WHITELIST.has(normalizeMode(row?.mode)))
+  const testsCount = eligibleRows.length
+  const maxWpm = eligibleRows.reduce((max, row) => Math.max(max, toNumber(row?.wpm, 0)), 0)
+  const maxAccuracy = eligibleRows.reduce((max, row) => Math.max(max, toNumber(row?.accuracy, 0)), 0)
+  const currentStreak = calculateCurrentStreak(eligibleRows)
+  const maxStreak = calculateLongestStreak(eligibleRows)
   const multiplayerCompletions = rows.filter(
-    (row) => String(row?.mode || '').toLowerCase() === 'multiplayer'
+    (row) => normalizeMode(row?.mode) === 'multiplayer'
   ).length
 
-  return { testsCount, maxWpm, maxAccuracy, streak, multiplayerCompletions }
+  const sentenceTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'sentence').length
+  const timedTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'timed').length
+  const codingTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'coding').length
+  const symbolsTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'symbols').length
+  const aiBattleTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'ai_battle').length
+  const multiplayerTestsCount = eligibleRows.filter((row) => normalizeMode(row?.mode) === 'multiplayer').length
+  const perfectAccuracyCount = eligibleRows.filter((row) => toNumber(row?.accuracy, 0) >= 100).length
+
+  return {
+    testsCount,
+    maxWpm,
+    maxAccuracy,
+    streak: Math.max(currentStreak, maxStreak),
+    maxStreak,
+    sentenceTestsCount,
+    timedTestsCount,
+    codingTestsCount,
+    symbolsTestsCount,
+    aiBattleTestsCount,
+    multiplayerTestsCount,
+    perfectAccuracyCount,
+    multiplayerCompletions,
+  }
 }
 
 const getAiWins = async (userId) => {
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from('ai_battles')
-    .select('id', { count: 'exact', head: true })
+    .select('difficulty')
     .eq('user_id', userId)
     .eq('winner', 'user')
 
   if (error) {
-    if (isTableMissingError(error, 'ai_battles')) return 0
+    if (isTableMissingError(error, 'ai_battles')) {
+      return {
+        total: 0,
+        byDifficulty: { easy: 0, medium: 0, hard: 0, pro: 0 },
+      }
+    }
     throw error
   }
 
-  return toNumber(count, 0)
+  const byDifficulty = { easy: 0, medium: 0, hard: 0, pro: 0 }
+  ;(data || []).forEach((row) => {
+    const difficulty = normalizeMode(row?.difficulty)
+    if (Object.prototype.hasOwnProperty.call(byDifficulty, difficulty)) {
+      byDifficulty[difficulty] += 1
+    }
+  })
+
+  const total = Object.values(byDifficulty).reduce((sum, count) => sum + (toNumber(count, 0) || 0), 0)
+  return { total, byDifficulty }
 }
 
 const getMultiplayerWins = async (userId) => {
@@ -150,6 +250,13 @@ const evaluateAchievementRequirement = (achievement, stats) => {
   if (!target || target < 0) return false
 
   if (requirementType === 'tests_count') {
+    if (category === 'accuracy') return (stats.perfectAccuracyCount || 0) >= target
+    if (category === 'coding') return (stats.codingTestsCount || 0) >= target
+    if (category === 'symbols') return (stats.symbolsTestsCount || 0) >= target
+    if (category === 'sentence') return (stats.sentenceTestsCount || 0) >= target
+    if (category === 'timed') return (stats.timedTestsCount || 0) >= target
+    if (category === 'ai') return (stats.aiBattleTestsCount || 0) >= target
+    if (category === 'multiplayer') return (stats.multiplayerTestsCount || 0) >= target
     return stats.testsCount >= target
   }
   if (requirementType === 'wpm_single') {
@@ -159,10 +266,16 @@ const evaluateAchievementRequirement = (achievement, stats) => {
     return stats.maxAccuracy >= target
   }
   if (requirementType === 'streak') {
-    return stats.streak >= target
+    return (stats.maxStreak ?? stats.streak ?? 0) >= target
   }
   if (requirementType === 'win_count') {
-    if (category === 'ai') return stats.aiWins >= target
+    if (category === 'ai') {
+      const difficulty = getAiDifficultyFromAchievement(achievement)
+      if (difficulty) {
+        return toNumber(stats.aiWinsByDifficulty?.[difficulty], 0) >= target
+      }
+      return stats.aiWins >= target
+    }
     if (category === 'multiplayer') return stats.multiplayerWins >= target
     return stats.aiWins + stats.multiplayerWins >= target
   }
@@ -228,12 +341,12 @@ export const fetchUserAchievements = async ({ userId, limit = 12 } = {}) => {
 }
 
 export const syncUserAchievements = async ({ userId } = {}) => {
-  if (!userId) return { unlockedCount: 0, error: null }
+  if (!userId) return { unlockedCount: 0, removedCount: 0, error: null }
 
   const [achievementsRes, unlockedRes] = await Promise.all([
     supabase
       .from('achievements')
-      .select('id, category, requirement_type, requirement_value'),
+      .select('id, name, description, category, requirement_type, requirement_value'),
     supabase
       .from('user_achievements')
       .select('achievement_id')
@@ -242,27 +355,23 @@ export const syncUserAchievements = async ({ userId } = {}) => {
 
   if (achievementsRes.error) {
     if (isTableMissingError(achievementsRes.error, 'achievements')) {
-      return { unlockedCount: 0, error: null }
+      return { unlockedCount: 0, removedCount: 0, error: null }
     }
-    return { unlockedCount: 0, error: achievementsRes.error }
+    return { unlockedCount: 0, removedCount: 0, error: achievementsRes.error }
   }
 
   if (unlockedRes.error) {
     if (isTableMissingError(unlockedRes.error, 'user_achievements')) {
-      return { unlockedCount: 0, error: null }
+      return { unlockedCount: 0, removedCount: 0, error: null }
     }
-    return { unlockedCount: 0, error: unlockedRes.error }
+    return { unlockedCount: 0, removedCount: 0, error: unlockedRes.error }
   }
 
+  const allAchievements = achievementsRes.data || []
   const unlockedIds = new Set((unlockedRes.data || []).map((row) => row.achievement_id))
-  const lockedAchievements = (achievementsRes.data || []).filter((row) => !unlockedIds.has(row.id))
-
-  if (lockedAchievements.length === 0) {
-    return { unlockedCount: 0, error: null }
-  }
 
   try {
-    const [typingStats, aiWins, multiplayerWins] = await Promise.all([
+    const [typingStats, aiWinStats, multiplayerWins] = await Promise.all([
       getTypingStats(userId),
       getAiWins(userId),
       getMultiplayerWins(userId),
@@ -270,19 +379,43 @@ export const syncUserAchievements = async ({ userId } = {}) => {
 
     const stats = {
       ...typingStats,
-      aiWins,
+      aiWins: toNumber(aiWinStats?.total, 0),
+      aiWinsByDifficulty: aiWinStats?.byDifficulty || { easy: 0, medium: 0, hard: 0, pro: 0 },
       multiplayerWins,
     }
 
-    const toUnlock = lockedAchievements
+    const eligibleAchievements = allAchievements
       .filter((achievement) => evaluateAchievementRequirement(achievement, stats))
+    const eligibleAchievementIds = new Set(eligibleAchievements.map((achievement) => achievement.id))
+    const staleUnlockedIds = [...unlockedIds].filter((achievementId) => !eligibleAchievementIds.has(achievementId))
+    let removedCount = 0
+
+    if (staleUnlockedIds.length > 0) {
+      const { error: removeError } = await supabase
+        .from('user_achievements')
+        .delete()
+        .eq('user_id', userId)
+        .in('achievement_id', staleUnlockedIds)
+
+      if (removeError) {
+        if (isTableMissingError(removeError, 'user_achievements')) {
+          return { unlockedCount: 0, removedCount: 0, error: null }
+        }
+        return { unlockedCount: 0, removedCount: 0, error: removeError }
+      }
+
+      removedCount = staleUnlockedIds.length
+    }
+
+    const toUnlock = eligibleAchievements
+      .filter((achievement) => !unlockedIds.has(achievement.id))
       .map((achievement) => ({
         user_id: userId,
         achievement_id: achievement.id,
       }))
 
     if (toUnlock.length === 0) {
-      return { unlockedCount: 0, error: null }
+      return { unlockedCount: 0, removedCount, error: null }
     }
 
     const { error: insertError } = await supabase
@@ -291,13 +424,13 @@ export const syncUserAchievements = async ({ userId } = {}) => {
 
     if (insertError) {
       if (isTableMissingError(insertError, 'user_achievements')) {
-        return { unlockedCount: 0, error: null }
+        return { unlockedCount: 0, removedCount, error: null }
       }
-      return { unlockedCount: 0, error: insertError }
+      return { unlockedCount: 0, removedCount, error: insertError }
     }
 
-    return { unlockedCount: toUnlock.length, error: null }
+    return { unlockedCount: toUnlock.length, removedCount, error: null }
   } catch (error) {
-    return { unlockedCount: 0, error }
+    return { unlockedCount: 0, removedCount: 0, error }
   }
 }

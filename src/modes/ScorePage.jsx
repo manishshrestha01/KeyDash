@@ -33,6 +33,12 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toValidDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const getWordSpans = (text = "") => {
   const spans = [];
   const regex = /\S+/g;
@@ -65,6 +71,8 @@ const createShareCode = (length = 8) => {
   return result;
 };
 
+const TIMING_TOLERANCE_SEC = 0.05;
+
 const ScorePage = () => {
   const { user, profile } = useAuth();
   const { shareCode } = useParams();
@@ -95,7 +103,17 @@ const ScorePage = () => {
     charTimings: stateCharTimings,
     corrections: stateCorrections,
     language: stateLanguage = "",
+    testDate: stateTestDate = "",
+    createdAt: stateCreatedAt = "",
+    completedAt: stateCompletedAt = "",
+    firstKeystrokeTime: stateFirstKeystrokeTime,
+    lastKeystrokeTime: stateLastKeystrokeTime,
   } = resultState;
+
+  const debugTimingEnabled = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    return params.get("debugTiming") === "1";
+  }, [location.search]);
 
   useEffect(() => {
     if (shareCode) {
@@ -137,6 +155,7 @@ const ScorePage = () => {
           mode: sharedRow.mode || "typing",
           subMode: "",
           sharedBy: "",
+          testDate: sharedRow.created_at || "",
         };
 
         const historyRow = sharedRow.history;
@@ -155,6 +174,7 @@ const ScorePage = () => {
             corrections: toNumber(historyRow.corrections, 0),
             mode: historyRow.mode || nextState.mode,
             subMode: historyRow.sub_mode || "",
+            testDate: historyRow.created_at || nextState.testDate,
           };
         }
 
@@ -193,13 +213,14 @@ const ScorePage = () => {
             mode: sharedRow.mode || "typing",
             subMode: "",
             sharedBy: "",
+            testDate: sharedRow.created_at || "",
           };
 
           if (sharedRow.typing_history_id) {
             const { data: historyRow, error: historyError } = await supabase
               .from("typing_history")
               .select(
-                "mode, sub_mode, original_text, typed_text, wpm, accuracy, errors, duration_seconds, mistake_indices, corrections"
+                "mode, sub_mode, original_text, typed_text, wpm, accuracy, errors, duration_seconds, mistake_indices, corrections, created_at"
               )
               .eq("id", sharedRow.typing_history_id)
               .maybeSingle();
@@ -219,6 +240,7 @@ const ScorePage = () => {
                 corrections: toNumber(historyRow.corrections, 0),
                 mode: historyRow.mode || nextState.mode,
                 subMode: historyRow.sub_mode || "",
+                testDate: historyRow.created_at || nextState.testDate,
               };
             }
           }
@@ -518,43 +540,166 @@ const ScorePage = () => {
 
   const wordAnalysis = useMemo(() => {
     const spans = getWordSpans(target);
+    const localMistakenSet = new Set(Array.isArray(mistakenIndices) ? mistakenIndices : []);
+    const safeDuration = chartDurationSec > 0 ? chartDurationSec : 1;
+    const safeDurationMs = safeDuration * 1000;
+
     if (spans.length === 0) {
+      const firstFromState = toNumber(stateFirstKeystrokeTime, NaN);
+      const lastFromState = toNumber(stateLastKeystrokeTime, NaN);
+      const hasEventBounds = Number.isFinite(firstFromState) && Number.isFinite(lastFromState);
+      const totalSeconds = hasEventBounds
+        ? Math.max(0, (lastFromState - firstFromState) / 1000)
+        : Math.max(0, safeDuration);
+
       return {
         words: [],
         slowWords: [],
         avgSecondsPerChar: 0,
         estimatedTiming: true,
+        totalSeconds,
+        sumWordSeconds: 0,
+        deltaSeconds: totalSeconds,
+        firstKeystrokeTime: hasEventBounds ? firstFromState : null,
+        lastKeystrokeTime: hasEventBounds ? lastFromState : null,
+        debugEvents: [],
       };
     }
 
-    const safeDuration = chartDurationSec > 0 ? chartDurationSec : 1;
-    const typingChars = Math.max(1, input.length || target.length);
-    const avgCharMs = (safeDuration * 1000) / typingChars;
-    const localMistakenSet = new Set(Array.isArray(mistakenIndices) ? mistakenIndices : []);
-
-    let timingEntries = parsedCharEvents
-      .filter((entry) => entry.type !== "delete")
-      .map((entry) => ({ index: entry.index, time: entry.time }));
-
-    let estimatedTiming = false;
-    if (timingEntries.length === 0) {
-      estimatedTiming = true;
-      const estimatedCharCount = Math.max(1, input.length);
-      timingEntries = Array.from({ length: estimatedCharCount }, (_, i) => ({
-        index: i,
-        time: ((i + 1) / estimatedCharCount) * safeDuration * 1000,
-      }));
-    }
-
-    const minTime = Math.min(...timingEntries.map((entry) => entry.time));
-    const latestTimingByIndex = new Map();
-    timingEntries.forEach((entry) => {
-      const normalizedTime = entry.time - minTime;
-      const previous = latestTimingByIndex.get(entry.index);
-      if (typeof previous !== "number" || normalizedTime > previous) {
-        latestTimingByIndex.set(entry.index, normalizedTime);
+    const wordIndexByChar = Array.from({ length: target.length }, () => -1);
+    spans.forEach((span, spanIndex) => {
+      for (let i = span.start; i < span.end; i += 1) {
+        if (i >= 0 && i < wordIndexByChar.length) {
+          wordIndexByChar[i] = spanIndex;
+        }
       }
     });
+
+    const resolveWordIndex = (event, fallbackWordIndex = -1) => {
+      const idx = Math.floor(toNumber(event?.index, -1));
+      if (idx >= 0 && idx < wordIndexByChar.length && wordIndexByChar[idx] >= 0) {
+        return wordIndexByChar[idx];
+      }
+
+      const eventChar = typeof event?.char === "string" ? event.char : "";
+      const targetChar = idx >= 0 && idx < target.length ? target[idx] : "";
+      const isBoundaryChar =
+        eventChar === " " ||
+        eventChar === "\n" ||
+        eventChar === "\t" ||
+        targetChar === " " ||
+        targetChar === "\n" ||
+        targetChar === "\t";
+
+      if (isBoundaryChar) {
+        const leftStart = Math.min(idx - 1, wordIndexByChar.length - 1);
+        for (let left = Math.max(0, leftStart); left >= 0; left -= 1) {
+          if (wordIndexByChar[left] >= 0) return wordIndexByChar[left];
+        }
+        for (let right = Math.max(0, idx + 1); right < wordIndexByChar.length; right += 1) {
+          if (wordIndexByChar[right] >= 0) return wordIndexByChar[right];
+        }
+      }
+
+      if (idx >= wordIndexByChar.length && spans.length > 0) {
+        return spans.length - 1;
+      }
+
+      if (fallbackWordIndex >= 0) {
+        return fallbackWordIndex;
+      }
+
+      return -1;
+    };
+
+    const wordTimingMs = Array.from({ length: spans.length }, () => 0);
+    const wordFirstEventTime = Array.from({ length: spans.length }, () => null);
+    const wordLastEventTime = Array.from({ length: spans.length }, () => null);
+    const debugEvents = [];
+
+    let estimatedTiming = false;
+    let firstKeystrokeTime = null;
+    let lastKeystrokeTime = null;
+    let totalTimingMs = 0;
+    let lastResolvedWordIndex = -1;
+
+    if (parsedCharEvents.length > 0) {
+      firstKeystrokeTime = parsedCharEvents[0].time;
+      lastKeystrokeTime = parsedCharEvents[parsedCharEvents.length - 1].time;
+      totalTimingMs = Math.max(0, lastKeystrokeTime - firstKeystrokeTime);
+
+      parsedCharEvents.forEach((event, idx) => {
+        let resolvedWordIndex = resolveWordIndex(event, lastResolvedWordIndex);
+        if (resolvedWordIndex < 0 && lastResolvedWordIndex >= 0) {
+          resolvedWordIndex = lastResolvedWordIndex;
+        }
+        if (resolvedWordIndex >= 0) {
+          lastResolvedWordIndex = resolvedWordIndex;
+          if (wordFirstEventTime[resolvedWordIndex] == null) {
+            wordFirstEventTime[resolvedWordIndex] = event.time;
+          }
+          wordLastEventTime[resolvedWordIndex] = event.time;
+        }
+
+        const nextTime = idx < parsedCharEvents.length - 1 ? parsedCharEvents[idx + 1].time : event.time;
+        const deltaToNextMs = Math.max(0, nextTime - event.time);
+        if (resolvedWordIndex >= 0) {
+          wordTimingMs[resolvedWordIndex] += deltaToNextMs;
+        }
+
+        debugEvents.push({
+          seq: idx + 1,
+          time: event.time,
+          relativeTimeSec:
+            firstKeystrokeTime != null ? Math.max(0, (event.time - firstKeystrokeTime) / 1000) : 0,
+          key: toVisibleChar(event.char, "∅"),
+          actionType: event.type,
+          wordIndex: resolvedWordIndex >= 0 ? resolvedWordIndex + 1 : null,
+          charIndex: event.index,
+          deltaToNextSec: deltaToNextMs / 1000,
+        });
+      });
+
+      const allocatedMs = wordTimingMs.reduce((sum, value) => sum + value, 0);
+      const remainderMs = totalTimingMs - allocatedMs;
+      if (Math.abs(remainderMs) > 0.001) {
+        const firstReachedWordIndex = spans.findIndex((span) => input.length > span.start);
+        const fallbackWordIndex =
+          lastResolvedWordIndex >= 0
+            ? lastResolvedWordIndex
+            : firstReachedWordIndex >= 0
+              ? firstReachedWordIndex
+              : spans.length - 1;
+        if (fallbackWordIndex >= 0) {
+          wordTimingMs[fallbackWordIndex] += remainderMs;
+        }
+      }
+    } else {
+      estimatedTiming = true;
+      const firstFromState = toNumber(stateFirstKeystrokeTime, NaN);
+      const lastFromState = toNumber(stateLastKeystrokeTime, NaN);
+      const hasEventBounds = Number.isFinite(firstFromState) && Number.isFinite(lastFromState);
+      firstKeystrokeTime = hasEventBounds ? firstFromState : null;
+      lastKeystrokeTime = hasEventBounds ? lastFromState : null;
+      totalTimingMs = hasEventBounds
+        ? Math.max(0, lastFromState - firstFromState)
+        : Math.max(0, safeDurationMs);
+
+      const typedLengthByWord = spans.map((span) => {
+        const typedStart = Math.min(span.start, input.length);
+        const typedEnd = Math.min(span.end, input.length);
+        return Math.max(0, typedEnd - typedStart);
+      });
+      const totalTypedWordChars = typedLengthByWord.reduce((sum, length) => sum + length, 0);
+
+      if (totalTypedWordChars > 0 && totalTimingMs > 0) {
+        typedLengthByWord.forEach((typedLen, wordIdx) => {
+          if (typedLen > 0) {
+            wordTimingMs[wordIdx] = (typedLen / totalTypedWordChars) * totalTimingMs;
+          }
+        });
+      }
+    }
 
     const words = spans.map((span, idx) => {
       const expected = span.word;
@@ -576,26 +721,6 @@ const ScorePage = () => {
         }
       }
 
-      const observedTimes = [];
-      for (let i = span.start; i < typedEnd; i++) {
-        const time = latestTimingByIndex.get(i);
-        if (typeof time === "number") observedTimes.push(time);
-      }
-
-      let durationMs = 0;
-      if (typedLen === 0) {
-        durationMs = 0;
-      } else if (observedTimes.length >= 2) {
-        durationMs = Math.max(
-          avgCharMs,
-          Math.max(...observedTimes) - Math.min(...observedTimes) + avgCharMs
-        );
-      } else {
-        durationMs = Math.max(avgCharMs, typedLen * avgCharMs);
-      }
-
-      const wordSeconds = durationMs / 1000;
-      const secondsPerChar = typedLen > 0 ? wordSeconds / Math.max(1, typedLen) : 0;
       let status = "Not Reached";
       if (typedLen > 0) {
         if (mistakes > 0) {
@@ -609,6 +734,10 @@ const ScorePage = () => {
         status = "Partial";
       }
 
+      const durationMs = Math.max(0, toNumber(wordTimingMs[idx], 0));
+      const wordSeconds = durationMs / 1000;
+      const secondsPerChar = typedLen > 0 ? wordSeconds / Math.max(1, typedLen) : 0;
+
       return {
         id: `${idx}-${span.start}`,
         index: idx + 1,
@@ -619,13 +748,15 @@ const ScorePage = () => {
         seconds: wordSeconds,
         secondsPerChar,
         status,
+        firstEventTime: wordFirstEventTime[idx],
+        lastEventTime: wordLastEventTime[idx],
       };
     });
 
     const typedWords = words.filter((word) => word.typed.length > 0);
     const slowWords = [...typedWords]
       .filter((word) => word.typed.length > 0)
-      .sort((a, b) => b.secondsPerChar - a.secondsPerChar)
+      .sort((a, b) => b.seconds - a.seconds || b.secondsPerChar - a.secondsPerChar)
       .slice(0, 5);
 
     const avgSecondsPerChar =
@@ -633,13 +764,72 @@ const ScorePage = () => {
         ? typedWords.reduce((sum, word) => sum + word.secondsPerChar, 0) / typedWords.length
         : 0;
 
+    const sumWordSeconds =
+      words.length > 0 ? words.reduce((sum, word) => sum + Math.max(0, word.seconds), 0) : 0;
+    const totalSeconds =
+      firstKeystrokeTime != null && lastKeystrokeTime != null
+        ? Math.max(0, (lastKeystrokeTime - firstKeystrokeTime) / 1000)
+        : Math.max(0, totalTimingMs / 1000);
+    const deltaSeconds = totalSeconds - sumWordSeconds;
+
     return {
       words,
       slowWords,
       avgSecondsPerChar,
       estimatedTiming,
+      totalSeconds,
+      sumWordSeconds,
+      deltaSeconds,
+      firstKeystrokeTime,
+      lastKeystrokeTime,
+      debugEvents,
     };
-  }, [chartDurationSec, input, mistakenIndices, parsedCharEvents, target]);
+  }, [
+    chartDurationSec,
+    input,
+    mistakenIndices,
+    parsedCharEvents,
+    stateFirstKeystrokeTime,
+    stateLastKeystrokeTime,
+    target,
+  ]);
+
+  const timingTotalSec =
+    wordAnalysis.totalSeconds > 0 ? wordAnalysis.totalSeconds : Math.max(0, chartDurationSec);
+  const timingWordSumSec = Math.max(0, toNumber(wordAnalysis.sumWordSeconds, 0));
+  const timingDeltaSec = timingTotalSec - timingWordSumSec;
+  const timingDeltaWithinTolerance = Math.abs(timingDeltaSec) <= TIMING_TOLERANCE_SEC;
+
+  useEffect(() => {
+    if (!debugTimingEnabled) return;
+
+    const perWordTimes = wordAnalysis.words.map((word) => ({
+      wordIndex: word.index,
+      expected: word.expected,
+      typed: word.typed,
+      seconds: Number(word.seconds.toFixed(3)),
+      mistakes: word.mistakes,
+    }));
+
+    console.groupCollapsed("[KeyDash timing debug]");
+    console.log("firstKeystrokeTime:", wordAnalysis.firstKeystrokeTime);
+    console.log("lastKeystrokeTime:", wordAnalysis.lastKeystrokeTime);
+    console.log("computedTotalTimeSec:", Number(timingTotalSec.toFixed(3)));
+    console.log("sumWordTimesSec:", Number(timingWordSumSec.toFixed(3)));
+    console.log("deltaSec:", Number(timingDeltaSec.toFixed(3)));
+    console.log("perWordTimes:", perWordTimes);
+    console.table(wordAnalysis.debugEvents || []);
+    console.groupEnd();
+  }, [
+    debugTimingEnabled,
+    timingDeltaSec,
+    timingTotalSec,
+    timingWordSumSec,
+    wordAnalysis.debugEvents,
+    wordAnalysis.firstKeystrokeTime,
+    wordAnalysis.lastKeystrokeTime,
+    wordAnalysis.words,
+  ]);
 
   const paragraphAnalysis = useMemo(() => {
     const deletedEvents = parsedCharEvents.filter(
@@ -817,14 +1007,22 @@ const ScorePage = () => {
   };
 
   const rating = getPerformanceRating();
+  const resolvedTestDate = useMemo(() => {
+    const dateFromState =
+      toValidDate(stateTestDate) ||
+      toValidDate(stateCreatedAt) ||
+      toValidDate(stateCompletedAt);
+    return dateFromState || new Date();
+  }, [stateCompletedAt, stateCreatedAt, stateTestDate]);
+
   const shareDateLabel = useMemo(
     () =>
-      new Date().toLocaleDateString(undefined, {
+      resolvedTestDate.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
       }),
-    []
+    [resolvedTestDate]
   );
   const baseAppUrl =
     typeof window !== "undefined"
@@ -1396,7 +1594,7 @@ const ScorePage = () => {
               Time
             </div>
             <div className="text-2xl md:text-4xl font-bold text-purple-400">
-              {chartDurationSec.toFixed(1)}
+              {timingTotalSec.toFixed(1)}
               <span className="text-lg md:text-xl text-gray-500">s</span>
             </div>
           </div>
@@ -1474,6 +1672,37 @@ const ScorePage = () => {
             </div>
           </div>
         </motion.div>
+
+        {debugTimingEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28 }}
+            className="mt-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4"
+          >
+            <p className="text-xs uppercase tracking-wider text-sky-200 mb-3">Timing Debug (dev)</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-lg border border-sky-500/25 bg-[#101521] px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wider text-gray-400">Total Time</p>
+                <p className="text-sky-200 font-semibold">{timingTotalSec.toFixed(3)}s</p>
+              </div>
+              <div className="rounded-lg border border-sky-500/25 bg-[#101521] px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wider text-gray-400">Sum Word Times</p>
+                <p className="text-sky-200 font-semibold">{timingWordSumSec.toFixed(3)}s</p>
+              </div>
+              <div className="rounded-lg border border-sky-500/25 bg-[#101521] px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wider text-gray-400">Delta</p>
+                <p className={`font-semibold ${timingDeltaWithinTolerance ? "text-green-300" : "text-red-300"}`}>
+                  {timingDeltaSec >= 0 ? "+" : ""}
+                  {timingDeltaSec.toFixed(3)}s
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              First key: {wordAnalysis.firstKeystrokeTime ?? "NA"} • Last key: {wordAnalysis.lastKeystrokeTime ?? "NA"}
+            </p>
+          </motion.div>
+        )}
 
         {/* Typed Words Review */}
         <motion.div
@@ -1715,7 +1944,7 @@ const ScorePage = () => {
                   <div className="rounded-xl bg-black/25 border border-white/10 px-2.5 py-2 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-gray-400">Time</p>
                     <p className="text-sm sm:text-base font-semibold text-purple-300">
-                      {chartDurationSec.toFixed(1)}s
+                      {timingTotalSec.toFixed(1)}s
                     </p>
                   </div>
                 </div>

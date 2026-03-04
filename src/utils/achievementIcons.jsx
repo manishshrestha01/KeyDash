@@ -22,14 +22,14 @@ import {
 } from 'lucide-react'
 
 const CATEGORY_ICON_POOLS = {
-  speed: [Zap, Timer, TrendingUp, Play, Trophy],
-  accuracy: [Target, CheckCircle, Medal, Award, Star],
-  streak: [Flame, Clock, Award, Medal, Crown],
-  coding: [Code, BookOpen, FileText, Hash, Award],
-  symbols: [Hash, FileText, Code, Target, Star],
-  multiplayer: [Users, Trophy, Crown, Medal, Award],
-  ai: [Bot, Zap, Target, Trophy, Star],
-  special: [Award, Star, Crown, Trophy, TrendingUp],
+  speed: [Zap],
+  accuracy: [Target],
+  streak: [Flame],
+  coding: [Code],
+  symbols: [Hash],
+  multiplayer: [Users],
+  ai: [Bot],
+  special: [Award],
 }
 
 const ICON_NAME_MAP = {

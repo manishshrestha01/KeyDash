@@ -1,22 +1,111 @@
--- Seed a large achievement catalog (1200+) for existing deployments.
+-- Seed achievement catalog.
 -- Safe to rerun because names are unique and ON CONFLICT is used.
 
-WITH generated_achievements AS (
+DO $$
+DECLARE
+  rarity_constraint_name text;
+BEGIN
+  IF to_regclass('public.achievements') IS NULL THEN
+    RETURN;
+  END IF;
+
+  FOR rarity_constraint_name IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'achievements'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) ILIKE '%rarity%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.achievements DROP CONSTRAINT IF EXISTS %I', rarity_constraint_name);
+  END LOOP;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'achievements'
+      AND c.conname = 'achievements_rarity_check'
+  ) THEN
+    ALTER TABLE public.achievements
+      ADD CONSTRAINT achievements_rarity_check
+      CHECK (lower(rarity) IN ('common', 'rare', 'epic', 'legendary', 'conqueror'));
+  END IF;
+END;
+$$;
+
+WITH speed_cycles AS (
   SELECT
-    format('Drop Zone Sprinter %s', lpad(tier::text, 4, '0')) AS name,
-    format('Hit %s+ WPM in a single test.', 29 + tier) AS description,
-    (ARRAY['⚡', '🚀', '🏃', '💨'])[((tier - 1) % 4) + 1] AS icon,
+    gs.cycle,
+    30 + (gs.cycle * 21) AS base_wpm
+  FROM generate_series(0, 10) AS gs(cycle)
+),
+speed_tiers AS (
+  SELECT
+    cycle,
+    3 AS tier_rank,
+    'III' AS tier_label,
+    base_wpm AS range_start,
+    LEAST(base_wpm + 7, 260) AS range_end
+  FROM speed_cycles
+
+  UNION ALL
+
+  SELECT
+    cycle,
+    2 AS tier_rank,
+    'II' AS tier_label,
+    base_wpm + 8 AS range_start,
+    LEAST(base_wpm + 14, 260) AS range_end
+  FROM speed_cycles
+
+  UNION ALL
+
+  SELECT
+    cycle,
+    1 AS tier_rank,
+    'I' AS tier_label,
+    base_wpm + 15 AS range_start,
+    LEAST(base_wpm + 20, 260) AS range_end
+  FROM speed_cycles
+),
+speed_named_tiers AS (
+  SELECT
+    st.*,
+    (ARRAY[
+      'Velocity Vanguard',
+      'Turbo Striker',
+      'Blaze Typist',
+      'Rapid Pulse',
+      'Thunder Keys',
+      'Nitro Weaver',
+      'Keystorm Rider',
+      'Tempo Trailblazer'
+    ])[((row_number() OVER (ORDER BY st.range_start, st.tier_rank) - 1) % 8) + 1] AS base_title
+  FROM speed_tiers st
+),
+generated_achievements AS (
+  SELECT
+    format('%s Tier %s (%s-%s WPM)', base_title, tier_label, range_start, range_end) AS name,
+    format('Reach %s-%s WPM in a single test.', range_start, range_end) AS description,
+    'zap' AS icon,
     'speed' AS category,
     'wpm_single' AS requirement_type,
-    29 + tier AS requirement_value,
-    5 + (tier / 2) AS points,
+    range_start AS requirement_value,
+    8 + floor((range_start - 30) / 4.0)::int AS points,
     CASE
-      WHEN tier >= 198 THEN 'legendary'
-      WHEN tier >= 143 THEN 'epic'
-      WHEN tier >= 77 THEN 'rare'
+      WHEN range_start > 210 THEN 'conqueror'
+      WHEN range_start >= 111 THEN 'legendary'
+      WHEN range_start >= 81 THEN 'epic'
+      WHEN range_start >= 51 THEN 'rare'
       ELSE 'common'
     END AS rarity
-  FROM generate_series(1, 220) AS gs(tier)
+  FROM speed_named_tiers
+  WHERE range_start <= 260
 
   UNION ALL
 

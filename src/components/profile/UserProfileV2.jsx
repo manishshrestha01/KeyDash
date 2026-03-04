@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   User, Globe, Github, Linkedin, Instagram, Youtube, Twitch,
-  Clock, Target, Zap, Trophy, BarChart2, Calendar, TrendingUp,
-  Award, Flame, ArrowLeft, ExternalLink
+  Target, Zap, Trophy, BarChart2, Calendar, TrendingUp,
+  Award, Flame, ArrowLeft, ExternalLink, EyeOff
 } from 'lucide-react'
+import { FaRedditAlien } from 'react-icons/fa'
+import { FaSnapchat } from 'react-icons/fa6'
 import { supabase } from '../../supabaseClient'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format, differenceInDays, startOfDay } from 'date-fns'
 import toast, { Toaster } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { useMultiplayerStore } from '../../store'
 import { generateRaceText, generateRoomCode } from '../multiplayer/multiplayerUtils'
-import { fetchUserAchievements } from '../../utils/achievements'
 import { AchievementIcon } from '../../utils/achievementIcons'
+import { buildProfileLink } from '../../utils/socialLinks'
 
 // Custom X (Twitter) icon
 const XIcon = ({ className }) => (
@@ -26,6 +28,186 @@ const XIcon = ({ className }) => (
     <path d="M20.39 3H16.9L12.75 9.25 8.59 3H3.25L9.88 12.4 3 21h3.49l4.57-6.59L16.1 21h5.4l-7.05-9.65L20.39 3z" />
   </svg>
 )
+
+const calculateStreakFromActivity = (activityDates = []) => {
+  const uniqueDays = Array.from(
+    new Set(
+      activityDates
+        .filter(Boolean)
+        .map((date) => format(startOfDay(new Date(date)), 'yyyy-MM-dd'))
+    )
+  )
+
+  if (uniqueDays.length === 0) {
+    return { current: 0, longest: 0, isActive: false }
+  }
+
+  const sortedDays = uniqueDays
+    .map((day) => startOfDay(new Date(`${day}T00:00:00`)))
+    .sort((a, b) => a - b)
+
+  let longest = 1
+  let run = 1
+
+  for (let i = 1; i < sortedDays.length; i += 1) {
+    const dayGap = differenceInDays(sortedDays[i], sortedDays[i - 1])
+    if (dayGap === 1) {
+      run += 1
+      longest = Math.max(longest, run)
+    } else {
+      run = 1
+    }
+  }
+
+  const latestDay = sortedDays[sortedDays.length - 1]
+  const gapFromToday = differenceInDays(startOfDay(new Date()), latestDay)
+  const canContinue = gapFromToday === 0 || gapFromToday === 1
+
+  if (!canContinue) {
+    return { current: 0, longest, isActive: false }
+  }
+
+  let current = 1
+  for (let i = sortedDays.length - 2; i >= 0; i -= 1) {
+    const dayGap = differenceInDays(sortedDays[i + 1], sortedDays[i])
+    if (dayGap === 1) {
+      current += 1
+    } else {
+      break
+    }
+  }
+
+  return { current, longest, isActive: gapFromToday === 0 }
+}
+
+const RARITY_THEME = {
+  common: {
+    card: 'bg-gray-500/5 border-gray-700/70',
+    icon: 'bg-gradient-to-br from-gray-500 to-gray-600 text-white border-gray-400/40',
+    badge: 'bg-gray-500/15 text-gray-200 border border-gray-500/30',
+  },
+  rare: {
+    card: 'bg-blue-500/10 border-blue-500/30',
+    icon: 'bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300/50',
+    badge: 'bg-blue-500/20 text-blue-200 border border-blue-400/40',
+  },
+  epic: {
+    card: 'bg-purple-500/10 border-purple-500/30',
+    icon: 'bg-gradient-to-br from-purple-400 to-purple-500 text-white border-purple-300/50',
+    badge: 'bg-purple-500/20 text-purple-200 border border-purple-400/40',
+  },
+  legendary: {
+    card: 'bg-yellow-500/10 border-yellow-500/30',
+    icon: 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white border-yellow-300/50',
+    badge: 'bg-yellow-500/20 text-yellow-200 border border-yellow-400/40',
+  },
+  conqueror: {
+    card: 'bg-rose-500/10 border-rose-500/35',
+    icon: 'bg-gradient-to-br from-fuchsia-500 to-rose-500 text-white border-fuchsia-300/50',
+    badge: 'bg-rose-500/20 text-rose-100 border border-rose-400/50',
+  },
+}
+
+const normalizeRarity = (rarity) => {
+  const key = String(rarity || 'common').trim().toLowerCase()
+  if (key === 'conqueror' || key === 'legendary' || key === 'epic' || key === 'rare' || key === 'common') {
+    return key
+  }
+  return 'common'
+}
+
+const normalizeFeaturedAchievementIds = (value) => {
+  let ids = []
+
+  if (Array.isArray(value)) {
+    ids = value
+  } else if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) ids = parsed
+      } catch {
+        ids = []
+      }
+    } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const inner = trimmed.slice(1, -1).trim()
+      if (inner) {
+        ids = inner
+          .split(',')
+          .map((entry) => entry.trim().replace(/^"(.*)"$/, '$1'))
+      }
+    }
+  }
+
+  return [...new Set(ids.filter((id) => typeof id === 'string' && id.trim() !== ''))].slice(0, 4)
+}
+
+const toNumber = (value, fallback = 0) => {
+  const parsed = typeof value === 'string' ? Number(value) : value
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const isMissingColumnError = (error, columnName) =>
+  error?.code === 'PGRST204' &&
+  String(error?.message || '')
+    .toLowerCase()
+    .includes(`'${String(columnName || '').toLowerCase()}'`)
+
+const isRelationshipError = (error) =>
+  error?.code === 'PGRST200' ||
+  /relationship between .*user_achievements.*achievements/i.test(error?.message || '')
+
+const fetchFeaturedAchievementsByIds = async ({ userId, achievementIds } = {}) => {
+  if (!userId || !Array.isArray(achievementIds) || achievementIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  const joinedRes = await supabase
+    .from('user_achievements')
+    .select('id, user_id, achievement_id, unlocked_at, achievements(*)')
+    .eq('user_id', userId)
+    .in('achievement_id', achievementIds)
+
+  if (!joinedRes.error) {
+    return { data: joinedRes.data || [], error: null }
+  }
+
+  if (!isRelationshipError(joinedRes.error)) {
+    return { data: [], error: joinedRes.error }
+  }
+
+  const baseRes = await supabase
+    .from('user_achievements')
+    .select('id, user_id, achievement_id, unlocked_at')
+    .eq('user_id', userId)
+    .in('achievement_id', achievementIds)
+
+  if (baseRes.error) {
+    return { data: [], error: baseRes.error }
+  }
+
+  const achievementsRes = await supabase
+    .from('achievements')
+    .select('*')
+    .in('id', achievementIds)
+
+  if (achievementsRes.error) {
+    return {
+      data: (baseRes.data || []).map((row) => ({ ...row, achievements: null })),
+      error: achievementsRes.error,
+    }
+  }
+
+  const achievementMap = new Map((achievementsRes.data || []).map((row) => [row.id, row]))
+  return {
+    data: (baseRes.data || []).map((row) => ({
+      ...row,
+      achievements: achievementMap.get(row.achievement_id) || null,
+    })),
+    error: null,
+  }
+}
 
 const UserProfileV2 = () => {
   const { userId } = useParams()
@@ -52,7 +234,7 @@ const UserProfileV2 = () => {
 
   useEffect(() => {
     fetchData()
-  }, [userId])
+  }, [userId, user?.id])
 
   const fetchData = async () => {
     setLoading(true)
@@ -67,24 +249,27 @@ const UserProfileV2 = () => {
       if (profileError) throw profileError
       setProfile(profileData)
 
-      // Fetch history/scores with consistent rules used in profile statistics:
-      // prefer typing_history, exclude custom mode, fallback to legacy leaderboard tables.
-      const [historyRes, timedRes, sentenceRes, achievementsRes] = await Promise.all([
-        supabase
-          .from('typing_history')
-          .select('*')
-          .eq('user_id', userId)
-          .neq('mode', 'custom')
-          .order('created_at', { ascending: false })
-          .limit(1000),
+      const isOwnerView = Boolean(user?.id && user.id === userId)
+      const isProfilePublic = profileData?.is_profile_public ?? true
+      const canViewAchievements = isOwnerView || isProfilePublic
+      const featuredAchievementIds = normalizeFeaturedAchievementIds(profileData?.featured_achievement_ids)
+      const shouldFetchFeaturedAchievements = canViewAchievements && featuredAchievementIds.length > 0
+
+      // Public profile stats should be consistent regardless of who is viewing.
+      // Use profile aggregates + shared leaderboard tables as canonical sources.
+      const [timedRes, sentenceRes, dailyActivityRes, achievementsRes] = await Promise.all([
         supabase.from('leaderboard_timed').select('*').eq('user_id', userId),
         supabase.from('leaderboard_sentence').select('*').eq('user_id', userId),
-        fetchUserAchievements({ userId, limit: 12 }),
+        supabase
+          .from('leaderboard_daily')
+          .select('date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(500),
+        shouldFetchFeaturedAchievements
+          ? fetchFeaturedAchievementsByIds({ userId, achievementIds: featuredAchievementIds })
+          : Promise.resolve({ data: [], error: null }),
       ])
-
-      const historyScores = (historyRes.data || []).filter(
-        (s) => (s.mode || '').toLowerCase() !== 'custom'
-      )
 
       const fallbackScores = [
         ...(timedRes.data || []).map(s => ({
@@ -101,48 +286,94 @@ const UserProfileV2 = () => {
         })),
       ]
 
-      const canonicalScores = historyScores.length > 0 ? historyScores : fallbackScores
-      if (achievementsRes?.error) {
+      const activityDates = [
+        ...((dailyActivityRes.data || []).map((entry) => entry.date)),
+      ]
+      const streak = calculateStreakFromActivity(activityDates)
+      const profileCurrentStreak = Math.max(0, Math.round(toNumber(profileData?.current_streak, 0)))
+      const profileLongestStreak = Math.max(
+        profileCurrentStreak,
+        Math.round(toNumber(profileData?.longest_streak, 0))
+      )
+      const currentStreak = Math.max(profileCurrentStreak, Math.max(0, streak.current))
+      const longestStreak = Math.max(profileLongestStreak, currentStreak, Math.max(0, streak.longest))
+      const supportsStoredStreak =
+        Object.prototype.hasOwnProperty.call(profileData || {}, 'current_streak') &&
+        Object.prototype.hasOwnProperty.call(profileData || {}, 'longest_streak')
+
+      // Keep stored streak in sync so viewers see the same value as the owner.
+      if (
+        isOwnerView &&
+        supportsStoredStreak &&
+        (profileCurrentStreak !== currentStreak || profileLongestStreak !== longestStreak)
+      ) {
+        const { error: streakSyncError } = await supabase
+          .from('profiles')
+          .update({
+            current_streak: currentStreak,
+            longest_streak: longestStreak,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId)
+
+        if (streakSyncError) {
+          if (
+            !isMissingColumnError(streakSyncError, 'current_streak') &&
+            !isMissingColumnError(streakSyncError, 'longest_streak')
+          ) {
+            console.error('Failed to sync public profile streak:', streakSyncError)
+          }
+        } else {
+          setProfile((prev) => (
+            prev
+              ? { ...prev, current_streak: currentStreak, longest_streak: longestStreak }
+              : prev
+          ))
+        }
+      }
+
+      if (shouldFetchFeaturedAchievements && achievementsRes?.error) {
         console.error('Public profile achievements fetch error:', achievementsRes.error)
       }
-      setAchievements(achievementsRes?.data || [])
+      setAchievements(shouldFetchFeaturedAchievements ? (achievementsRes?.data || []) : [])
 
-      if (canonicalScores.length > 0) {
-        const totalTests = canonicalScores.length
-        const avgWpm = Math.round(
-          canonicalScores.reduce((sum, s) => sum + (Number(s.wpm) || 0), 0) / totalTests
-        )
-        const avgAccuracy = (
-          canonicalScores.reduce((sum, s) => sum + (Number(s.accuracy) || 0), 0) / totalTests
-        ).toFixed(1)
-        const leaderboardModes = new Set(['timed', 'sentence'])
-        const leaderboardModeScores = canonicalScores.filter((s) =>
-          leaderboardModes.has(String(s.mode || '').toLowerCase())
-        )
-        const bestWpm = leaderboardModeScores.length > 0
-          ? Math.max(...leaderboardModeScores.map((s) => Number(s.wpm) || 0))
-          : 0
-        const totalTime = canonicalScores.reduce(
-          (sum, s) => sum + (Number(s.duration_seconds) || Number(s.time) || 0),
-          0
-        )
+      const fallbackTotalTests = fallbackScores.length
+      const fallbackAvgWpm = fallbackTotalTests > 0
+        ? Math.round(fallbackScores.reduce((sum, s) => sum + toNumber(s.wpm, 0), 0) / fallbackTotalTests)
+        : 0
+      const fallbackAvgAccuracy = fallbackTotalTests > 0
+        ? (
+            fallbackScores.reduce((sum, s) => sum + toNumber(s.accuracy, 0), 0) / fallbackTotalTests
+          ).toFixed(1)
+        : '0.0'
+      const fallbackBestWpm = fallbackTotalTests > 0
+        ? Math.max(...fallbackScores.map((s) => toNumber(s.wpm, 0)))
+        : 0
+      const fallbackTotalTime = fallbackScores.reduce(
+        (sum, s) => sum + toNumber(s.duration_seconds, toNumber(s.time, 0)),
+        0
+      )
 
-        setStats({
-          bestWpm,
-          avgWpm,
-          avgAccuracy,
-          totalTests,
-          totalTime: Math.round(totalTime / 60),
-        })
-      } else {
-        setStats({
-          bestWpm: 0,
-          avgWpm: 0,
-          avgAccuracy: '0.0',
-          totalTests: 0,
-          totalTime: 0,
-        })
-      }
+      const profileTotalTests = Math.max(0, Math.round(toNumber(profileData?.total_tests, 0)))
+      const profileAvgWpm = toNumber(profileData?.average_wpm ?? profileData?.avg_wpm, 0)
+      const profileAvgAccuracy = toNumber(profileData?.average_accuracy ?? profileData?.avg_accuracy, 0)
+      const profileBestWpm = Math.max(
+        0,
+        toNumber(profileData?.best_wpm, 0),
+        toNumber(profileData?.highest_wpm, 0),
+        toNumber(profileData?.max_wpm, 0),
+        toNumber(profileData?.top_wpm, 0)
+      )
+
+      setStats({
+        bestWpm: profileBestWpm > 0 ? Math.round(profileBestWpm) : fallbackBestWpm,
+        avgWpm: profileAvgWpm > 0 ? Math.round(profileAvgWpm) : fallbackAvgWpm,
+        avgAccuracy: profileAvgAccuracy > 0 ? profileAvgAccuracy.toFixed(1) : fallbackAvgAccuracy,
+        totalTests: profileTotalTests > 0 ? profileTotalTests : fallbackTotalTests,
+        totalTime: Math.round(fallbackTotalTime / 60),
+        currentStreak,
+        longestStreak,
+      })
 
       // Calculate rank (based on best WPM across all users)
       const { data: rankData, error: rankError } = await supabase
@@ -266,15 +497,48 @@ const UserProfileV2 = () => {
     }
   }
 
-  const socialLinks = profile ? [
-    { url: profile.website, icon: Globe, label: 'Website' },
-    { url: profile.twitter, icon: XIcon, label: 'X (Twitter)' },
-    { url: profile.github, icon: Github, label: 'GitHub' },
-    { url: profile.linkedin, icon: Linkedin, label: 'LinkedIn' },
-    { url: profile.instagram, icon: Instagram, label: 'Instagram' },
-    { url: profile.youtube, icon: Youtube, label: 'YouTube' },
-    { url: profile.twitch, icon: Twitch, label: 'Twitch' },
-  ].filter(link => link.url && link.url.trim() !== '') : []
+  const socialLinks = profile
+    ? [
+        { platform: 'website', value: profile.website, icon: Globe, label: 'Website' },
+        { platform: 'twitter', value: profile.twitter, icon: XIcon, label: 'X (Twitter)' },
+        { platform: 'github', value: profile.github, icon: Github, label: 'GitHub' },
+        { platform: 'linkedin', value: profile.linkedin, icon: Linkedin, label: 'LinkedIn' },
+        { platform: 'instagram', value: profile.instagram, icon: Instagram, label: 'Instagram' },
+        { platform: 'youtube', value: profile.youtube, icon: Youtube, label: 'YouTube' },
+        { platform: 'twitch', value: profile.twitch, icon: Twitch, label: 'Twitch' },
+        { platform: 'reddit', value: profile.reddit, icon: FaRedditAlien, label: 'Reddit' },
+        { platform: 'snapchat', value: profile.snapchat, icon: FaSnapchat, label: 'Snapchat' },
+      ]
+        .map((item) => ({ ...item, url: buildProfileLink(item.platform, item.value) }))
+        .filter((item) => item.url)
+    : []
+
+  const isOwnerView = Boolean(user?.id && user.id === userId)
+  const isProfilePublic = profile?.is_profile_public ?? true
+  const canViewAchievements = isOwnerView || isProfilePublic
+
+  const featuredAchievementIds = useMemo(
+    () => normalizeFeaturedAchievementIds(profile?.featured_achievement_ids),
+    [profile?.featured_achievement_ids]
+  )
+
+  const curatedAchievements = useMemo(() => {
+    if (!canViewAchievements) return []
+    if (featuredAchievementIds.length === 0) return []
+    if (!Array.isArray(achievements) || achievements.length === 0) return []
+
+    const unlockedByAchievementId = new Map()
+    achievements.forEach((row) => {
+      const achievementId = row?.achievement_id
+      if (!achievementId || unlockedByAchievementId.has(achievementId)) return
+      unlockedByAchievementId.set(achievementId, row)
+    })
+
+    return featuredAchievementIds
+      .map((achievementId) => unlockedByAchievementId.get(achievementId))
+      .filter(Boolean)
+      .slice(0, 4)
+  }, [achievements, canViewAchievements, featuredAchievementIds])
 
   if (loading) {
     return (
@@ -385,7 +649,7 @@ const UserProfileV2 = () => {
                     {socialLinks.map(({ url, icon: Icon, label }) => (
                       <a
                         key={label}
-                        href={url?.startsWith('http') ? url : `https://${url}`}
+                        href={url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-2 bg-[#252b3b] rounded-xl text-gray-400 hover:text-white hover:bg-[#2a3142] transition group"
@@ -450,9 +714,9 @@ const UserProfileV2 = () => {
               bg: 'from-purple-500/20 to-purple-600/10'
             },
             { 
-              label: 'Time', 
-              value: stats?.totalTime ? `${stats.totalTime}m` : '--', 
-              icon: Clock,
+              label: 'Streak', 
+              value: Math.max(0, Number(stats?.currentStreak ?? profile?.current_streak ?? 0)), 
+              icon: Flame,
               color: 'text-orange-400',
               bg: 'from-orange-500/20 to-orange-600/10'
             },
@@ -488,24 +752,33 @@ const UserProfileV2 = () => {
             Achievements
           </h2>
 
-          {achievements.length === 0 ? (
+          {!canViewAchievements ? (
+            <div className="text-center py-8">
+              <EyeOff className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-300">This user set their achievements to private.</p>
+            </div>
+          ) : curatedAchievements.length === 0 ? (
             <div className="text-center py-8">
               <Award className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400">No achievements unlocked yet</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {achievements.map((ua, idx) => (
+              {curatedAchievements.map((ua, idx) => {
+                const rarityKey = normalizeRarity(ua.achievements?.rarity)
+                const rarityTheme = RARITY_THEME[rarityKey] || RARITY_THEME.common
+
+                return (
                 <motion.div
                   key={ua.id || idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + idx * 0.05 }}
-                  className="p-4 bg-[#252b3b]/50 rounded-xl hover:bg-[#252b3b] transition border border-gray-800/50"
+                  className={`p-4 rounded-xl transition border ${rarityTheme.card}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-[#1f2535] border border-gray-700/60 flex items-center justify-center text-yellow-300 shrink-0">
+                      <div className={`w-10 h-10 rounded-lg border flex items-center justify-center shrink-0 ${rarityTheme.icon}`}>
                         <AchievementIcon achievement={ua.achievements} className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -515,16 +788,11 @@ const UserProfileV2 = () => {
                         <p className="text-sm text-gray-400 mt-1 line-clamp-2">
                           {ua.achievements?.description || 'Unlocked achievement'}
                         </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Unlocked {ua.unlocked_at
-                            ? formatDistanceToNow(new Date(ua.unlocked_at), { addSuffix: true })
-                            : 'recently'}
-                        </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-500/15 text-yellow-300 border border-yellow-500/30 capitalize">
-                        {ua.achievements?.rarity || 'common'}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium capitalize ${rarityTheme.badge}`}>
+                        {rarityKey}
                       </span>
                       <p className="text-xs text-gray-500 mt-2">
                         {(ua.achievements?.points ?? 0)} pts
@@ -532,7 +800,8 @@ const UserProfileV2 = () => {
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                )
+              })}
             </div>
           )}
         </motion.div>

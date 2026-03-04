@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Award, Lock, Star, Trophy, Zap, Target, Flame, Code, Hash, Users, Bot } from 'lucide-react'
+import { Award, Lock, Star, Trophy, Zap, Target, Code, Hash, Users, Bot } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { AchievementIcon } from '../../utils/achievementIcons'
@@ -10,7 +10,6 @@ import { syncUserAchievements } from '../../utils/achievements'
 const CATEGORY_ICONS = {
   speed: Zap,
   accuracy: Target,
-  streak: Flame,
   coding: Code,
   symbols: Hash,
   multiplayer: Users,
@@ -24,6 +23,7 @@ const RARITY_COLORS = {
   rare: 'from-blue-400 to-blue-500',
   epic: 'from-purple-400 to-purple-500',
   legendary: 'from-yellow-400 to-orange-500',
+  conqueror: 'from-fuchsia-500 to-rose-500',
 }
 
 const RARITY_BG = {
@@ -31,6 +31,7 @@ const RARITY_BG = {
   rare: 'bg-blue-500/10 border-blue-500/30',
   epic: 'bg-purple-500/10 border-purple-500/30',
   legendary: 'bg-yellow-500/10 border-yellow-500/30',
+  conqueror: 'bg-rose-500/10 border-rose-500/35',
 }
 
 const CATEGORY_BATCH_SIZE = 24
@@ -103,7 +104,7 @@ const Achievements = () => {
               return
             }
 
-            if (!syncRes?.unlockedCount) return
+            if (!syncRes?.unlockedCount && !syncRes?.removedCount) return
 
             const latestUnlockedRes = await supabase
               .from('user_achievements')
@@ -145,12 +146,14 @@ const Achievements = () => {
     return groups
   }, {})
 
-  // Filter achievements
-  const filteredCategories = filter === 'all' 
-    ? Object.keys(groupedAchievements)
-    : [filter]
+  const categories = ['all', 'speed', 'accuracy', 'coding', 'symbols', 'multiplayer', 'ai', 'special']
 
-  const categories = ['all', 'speed', 'accuracy', 'streak', 'coding', 'symbols', 'multiplayer', 'ai', 'special']
+  // Filter achievements
+  const filteredCategories = filter === 'all'
+    ? categories
+        .filter((category) => category !== 'all')
+        .filter((category) => (groupedAchievements[category] || []).length > 0)
+    : [filter]
 
   if (loading) {
     return (

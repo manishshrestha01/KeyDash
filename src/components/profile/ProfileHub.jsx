@@ -1,18 +1,124 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Settings, History, Trophy, BarChart2,
   Mail, Globe, Github, Linkedin, Instagram, Youtube, Twitch,
   Camera, Check, X, ChevronRight, ChevronUp, ChevronDown, Clock, Target, Zap,
-  Calendar, TrendingUp, Award, Flame, Star, Edit3, Save,
+  Calendar, TrendingUp, Award, Flame, Star, Code, Hash, Users, Bot, Edit3, Save,
   Eye, EyeOff, Trash2, Download, Filter, Search
 } from 'lucide-react'
+import { FaRedditAlien } from 'react-icons/fa'
+import { FaSnapchat } from 'react-icons/fa6'
 import { supabase } from '../../supabaseClient'
 import { useAuth } from '../../context/AuthContext'
-import { format, formatDistanceToNow } from 'date-fns'
-import { fetchUserAchievements } from '../../utils/achievements'
+import { format } from 'date-fns'
+import { fetchUserAchievements, syncUserAchievements } from '../../utils/achievements'
 import { AchievementIcon } from '../../utils/achievementIcons'
+import { buildProfileLink, validateWebsiteInput } from '../../utils/socialLinks'
+
+const MAX_FEATURED_ACHIEVEMENTS = 4
+const PROFILE_ACHIEVEMENTS_FETCH_LIMIT = 1000
+
+const ACHIEVEMENT_CATEGORY_ORDER = ['all', 'speed', 'accuracy', 'coding', 'symbols', 'multiplayer', 'ai', 'special']
+
+const ACHIEVEMENT_CATEGORY_LABELS = {
+  all: 'All',
+  speed: 'Speed',
+  accuracy: 'Accuracy',
+  coding: 'Coding',
+  symbols: 'Symbols',
+  multiplayer: 'Multiplayer',
+  ai: 'AI',
+  special: 'Special',
+}
+
+const ACHIEVEMENT_CATEGORY_ICONS = {
+  all: Award,
+  speed: Zap,
+  accuracy: Target,
+  coding: Code,
+  symbols: Hash,
+  multiplayer: Users,
+  ai: Bot,
+  special: Star,
+}
+
+const RARITY_THEME = {
+  common: {
+    card: 'bg-gray-500/5 border-gray-700/70',
+    icon: 'bg-gradient-to-br from-gray-500 to-gray-600 text-white border-gray-400/40',
+    badge: 'bg-gray-500/15 text-gray-200 border border-gray-500/30',
+  },
+  rare: {
+    card: 'bg-blue-500/10 border-blue-500/30',
+    icon: 'bg-gradient-to-br from-blue-400 to-blue-500 text-white border-blue-300/50',
+    badge: 'bg-blue-500/20 text-blue-200 border border-blue-400/40',
+  },
+  epic: {
+    card: 'bg-purple-500/10 border-purple-500/30',
+    icon: 'bg-gradient-to-br from-purple-400 to-purple-500 text-white border-purple-300/50',
+    badge: 'bg-purple-500/20 text-purple-200 border border-purple-400/40',
+  },
+  legendary: {
+    card: 'bg-yellow-500/10 border-yellow-500/30',
+    icon: 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white border-yellow-300/50',
+    badge: 'bg-yellow-500/20 text-yellow-200 border border-yellow-400/40',
+  },
+  conqueror: {
+    card: 'bg-rose-500/10 border-rose-500/35',
+    icon: 'bg-gradient-to-br from-fuchsia-500 to-rose-500 text-white border-fuchsia-300/50',
+    badge: 'bg-rose-500/20 text-rose-100 border border-rose-400/50',
+  },
+}
+
+const normalizeRarity = (rarity) => {
+  const value = String(rarity || 'common').trim().toLowerCase()
+  if (value === 'conqueror' || value === 'legendary' || value === 'epic' || value === 'rare' || value === 'common') {
+    return value
+  }
+  return 'common'
+}
+
+const normalizeFeaturedAchievementIds = (value) => {
+  let ids = []
+
+  if (Array.isArray(value)) {
+    ids = value
+  } else if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) ids = parsed
+      } catch {
+        ids = []
+      }
+    } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const inner = trimmed.slice(1, -1).trim()
+      if (inner) {
+        ids = inner
+          .split(',')
+          .map((entry) => entry.trim().replace(/^"(.*)"$/, '$1'))
+      }
+    }
+  }
+
+  return [...new Set(ids.filter((id) => typeof id === 'string' && id.trim() !== ''))]
+    .slice(0, MAX_FEATURED_ACHIEVEMENTS)
+}
+
+const isMissingProfileColumnError = (error, columnName) => {
+  const message = String(error?.message || '')
+  return error?.code === '42703' || message.toLowerCase().includes(String(columnName || '').toLowerCase())
+}
+
+const normalizeAchievementCategory = (category) => {
+  const key = String(category || '').trim().toLowerCase()
+  return ACHIEVEMENT_CATEGORY_ORDER.includes(key) ? key : 'special'
+}
+
+const PROFILE_TABS = ['profile', 'settings', 'history', 'stats']
 
 const ProfileHub = () => {
   const { user, loading: authLoading } = useAuth()
@@ -24,7 +130,9 @@ const ProfileHub = () => {
   const getTabFromUrl = () => {
     if (location.pathname === '/settings') return 'settings'
     if (location.pathname === '/history') return 'history'
-    return searchParams.get('tab') || 'profile'
+    const rawTab = searchParams.get('tab')
+    if (!rawTab) return 'profile'
+    return PROFILE_TABS.includes(rawTab) ? rawTab : 'profile'
   }
   const [activeTab, setActiveTab] = useState(getTabFromUrl())
   
@@ -53,6 +161,10 @@ const ProfileHub = () => {
     instagram: '',
     youtube: '',
     twitch: '',
+    reddit: '',
+    snapchat: '',
+    is_profile_public: true,
+    featured_achievement_ids: [],
   })
   const [errors, setErrors] = useState({})
   
@@ -73,6 +185,8 @@ const ProfileHub = () => {
   const [achievements, setAchievements] = useState([])
   const [achievementsLoading, setAchievementsLoading] = useState(false)
   const [achievementsError, setAchievementsError] = useState('')
+  const [achievementsFetched, setAchievementsFetched] = useState(false)
+  const [achievementCategoryFilter, setAchievementCategoryFilter] = useState('all')
   
   // File input ref
   const fileInputRef = useRef(null)
@@ -81,7 +195,6 @@ const ProfileHub = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'history', label: 'History', icon: History },
-    { id: 'achievements', label: 'Achievements', icon: Trophy },
     { id: 'stats', label: 'Statistics', icon: BarChart2 },
   ]
 
@@ -103,7 +216,6 @@ const ProfileHub = () => {
     if (initialTab === 'history') {
       fetchHistory()
     }
-    if (initialTab === 'achievements') fetchAchievements()
   }, [user?.id, authLoading])
 
   // Fetch data when tab changes (user clicks on tab)
@@ -120,9 +232,9 @@ const ProfileHub = () => {
     if (activeTab === 'history') {
       fetchHistory()
     }
-    if (activeTab === 'achievements') fetchAchievements()
+    if (activeTab === 'settings' && !achievementsFetched) fetchAchievements()
     if (activeTab === 'stats') fetchStats()
-  }, [activeTab, user?.id, authLoading])
+  }, [activeTab, user?.id, authLoading, achievementsFetched])
 
   // Re-fetch history when filter changes
   useEffect(() => {
@@ -157,6 +269,10 @@ const ProfileHub = () => {
           instagram: data.instagram || '',
           youtube: data.youtube || '',
           twitch: data.twitch || '',
+          reddit: data.reddit || '',
+          snapchat: data.snapchat || '',
+          is_profile_public: data.is_profile_public ?? true,
+          featured_achievement_ids: normalizeFeaturedAchievementIds(data.featured_achievement_ids),
         })
       }
     } catch (err) {
@@ -232,9 +348,18 @@ const ProfileHub = () => {
     if (!user?.id) return
     setAchievementsLoading(true)
     setAchievementsError('')
+    setAchievementsFetched(true)
 
     try {
-      const { data, error } = await fetchUserAchievements({ userId: user.id, limit: 50 })
+      const syncRes = await syncUserAchievements({ userId: user.id })
+      if (syncRes?.error) {
+        console.error('Achievements sync error:', syncRes.error)
+      }
+
+      const { data, error } = await fetchUserAchievements({
+        userId: user.id,
+        limit: PROFILE_ACHIEVEMENTS_FETCH_LIMIT,
+      })
       if (error) {
         console.error('Achievements fetch error:', error)
         setAchievementsError('Could not load achievements right now')
@@ -359,37 +484,125 @@ const ProfileHub = () => {
     })
   }
 
-  const validateUrl = (value) => {
-    if (!value) return ''
-    try {
-      new URL(value)
-      return ''
-    } catch {
-      return 'Must be a valid URL'
-    }
-  }
-
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
 
-    // Validate URLs
-    if (['website', 'twitter', 'github', 'linkedin', 'instagram', 'youtube', 'twitch'].includes(name)) {
-      setErrors(prev => ({ ...prev, [name]: validateUrl(value) }))
+    if (name === 'website') {
+      setErrors(prev => ({ ...prev, website: validateWebsiteInput(value) }))
+      return
     }
+
+    if (['twitter', 'github', 'linkedin', 'instagram', 'youtube', 'twitch', 'reddit', 'snapchat'].includes(name)) {
+      setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const unlockedAchievementsById = useMemo(
+    () => new Map((achievements || []).map((item) => [item.achievement_id, item])),
+    [achievements]
+  )
+
+  const selectedFeaturedAchievementIds = useMemo(
+    () => normalizeFeaturedAchievementIds(formData.featured_achievement_ids),
+    [formData.featured_achievement_ids]
+  )
+
+  const selectedFeaturedAchievementIdSet = useMemo(
+    () => new Set(selectedFeaturedAchievementIds),
+    [selectedFeaturedAchievementIds]
+  )
+
+  const selectedFeaturedAchievements = useMemo(() => {
+    return selectedFeaturedAchievementIds
+      .map((achievementId) => unlockedAchievementsById.get(achievementId))
+      .filter(Boolean)
+  }, [selectedFeaturedAchievementIds, unlockedAchievementsById])
+
+  const achievementsByCategory = useMemo(() => {
+    const grouped = {}
+
+    ;(achievements || []).forEach((achievementRow) => {
+      const category = normalizeAchievementCategory(achievementRow?.achievements?.category)
+      if (!grouped[category]) grouped[category] = []
+      grouped[category].push(achievementRow)
+    })
+
+    return grouped
+  }, [achievements])
+
+  const availableAchievementCategories = useMemo(
+    () =>
+      ACHIEVEMENT_CATEGORY_ORDER
+        .filter((category) => category !== 'all')
+        .filter((category) => (achievementsByCategory[category] || []).length > 0),
+    [achievementsByCategory]
+  )
+
+  const visibleAchievementCategories = useMemo(() => {
+    if (achievementCategoryFilter === 'all') return availableAchievementCategories
+    if (availableAchievementCategories.includes(achievementCategoryFilter)) {
+      return [achievementCategoryFilter]
+    }
+    return []
+  }, [achievementCategoryFilter, availableAchievementCategories])
+
+  useEffect(() => {
+    if (achievementCategoryFilter === 'all') return
+    if (!availableAchievementCategories.includes(achievementCategoryFilter)) {
+      setAchievementCategoryFilter('all')
+    }
+  }, [achievementCategoryFilter, availableAchievementCategories])
+
+  const handleProfileVisibilityToggle = () => {
+    setFormData((prev) => ({
+      ...prev,
+      is_profile_public: !Boolean(prev.is_profile_public),
+    }))
+  }
+
+  const handleToggleFeaturedAchievement = (achievementId) => {
+    if (!achievementId) return
+    setFormData((prev) => {
+      const selected = normalizeFeaturedAchievementIds(prev.featured_achievement_ids)
+      if (selected.includes(achievementId)) {
+        return {
+          ...prev,
+          featured_achievement_ids: selected.filter((id) => id !== achievementId),
+        }
+      }
+
+      if (selected.length >= MAX_FEATURED_ACHIEVEMENTS) {
+        setMessage({
+          text: `You can feature up to ${MAX_FEATURED_ACHIEVEMENTS} achievements`,
+          type: 'error',
+        })
+        setTimeout(() => setMessage({ text: '', type: '' }), 2500)
+        return prev
+      }
+
+      return {
+        ...prev,
+        featured_achievement_ids: [...selected, achievementId],
+      }
+    })
   }
 
   const saveProfile = async () => {
     if (!user?.id) return
 
-    if (!formData.display_name.trim()) {
+    const normalizedDisplayName = formData.display_name.trim()
+    if (!normalizedDisplayName) {
       setMessage({ text: 'Display name is required', type: 'error' })
       return
     }
 
-    // Check URL errors
-    const urlFields = ['website', 'twitter', 'github', 'linkedin', 'instagram', 'youtube', 'twitch']
-    const hasUrlErrors = urlFields.some(field => errors[field])
+    const websiteError = validateWebsiteInput(formData.website)
+    if (websiteError) {
+      setErrors((prev) => ({ ...prev, website: websiteError }))
+    }
+
+    const hasUrlErrors = Boolean(websiteError) || Object.values(errors).some(Boolean)
     if (hasUrlErrors) {
       setMessage({ text: 'Please fix URL errors before saving', type: 'error' })
       return
@@ -398,30 +611,79 @@ const ProfileHub = () => {
     setSaving(true)
 
     try {
-      // Check for duplicate display name
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('display_name', formData.display_name.trim())
-        .neq('id', user.id)
-        .maybeSingle()
+      const currentDisplayName = String(profile?.display_name || '').trim()
+      const hasDisplayNameChanged =
+        normalizedDisplayName.toLowerCase() !== currentDisplayName.toLowerCase()
 
-      if (existing) {
-        setMessage({ text: 'Username already taken', type: 'error' })
-        setSaving(false)
+      // Only check duplicates when the user is changing display name.
+      if (hasDisplayNameChanged) {
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('display_name', normalizedDisplayName)
+          .neq('id', user.id)
+          .maybeSingle()
+
+        if (existing) {
+          setMessage({ text: 'Username already taken', type: 'error' })
+          setSaving(false)
+          return
+        }
+      }
+
+      // Keep selected IDs as-is to avoid dropping older selections if local
+      // picker data is incomplete due to partial fetches.
+      const featuredAchievementIds = selectedFeaturedAchievementIds
+
+      const profilePayload = {
+        id: user.id,
+        ...formData,
+        display_name: normalizedDisplayName,
+        is_profile_public: Boolean(formData.is_profile_public),
+        featured_achievement_ids: featuredAchievementIds,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error: saveError } = await supabase
+        .from('profiles')
+        .upsert(profilePayload)
+
+      if (
+        saveError &&
+        (
+          isMissingProfileColumnError(saveError, 'is_profile_public') ||
+          isMissingProfileColumnError(saveError, 'featured_achievement_ids') ||
+          isMissingProfileColumnError(saveError, 'reddit') ||
+          isMissingProfileColumnError(saveError, 'snapchat')
+        )
+      ) {
+        const { error: fallbackError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            display_name: normalizedDisplayName,
+            bio: formData.bio,
+            website: formData.website,
+            twitter: formData.twitter,
+            github: formData.github,
+            linkedin: formData.linkedin,
+            instagram: formData.instagram,
+            youtube: formData.youtube,
+            twitch: formData.twitch,
+            updated_at: new Date().toISOString(),
+          })
+
+        if (fallbackError) throw fallbackError
+
+        setMessage({
+          text: 'Profile saved. Run latest SQL migrations to enable new profile fields.',
+          type: 'success',
+        })
+        fetchProfile()
         return
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          ...formData,
-          display_name: formData.display_name.trim(),
-          updated_at: new Date().toISOString(),
-        })
-
-      if (error) throw error
+      if (saveError) throw saveError
 
       setMessage({ text: 'Profile updated successfully!', type: 'success' })
       fetchProfile()
@@ -606,6 +868,9 @@ const ProfileHub = () => {
     </svg>
   )
 
+  const RedditIcon = <FaRedditAlien className="w-5 h-5" />
+  const SnapchatIcon = <FaSnapchat className="w-5 h-5" />
+
   return (
     <div 
       className="min-h-screen py-8 px-4"
@@ -676,41 +941,30 @@ const ProfileHub = () => {
               
               {/* Social Links */}
               <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-                {profile?.website && (
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Globe className="w-5 h-5" />
-                  </a>
-                )}
-                {profile?.github && (
-                  <a href={profile.github} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Github className="w-5 h-5" />
-                  </a>
-                )}
-                {profile?.twitter && (
-                  <a href={profile.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    {XIcon}
-                  </a>
-                )}
-                {profile?.linkedin && (
-                  <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Linkedin className="w-5 h-5" />
-                  </a>
-                )}
-                {profile?.instagram && (
-                  <a href={profile.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Instagram className="w-5 h-5" />
-                  </a>
-                )}
-                {profile?.youtube && (
-                  <a href={profile.youtube} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Youtube className="w-5 h-5" />
-                  </a>
-                )}
-                {profile?.twitch && (
-                  <a href={profile.twitch} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition">
-                    <Twitch className="w-5 h-5" />
-                  </a>
-                )}
+                {[
+                  { platform: 'website', value: profile?.website, icon: <Globe className="w-5 h-5" /> },
+                  { platform: 'github', value: profile?.github, icon: <Github className="w-5 h-5" /> },
+                  { platform: 'twitter', value: profile?.twitter, icon: XIcon },
+                  { platform: 'linkedin', value: profile?.linkedin, icon: <Linkedin className="w-5 h-5" /> },
+                  { platform: 'instagram', value: profile?.instagram, icon: <Instagram className="w-5 h-5" /> },
+                  { platform: 'youtube', value: profile?.youtube, icon: <Youtube className="w-5 h-5" /> },
+                  { platform: 'twitch', value: profile?.twitch, icon: <Twitch className="w-5 h-5" /> },
+                  { platform: 'reddit', value: profile?.reddit, icon: RedditIcon },
+                  { platform: 'snapchat', value: profile?.snapchat, icon: SnapchatIcon },
+                ]
+                  .map((entry) => ({ ...entry, href: buildProfileLink(entry.platform, entry.value) }))
+                  .filter((entry) => entry.href)
+                  .map((entry) => (
+                    <a
+                      key={`social-${entry.platform}`}
+                      href={entry.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-white transition"
+                    >
+                      {entry.icon}
+                    </a>
+                  ))}
               </div>
             </div>
 
@@ -832,7 +1086,7 @@ const ProfileHub = () => {
                       </button>
                       
                       <button
-                        onClick={() => setActiveTab('achievements')}
+                        onClick={() => navigate('/achievements')}
                         className="w-full flex items-center justify-between p-4 bg-[#0f1219] rounded-xl hover:bg-[#151a24] transition group"
                       >
                         <div className="flex items-center gap-3">
@@ -930,12 +1184,14 @@ const ProfileHub = () => {
                     <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Social Links</h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       {[
-                        { name: 'twitter', icon: XIcon, label: 'X (Twitter)', placeholder: 'https://x.com/handle' },
-                        { name: 'github', icon: <Github className="w-5 h-5" />, label: 'GitHub', placeholder: 'https://github.com/username' },
-                        { name: 'linkedin', icon: <Linkedin className="w-5 h-5" />, label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username' },
-                        { name: 'instagram', icon: <Instagram className="w-5 h-5" />, label: 'Instagram', placeholder: 'https://instagram.com/handle' },
-                        { name: 'youtube', icon: <Youtube className="w-5 h-5" />, label: 'YouTube', placeholder: 'https://youtube.com/@channel' },
-                        { name: 'twitch', icon: <Twitch className="w-5 h-5" />, label: 'Twitch', placeholder: 'https://twitch.tv/channel' },
+                        { name: 'twitter', icon: XIcon, label: 'X (Twitter)', placeholder: 'username' },
+                        { name: 'github', icon: <Github className="w-5 h-5" />, label: 'GitHub', placeholder: 'username' },
+                        { name: 'linkedin', icon: <Linkedin className="w-5 h-5" />, label: 'LinkedIn', placeholder: 'username' },
+                        { name: 'instagram', icon: <Instagram className="w-5 h-5" />, label: 'Instagram', placeholder: 'username' },
+                        { name: 'youtube', icon: <Youtube className="w-5 h-5" />, label: 'YouTube', placeholder: 'channelname' },
+                        { name: 'twitch', icon: <Twitch className="w-5 h-5" />, label: 'Twitch', placeholder: 'username' },
+                        { name: 'reddit', icon: RedditIcon, label: 'Reddit', placeholder: 'username' },
+                        { name: 'snapchat', icon: SnapchatIcon, label: 'Snapchat', placeholder: 'username' },
                       ].map(social => (
                         <div key={social.name}>
                           <label className="block text-gray-500 text-xs mb-1">{social.label}</label>
@@ -953,6 +1209,213 @@ const ProfileHub = () => {
                           {errors[social.name] && <p className="text-red-400 text-xs mt-1">{errors[social.name]}</p>}
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Public Profile Preview */}
+                  <div className="space-y-4">
+                    <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">Public Profile Preview</h3>
+
+                    <div className="bg-[#0f1219] rounded-2xl p-4 border border-gray-700">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                          <p className="text-white font-medium">Profile visibility</p>
+                          <p className="text-gray-400 text-sm">
+                            If private, other users cannot see your achievements on your public profile.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleProfileVisibilityToggle}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+                            formData.is_profile_public
+                              ? 'bg-green-500/15 text-green-300 border border-green-500/40'
+                              : 'bg-red-500/15 text-red-300 border border-red-500/40'
+                          }`}
+                        >
+                          {formData.is_profile_public ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          {formData.is_profile_public ? 'Public' : 'Private'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0f1219] rounded-2xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-white font-medium">Featured achievements</p>
+                        <p className="text-gray-500 text-xs">
+                          {selectedFeaturedAchievementIds.length}/{MAX_FEATURED_ACHIEVEMENTS} selected
+                        </p>
+                      </div>
+
+                      {selectedFeaturedAchievements.length === 0 ? (
+                        <p className="text-sm text-gray-400">
+                          No featured achievements selected yet.
+                        </p>
+                      ) : (
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {selectedFeaturedAchievements.map((ua) => {
+                            const rarity = normalizeRarity(ua.achievements?.rarity)
+                            const theme = RARITY_THEME[rarity] || RARITY_THEME.common
+                            return (
+                              <div key={`featured-${ua.id || ua.achievement_id}`} className={`p-3 rounded-xl border ${theme.card}`}>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${theme.icon}`}>
+                                      <AchievementIcon achievement={ua.achievements} className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-white truncate">
+                                        {ua.achievements?.name || 'Achievement'}
+                                      </p>
+                                      <p className="text-xs text-gray-400 line-clamp-2">
+                                        {ua.achievements?.description || 'Unlocked achievement'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2 shrink-0">
+                                    <span className={`text-[10px] px-2 py-1 rounded-md capitalize ${theme.badge}`}>
+                                      {rarity}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleFeaturedAchievement(ua.achievement_id)}
+                                      className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md border border-red-500/40 text-red-200 bg-red-500/10 hover:bg-red-500/20 transition"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-white font-medium">Choose achievements to show on public profile</p>
+                        <p className="text-xs text-gray-500">Select up to {MAX_FEATURED_ACHIEVEMENTS}</p>
+                      </div>
+
+                      {achievementsLoading ? (
+                        <div className="flex justify-center py-6">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-yellow-400 border-t-transparent"></div>
+                        </div>
+                      ) : achievementsError ? (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+                          <p className="text-sm text-red-300">{achievementsError}</p>
+                          <button
+                            type="button"
+                            onClick={fetchAchievements}
+                            className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-gray-600 text-gray-200 hover:text-white hover:border-gray-500 transition"
+                          >
+                            Retry loading achievements
+                          </button>
+                        </div>
+                      ) : achievements.length === 0 ? (
+                        <p className="text-sm text-gray-400">
+                          Unlock achievements first to feature them on your public profile.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            {['all', ...availableAchievementCategories].map((category) => {
+                              const Icon = ACHIEVEMENT_CATEGORY_ICONS[category] || Award
+                              const isActive = achievementCategoryFilter === category
+
+                              return (
+                                <button
+                                  type="button"
+                                  key={`category-filter-${category}`}
+                                  onClick={() => setAchievementCategoryFilter(category)}
+                                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                                    isActive
+                                      ? 'bg-yellow-400 text-black border-yellow-400'
+                                      : 'bg-transparent text-gray-300 border-gray-600 hover:border-gray-500'
+                                  }`}
+                                >
+                                  <Icon className="w-3.5 h-3.5" />
+                                  {ACHIEVEMENT_CATEGORY_LABELS[category] || category}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          {visibleAchievementCategories.length === 0 ? (
+                            <p className="text-sm text-gray-500">
+                              No achievements available in this mode yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                              {visibleAchievementCategories.map((category) => {
+                                const categoryItems = achievementsByCategory[category] || []
+                                if (categoryItems.length === 0) return null
+                                const CategoryIcon = ACHIEVEMENT_CATEGORY_ICONS[category] || Award
+
+                                return (
+                                  <div key={`category-group-${category}`} className="space-y-2">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
+                                      <CategoryIcon className="w-3.5 h-3.5 text-yellow-400" />
+                                      <span>{ACHIEVEMENT_CATEGORY_LABELS[category] || category}</span>
+                                      <span className="text-gray-500">({categoryItems.length})</span>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-3">
+                                      {categoryItems.map((ua) => {
+                                        const rarity = normalizeRarity(ua.achievements?.rarity)
+                                        const theme = RARITY_THEME[rarity] || RARITY_THEME.common
+                                        const isSelected = selectedFeaturedAchievementIdSet.has(ua.achievement_id)
+                                        const hasRoom = selectedFeaturedAchievementIds.length < MAX_FEATURED_ACHIEVEMENTS
+                                        const canSelect = isSelected || hasRoom
+
+                                        return (
+                                          <button
+                                            type="button"
+                                            key={`picker-${ua.id || ua.achievement_id}`}
+                                            onClick={() => handleToggleFeaturedAchievement(ua.achievement_id)}
+                                            disabled={!canSelect}
+                                            className={`text-left p-3 rounded-xl border transition ${
+                                              isSelected
+                                                ? `${theme.card} border-yellow-400/60`
+                                                : 'bg-[#111622] border-gray-700 hover:border-gray-500'
+                                            } ${!canSelect ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                          >
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div className="flex items-start gap-3 min-w-0">
+                                                <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${theme.icon}`}>
+                                                  <AchievementIcon achievement={ua.achievements} className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                  <p className="text-sm font-semibold text-white truncate">{ua.achievements?.name || 'Achievement'}</p>
+                                                  <p className="text-xs text-gray-400 line-clamp-2">{ua.achievements?.description || ''}</p>
+                                                </div>
+                                              </div>
+                                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <span className={`text-[10px] px-2 py-1 rounded-md capitalize ${theme.badge}`}>
+                                                  {rarity}
+                                                </span>
+                                                <span className={`text-[10px] px-2 py-1 rounded-md border ${
+                                                  isSelected
+                                                    ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-200'
+                                                    : 'bg-gray-700/40 border-gray-600 text-gray-300'
+                                                }`}>
+                                                  {isSelected ? 'Selected' : 'Select'}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1226,69 +1689,6 @@ const ProfileHub = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Achievements Tab */}
-            {activeTab === 'achievements' && (
-              <div className="bg-gradient-to-br from-[#1a1f2e] to-[#141824] rounded-3xl p-6 md:p-8 border border-gray-800/50">
-                <h2 className="text-xl font-bold text-white mb-6">Achievements</h2>
-
-                {achievementsLoading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-yellow-400 border-t-transparent"></div>
-                  </div>
-                ) : achievementsError ? (
-                  <div className="text-center py-12">
-                    <Trophy className="w-12 h-12 text-red-300 mx-auto mb-4" />
-                    <p className="text-red-300 mb-2">{achievementsError}</p>
-                    <button
-                      onClick={fetchAchievements}
-                      className="mt-2 px-6 py-2 bg-[#0f1219] text-white rounded-xl font-medium border border-gray-700 hover:border-gray-500 transition"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : achievements.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Trophy className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 mb-2">No achievements unlocked yet</p>
-                    <p className="text-gray-500 text-sm">Complete typing tests to earn achievements!</p>
-                    <button
-                      onClick={() => navigate('/')}
-                      className="mt-4 px-6 py-2 bg-yellow-400 text-black rounded-xl font-medium hover:bg-yellow-500 transition"
-                    >
-                      Start Typing
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {achievements.map((ua, idx) => (
-                      <motion.div
-                        key={ua.id || idx}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.05 }}
-                        className="bg-[#0f1219] rounded-xl p-4 border border-gray-700 hover:border-yellow-400/30 transition"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-11 h-11 rounded-lg bg-[#151a24] border border-gray-700/70 flex items-center justify-center text-yellow-300 shrink-0">
-                            <AchievementIcon achievement={ua.achievements} className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-white">{ua.achievements?.name || 'Achievement'}</h4>
-                            <p className="text-gray-400 text-sm">{ua.achievements?.description || ''}</p>
-                            <p className="text-gray-500 text-xs mt-2">
-                              Unlocked {ua.unlocked_at 
-                                ? formatDistanceToNow(new Date(ua.unlocked_at), { addSuffix: true })
-                                : 'recently'}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
                   </div>
                 )}
               </div>
