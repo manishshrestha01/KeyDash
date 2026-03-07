@@ -9,6 +9,8 @@ const Login = () => {
         title="Login | KeyDash"
         description="Log in or sign up to KeyDash using email or Google OAuth and track your typing progress."
         url="https://keydash.shresthamanish.info.np/login"
+        noIndex
+        noFollow
       />
       <LoginFormV2 />
     </section>

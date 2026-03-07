@@ -1,34 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Homepage -->
   <url>
     <loc>https://keydash.shresthamanish.info.np/</loc>
-    <lastmod>2026-01-23</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
 
-  <!-- Leaderboard (public) -->
   <url>
     <loc>https://keydash.shresthamanish.info.np/leaderboard</loc>
-    <lastmod>2026-01-23</lastmod>
+    <lastmod>2026-03-07</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.80</priority>
+    <priority>0.90</priority>
   </url>
 
-  <!-- Legal / informational pages -->
   <url>
     <loc>https://keydash.shresthamanish.info.np/privacy-policy</loc>
-    <lastmod>2026-01-23</lastmod>
+    <lastmod>2026-03-07</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.30</priority>
+    <priority>0.40</priority>
   </url>
 
   <url>
     <loc>https://keydash.shresthamanish.info.np/terms-of-service</loc>
-    <lastmod>2026-01-23</lastmod>
+    <lastmod>2026-03-07</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.30</priority>
+    <priority>0.40</priority>
   </url>
 
 </urlset>

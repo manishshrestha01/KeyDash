@@ -1,4 +1,16 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
+Disallow: /history
+Disallow: /results
+Disallow: /s/
+Disallow: /multiplayer
+Disallow: /ai-battle
+Disallow: /achievements
+Disallow: /custom
+Disallow: /daily
 
 Sitemap: https://keydash.shresthamanish.info.np/sitemap.xml
+Host: keydash.shresthamanish.info.np
