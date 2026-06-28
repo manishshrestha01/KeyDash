@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS public.leaderboard_monthly (
 CREATE TABLE IF NOT EXISTS public.multiplayer_rooms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   room_code TEXT UNIQUE NOT NULL,
+  room_name TEXT,
   host_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   status TEXT DEFAULT 'waiting',
   race_text TEXT,
@@ -225,8 +226,17 @@ ALTER TABLE public.multiplayer_rooms
   ALTER COLUMN max_observers SET DEFAULT 10,
   ALTER COLUMN max_observers SET NOT NULL;
 
+-- Room name support
+ALTER TABLE public.multiplayer_rooms
+  ADD COLUMN IF NOT EXISTS room_name TEXT;
+
+UPDATE public.multiplayer_rooms
+SET room_name = 'Room ' || room_code
+WHERE room_name IS NULL;
+
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON public.multiplayer_rooms(status);
 CREATE INDEX IF NOT EXISTS idx_rooms_code ON public.multiplayer_rooms(room_code);
+CREATE INDEX IF NOT EXISTS idx_rooms_room_name ON public.multiplayer_rooms(room_name);
 
 -- ============================================
 -- MULTIPLAYER PARTICIPANTS
@@ -238,6 +248,7 @@ CREATE TABLE IF NOT EXISTS public.multiplayer_participants (
   display_name TEXT,
   avatar_url TEXT,
   is_observer BOOLEAN NOT NULL DEFAULT false,
+  is_bot BOOLEAN NOT NULL DEFAULT false,
   progress INTEGER DEFAULT 0,
   current_position INTEGER DEFAULT 0,
   wpm INTEGER DEFAULT 0,
@@ -256,6 +267,21 @@ ALTER TABLE public.multiplayer_participants
 
 CREATE INDEX IF NOT EXISTS idx_multiplayer_participants_room_observer
   ON public.multiplayer_participants(room_id, is_observer);
+
+-- Bot slot support
+ALTER TABLE public.multiplayer_participants
+  ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
+
+UPDATE public.multiplayer_participants
+SET is_bot = false
+WHERE is_bot IS NULL;
+
+ALTER TABLE public.multiplayer_participants
+  ALTER COLUMN is_bot SET DEFAULT false,
+  ALTER COLUMN is_bot SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_multiplayer_participants_is_bot
+  ON public.multiplayer_participants(is_bot);
 
 -- ============================================
 -- AI BATTLES

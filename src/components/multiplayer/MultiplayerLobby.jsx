@@ -72,6 +72,7 @@ const MultiplayerLobby = () => {
   const [roomSentenceDifficulty, setRoomSentenceDifficulty] = useState('medium')
   const [roomTimedDuration, setRoomTimedDuration] = useState(60)
   const [roomCustomText, setRoomCustomText] = useState('')
+  const [roomName, setRoomName] = useState('')
   const [roomMaxPlayers, setRoomMaxPlayers] = useState(DEFAULT_ROOM_PLAYERS)
   const [roomMaxObservers, setRoomMaxObservers] = useState(DEFAULT_ROOM_OBSERVERS)
   const [liveTypingSnapshots, setLiveTypingSnapshots] = useState({})
@@ -113,7 +114,11 @@ const MultiplayerLobby = () => {
     [participants]
   )
   const observerParticipants = useMemo(
-    () => participants.filter((p) => !!p?.is_observer),
+    () => participants.filter((p) => !!p?.is_observer && !p?.is_bot),
+    [participants]
+  )
+  const botParticipants = useMemo(
+    () => participants.filter((p) => !!p?.is_bot),
     [participants]
   )
   const currentUserParticipant = useMemo(
@@ -275,9 +280,10 @@ const MultiplayerLobby = () => {
     setRoomSentenceDifficulty(activeRace.sentenceDifficulty || 'medium')
     setRoomTimedDuration(activeRace.timedDuration || 60)
     setRoomCustomText(activeRace.mode === 'custom' ? (activeRace.text || '') : '')
+    setRoomName(currentRoom?.room_name || '')
     setRoomMaxPlayers(clampRoomSize(currentRoom?.max_players || DEFAULT_ROOM_PLAYERS))
     setRoomMaxObservers(clampObserverSize(currentRoom?.max_observers ?? DEFAULT_ROOM_OBSERVERS))
-  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text, currentRoom?.max_players, currentRoom?.max_observers])
+  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text, currentRoom?.max_players, currentRoom?.max_observers, currentRoom?.room_name])
 
   useEffect(() => {
     if (status !== 'waiting') {
@@ -859,6 +865,7 @@ const MultiplayerLobby = () => {
           max_players: DEFAULT_ROOM_PLAYERS,
           max_observers: DEFAULT_ROOM_OBSERVERS,
           current_players: 1,
+          room_name: roomName.trim() || null,
         })
         .select()
         .single()
@@ -900,9 +907,10 @@ const MultiplayerLobby = () => {
     setRoomSentenceDifficulty(activeRace.sentenceDifficulty || 'medium')
     setRoomTimedDuration(activeRace.timedDuration || 60)
     setRoomCustomText(activeRace.mode === 'custom' ? (activeRace.text || '') : '')
+    setRoomName(currentRoom?.room_name || '')
     setRoomMaxPlayers(clampRoomSize(currentRoom?.max_players || DEFAULT_ROOM_PLAYERS))
     setRoomMaxObservers(clampObserverSize(currentRoom?.max_observers ?? DEFAULT_ROOM_OBSERVERS))
-  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text, currentRoom?.max_players, currentRoom?.max_observers])
+  }, [activeRace.mode, activeRace.sentenceDifficulty, activeRace.timedDuration, activeRace.text, currentRoom?.max_players, currentRoom?.max_observers, currentRoom?.room_name])
 
   const handleToggleRoomSettings = useCallback(() => {
     if (!isHost || status !== 'waiting') return
@@ -941,6 +949,7 @@ const MultiplayerLobby = () => {
         .from('multiplayer_rooms')
         .update({
           race_text: nextRaceText,
+          room_name: roomName.trim() || null,
           max_players: clampRoomSize(roomMaxPlayers),
           max_observers: clampObserverSize(roomMaxObservers),
         })
@@ -958,6 +967,7 @@ const MultiplayerLobby = () => {
         setRoom({
           ...currentRoom,
           race_text: nextRaceText,
+          room_name: roomName.trim() || null,
           max_players: clampRoomSize(roomMaxPlayers),
           max_observers: clampObserverSize(roomMaxObservers),
         })
@@ -982,6 +992,7 @@ const MultiplayerLobby = () => {
     roomMaxObservers,
     roomMaxPlayers,
     roomMode,
+    roomName,
     roomSentenceDifficulty,
     roomTimedDuration,
     roomCustomTrimmedLength,
@@ -1951,6 +1962,22 @@ const MultiplayerLobby = () => {
 
             {isHost && roomSettingsOpen && (
               <div className="mt-4 pt-4 border-t border-gray-700/70 space-y-4">
+                {/* Room Name Input */}
+                <div>
+                  <label className="text-sm text-gray-300 mb-2 block">Room Name</label>
+                  <input
+                    type="text"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    placeholder="Enter a room name (optional)"
+                    maxLength={50}
+                    className="w-full px-3 py-2 bg-[#252b3b] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400/50"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    This name will be visible to other players joining the room
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { key: 'sentence', label: 'Sentence' },
