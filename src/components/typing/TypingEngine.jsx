@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useAppStore } from '../../store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { syncUserAchievements } from '../../utils/achievements'
+import { isNepaliIme, formatNepali } from '../../utils/nepaliIme'
+import NepaliKeyboard from './NepaliKeyboard'
 
 /**
  * Core Typing Engine Component
@@ -15,6 +17,7 @@ import { syncUserAchievements } from '../../utils/achievements'
  * - mode: 'sentence' | 'timed' | 'coding' | 'symbols' | 'custom' | 'daily' | 'multiplayer' | 'ai_battle'
  * - subMode: specific difficulty or time duration
  * - language: 'english' | 'nepali'
+ * - inputMethod: for Nepali, 'traditional' | 'romanized' | null (in-browser IME); null = direct typing
  * - timeLimit: optional time limit in seconds (for timed mode)
  * - onProgress: callback for progress updates (for multiplayer/AI)
  * - onComplete: callback when typing is complete
@@ -29,6 +32,7 @@ const TypingEngine = ({
   mode = 'sentence',
   subMode = '',
   language = 'english',
+  inputMethod = null,
   timeLimit = null,
   onProgress = null,
   onComplete = null,
@@ -45,10 +49,20 @@ const TypingEngine = ({
   const { smoothCaret, caretStyle, fontSize, showLiveWpm, showLiveAccuracy } = useAppStore()
 
   // Core state
-  const [input, setInput] = useState('')
+  // `typedRaw` holds what the user actually keys into the (hidden) textarea. For
+  // English this IS the typed text; for a Nepali IME it is the raw QWERTY keystrokes
+  // (e.g. "ahile"). `input` below is the derived Devanagari used for all comparison
+  // and rendering, so every downstream consumer stays unchanged.
+  const [typedRaw, setTypedRaw] = useState('')
   const [startTime, setStartTime] = useState(null)
   const [isFinished, setIsFinished] = useState(false)
   const [timeLeft, setTimeLeft] = useState(timeLimit)
+
+  const imeActive = isNepaliIme(language, inputMethod)
+  const input = useMemo(
+    () => (imeActive ? formatNepali(typedRaw, inputMethod) : typedRaw),
+    [typedRaw, imeActive, inputMethod]
+  )
 
   // Stats
   const [wpm, setWpm] = useState(0)
@@ -70,6 +84,7 @@ const TypingEngine = ({
   const textDisplayRef = useRef(null)
   const measureRef = useRef(null)
   const inputRef = useRef(input)
+  const typedRawRef = useRef(typedRaw)
   const startTimeRef = useRef(startTime)
   const intervalRef = useRef(null)
   const caretIdleTimerRef = useRef(null)
@@ -193,12 +208,16 @@ const TypingEngine = ({
   }, [input])
 
   useEffect(() => {
+    typedRawRef.current = typedRaw
+  }, [typedRaw])
+
+  useEffect(() => {
     startTimeRef.current = startTime
   }, [startTime])
 
   // Reset on text change
   useEffect(() => {
-    setInput('')
+    setTypedRaw('')
     setStartTime(null)
     setIsFinished(false)
     setTimeLeft(timeLimit)
@@ -367,6 +386,8 @@ const TypingEngine = ({
       mode: effectiveMode,
       subMode,
       language,
+      inputMethod: imeActive ? inputMethod : null,
+      typedRaw: imeActive ? typedRawRef.current : finalInput,
       testDate: completedAt,
       completedAt,
       firstKeystrokeTime,
@@ -403,22 +424,31 @@ const TypingEngine = ({
       if (language) {
         historyInsertPayload.language = language
       }
+      if (imeActive && inputMethod) {
+        historyInsertPayload.input_method = inputMethod
+      }
 
       void (async () => {
+        // Strip an optional column the DB doesn't have yet, then retry once. Lets the
+        // feature ship before the `language` / `input_method` migrations are applied.
+        const retryWithoutMissingColumn = async (historyError) => {
+          if (!historyError || typeof historyError.message !== 'string') return historyError
+          const message = historyError.message.toLowerCase()
+          if (!message.includes('column') || !message.includes('does not exist')) return historyError
+          const optionalColumns = ['language', 'input_method']
+          const missing = optionalColumns.find(
+            (col) => message.includes(col) && col in historyInsertPayload
+          )
+          if (!missing) return historyError
+          delete historyInsertPayload[missing]
+          const retry = await supabase.from('typing_history').insert(historyInsertPayload)
+          // A single insert can be missing more than one new column; recurse to strip the next.
+          return retryWithoutMissingColumn(retry.error)
+        }
+
         try {
-          let { error: historyError } = await supabase.from('typing_history').insert(historyInsertPayload)
-          if (
-            historyError &&
-            historyInsertPayload.language &&
-            typeof historyError.message === 'string' &&
-            historyError.message.toLowerCase().includes('column') &&
-            historyError.message.toLowerCase().includes('language') &&
-            historyError.message.toLowerCase().includes('does not exist')
-          ) {
-            delete historyInsertPayload.language
-            const retry = await supabase.from('typing_history').insert(historyInsertPayload)
-            historyError = retry.error
-          }
+          const { error: firstError } = await supabase.from('typing_history').insert(historyInsertPayload)
+          const historyError = await retryWithoutMissingColumn(firstError)
 
           if (historyError) {
             console.error('Failed to save typing history:', historyError)
@@ -444,7 +474,10 @@ const TypingEngine = ({
   const handleInput = (e) => {
     if (disabled || isFinished) return
 
-    const previousInput = input
+    // We diff on the RAW textarea value (keystrokes). For a Nepali IME these are the
+    // Latin keys the user pressed; `input` (derived Devanagari) drives comparison and
+    // completion in the stats effect below.
+    const previousRaw = typedRaw
     const rawValue = e.target.value
     const val = mode === 'ai_battle' ? rawValue.slice(0, text.length) : rawValue
 
@@ -453,47 +486,52 @@ const TypingEngine = ({
       setStartTime(Date.now())
     }
 
-    // Track corrections (backspace usage)
-    if (val.length < previousInput.length) {
-      correctionsRef.current += (previousInput.length - val.length)
+    // Track corrections (backspace usage) — measured on raw keystrokes.
+    if (val.length < previousRaw.length) {
+      correctionsRef.current += (previousRaw.length - val.length)
     }
 
-    // Record per-character timings for inserted/replaced characters.
-    if (val !== previousInput) {
+    // Record per-character timings against the DERIVED text (Devanagari under a
+    // Nepali IME, raw keys otherwise). Diffing the derived strings means Nepali
+    // events carry the same semantics as English — indices into `text`, correct
+    // = derived[i] === text[i] — so the result page's WPM graph, error curve,
+    // word timing and character review render identically across languages.
+    const prevDerived = imeActive ? formatNepali(previousRaw, inputMethod) : previousRaw
+    const nextDerived = imeActive ? formatNepali(val, inputMethod) : val
+
+    if (nextDerived !== prevDerived) {
       let firstDiff = 0
-      const sharedLength = Math.min(previousInput.length, val.length)
-      while (firstDiff < sharedLength && previousInput[firstDiff] === val[firstDiff]) {
+      const sharedLength = Math.min(prevDerived.length, nextDerived.length)
+      while (firstDiff < sharedLength && prevDerived[firstDiff] === nextDerived[firstDiff]) {
         firstDiff += 1
       }
 
       const now = Date.now()
-      // Capture characters the user newly produced in this event.
-      if (val.length > previousInput.length) {
-        const insertedCount = val.length - previousInput.length
-        const endIdx = Math.min(val.length, firstDiff + insertedCount)
+      if (nextDerived.length > prevDerived.length) {
+        const insertedCount = nextDerived.length - prevDerived.length
+        const endIdx = Math.min(nextDerived.length, firstDiff + insertedCount)
         for (let i = firstDiff; i < endIdx; i++) {
           charTimingsRef.current.push({
             type: 'insert',
             index: i,
-            char: val[i],
+            char: nextDerived[i],
             time: now + (i - firstDiff),
-            correct: val[i] === text[i],
+            correct: nextDerived[i] === text[i],
           })
         }
-      } else if (val.length < previousInput.length) {
-        // Track deleted characters so results can show what the user erased.
-        let prevEnd = previousInput.length - 1
-        let valEnd = val.length - 1
+      } else if (nextDerived.length < prevDerived.length) {
+        let prevEnd = prevDerived.length - 1
+        let valEnd = nextDerived.length - 1
         while (
           prevEnd >= firstDiff &&
           valEnd >= firstDiff &&
-          previousInput[prevEnd] === val[valEnd]
+          prevDerived[prevEnd] === nextDerived[valEnd]
         ) {
           prevEnd -= 1
           valEnd -= 1
         }
 
-        const removed = previousInput.slice(firstDiff, prevEnd + 1)
+        const removed = prevDerived.slice(firstDiff, prevEnd + 1)
         for (let i = 0; i < removed.length; i++) {
           charTimingsRef.current.push({
             type: 'delete',
@@ -503,15 +541,15 @@ const TypingEngine = ({
             correct: null,
           })
         }
-      } else if (val.length === previousInput.length) {
-        for (let i = firstDiff; i < val.length; i++) {
-          if (val[i] === previousInput[i]) continue
+      } else {
+        for (let i = firstDiff; i < nextDerived.length; i++) {
+          if (nextDerived[i] === prevDerived[i]) continue
           charTimingsRef.current.push({
             type: 'insert',
             index: i,
-            char: val[i],
+            char: nextDerived[i],
             time: now + (i - firstDiff),
-            correct: val[i] === text[i],
+            correct: nextDerived[i] === text[i],
           })
         }
       }
@@ -529,7 +567,7 @@ const TypingEngine = ({
       }, CARET_POP_DURATION)
     }, CARET_ACTIVE_TIMEOUT)
 
-    setInput(val)
+    setTypedRaw(val)
   }
 
   // Handle keyboard shortcuts
@@ -547,7 +585,7 @@ const TypingEngine = ({
 
   // Restart typing
   const handleRestart = () => {
-    setInput('')
+    setTypedRaw('')
     setStartTime(null)
     setIsFinished(false)
     setTimeLeft(timeLimit)
@@ -724,7 +762,7 @@ const TypingEngine = ({
         {/* Hidden Textarea */}
         <textarea
           ref={textareaRef}
-          value={input}
+          value={typedRaw}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           disabled={disabled || isFinished}
@@ -733,6 +771,7 @@ const TypingEngine = ({
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck="false"
+          lang={imeActive ? 'en' : undefined}
           className="absolute opacity-0 w-0 h-0"
           aria-label="Typing input"
         />
@@ -801,6 +840,11 @@ const TypingEngine = ({
           transition={{ duration: 0.1 }}
         />
       </div>
+
+      {/* On-screen Nepali keyboard guide (only for in-browser IME) */}
+      {imeActive && !isFinished && (
+        <NepaliKeyboard inputMethod={inputMethod} nextChar={text[input.length]} />
+      )}
 
       {/* Restart Button & Hints */}
       {showRestartButton && (

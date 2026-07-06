@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Globe, Code, Hash, FileText, Clock, Trophy, Users, Bot,
-  ChevronDown, Flame, Target, Zap, Check
+  ChevronDown, Flame, Target, Zap, Check, Keyboard
 } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useAppStore } from '../../store'
 import TypingEngine from '../typing/TypingEngine'
+import { INPUT_METHODS, DEFAULT_INPUT_METHOD } from '../../utils/nepaliIme'
 
 // Custom Sentence icon
 const SentenceIcon = ({ className }) => (
@@ -98,6 +99,11 @@ const MODES = {
     subModes: []
   },
 }
+
+// Nepali currently supports only these modes. Its scores are intentionally kept
+// off the leaderboards (see LeaderboardV2 + the period-sync SQL), so competitive
+// modes (coding/symbols/daily/multiplayer/ai_battle) are hidden for Nepali.
+const NEPALI_ALLOWED_MODES = ['sentence', 'timed', 'custom']
 
 const SPECIAL_MODES = {
   daily: {
@@ -273,7 +279,7 @@ const getSymbolText = (difficulty) => {
 
 const ModeSelector = () => {
   const location = useLocation()
-  const { lastMode, lastSubMode, lastLanguage, setLastMode, setLastLanguage } = useAppStore()
+  const { lastMode, lastSubMode, lastLanguage, lastNepaliInputMethod, setLastMode, setLastLanguage, setLastNepaliInputMethod } = useAppStore()
 
   const initialRetryConfig = useMemo(
     () => normalizeRetryConfig(location.state?.retryConfig),
@@ -296,6 +302,13 @@ const ModeSelector = () => {
   const [selectedLanguage, setSelectedLanguage] = useState(
     () => initialRetryConfig?.language || initialNextTestConfig?.language || lastLanguage || 'english'
   )
+  const [selectedInputMethod, setSelectedInputMethod] = useState(
+    () =>
+      initialRetryConfig?.inputMethod ||
+      initialNextTestConfig?.inputMethod ||
+      lastNepaliInputMethod ||
+      DEFAULT_INPUT_METHOD
+  )
   const [targetText, setTargetText] = useState(() => initialRetryConfig?.targetText || '')
   const [customText, setCustomText] = useState(
     () => (initialRetryConfig?.mode === 'custom' ? initialRetryConfig.targetText : '')
@@ -305,15 +318,20 @@ const ModeSelector = () => {
   )
   const [isRetrySeeded, setIsRetrySeeded] = useState(() => Boolean(initialRetryConfig))
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+  const [showInputMethodDropdown, setShowInputMethodDropdown] = useState(false)
   const [restartKey, setRestartKey] = useState(0)
-  
+
   const languageDropdownRef = useRef(null)
+  const inputMethodDropdownRef = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
         setShowLanguageDropdown(false)
+      }
+      if (inputMethodDropdownRef.current && !inputMethodDropdownRef.current.contains(event.target)) {
+        setShowInputMethodDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -391,7 +409,21 @@ const ModeSelector = () => {
     setIsRetrySeeded(false)
     setSelectedLanguage(language)
     if (setLastLanguage) setLastLanguage(language)
+    // Nepali supports a limited set of modes; if the current mode isn't allowed,
+    // fall back to Sentence so the user never lands on a hidden/empty mode.
+    if (language === 'nepali' && !NEPALI_ALLOWED_MODES.includes(selectedMode)) {
+      handleModeChange('sentence')
+    }
     setShowLanguageDropdown(false)
+    setRestartKey(prev => prev + 1)
+  }
+
+  // Handle Nepali input-method change (Traditional / Romanized)
+  const handleInputMethodChange = (inputMethod) => {
+    setIsRetrySeeded(false)
+    setSelectedInputMethod(inputMethod)
+    if (setLastNepaliInputMethod) setLastNepaliInputMethod(inputMethod)
+    setShowInputMethodDropdown(false)
     setRestartKey(prev => prev + 1)
   }
 
@@ -423,10 +455,12 @@ const ModeSelector = () => {
       <div className="mb-6 sm:mb-8">
         {/* Main Modes */}
         <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 md:gap-3 mb-3 sm:mb-4">
-          {Object.entries(MODES).map(([key, mode]) => {
+          {Object.entries(MODES)
+            .filter(([key]) => selectedLanguage !== 'nepali' || NEPALI_ALLOWED_MODES.includes(key))
+            .map(([key, mode]) => {
             const Icon = mode.icon
             const isActive = selectedMode === key
-            
+
             return (
               <motion.button
                 key={key}
@@ -483,10 +517,10 @@ const ModeSelector = () => {
           )}
         </AnimatePresence>
 
-        {/* Language Selector Dropdown - show for sentence and timed modes */}
-        {(selectedMode === 'sentence' || selectedMode === 'timed') && (
-          <div className="flex justify-center mt-3 sm:mt-4" ref={languageDropdownRef}>
-            <div className="relative">
+        {/* Language + Nepali input-method selectors - show for sentence, timed, custom modes */}
+        {(selectedMode === 'sentence' || selectedMode === 'timed' || selectedMode === 'custom') && (
+          <div className="flex justify-center items-center flex-wrap gap-2 sm:gap-3 mt-3 sm:mt-4">
+            <div className="relative" ref={languageDropdownRef}>
               <button
                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
                 className="flex items-center gap-2 px-4 sm:px-5 2xl:px-6 py-2 sm:py-2.5 2xl:py-3 rounded-full text-sm 2xl:text-base font-semibold transition-all duration-200 bg-yellow-400 text-gray-900 hover:bg-yellow-300 shadow-lg shadow-yellow-400/20"
@@ -494,7 +528,7 @@ const ModeSelector = () => {
                 <Globe className="w-5 h-5" />
                 <span>{LANGUAGES[selectedLanguage]?.name || 'English'}</span>
               </button>
-              
+
               <AnimatePresence>
                 {showLanguageDropdown && (
                   <motion.div
@@ -513,8 +547,8 @@ const ModeSelector = () => {
                           className={`
                             w-full flex items-center justify-between px-4 py-2.5 text-sm text-left
                             transition-all duration-150
-                            ${isActive 
-                              ? 'bg-yellow-400/20 text-yellow-400' 
+                            ${isActive
+                              ? 'bg-yellow-400/20 text-yellow-400'
                               : 'text-gray-300 hover:bg-gray-700/50'
                             }
                           `}
@@ -528,6 +562,53 @@ const ModeSelector = () => {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Nepali input-method (Traditional / Romanized) — lets users type Devanagari on QWERTY */}
+            {selectedLanguage === 'nepali' && (
+              <div className="relative" ref={inputMethodDropdownRef}>
+                <button
+                  onClick={() => setShowInputMethodDropdown(!showInputMethodDropdown)}
+                  className="flex items-center gap-2 px-4 sm:px-5 2xl:px-6 py-2 sm:py-2.5 2xl:py-3 rounded-full text-sm 2xl:text-base font-semibold transition-all duration-200 bg-gray-700 text-gray-100 hover:bg-gray-600 border border-gray-600 shadow-lg"
+                  title="How you type Nepali on a QWERTY keyboard"
+                >
+                  <Keyboard className="w-5 h-5" />
+                  <span>{INPUT_METHODS[selectedInputMethod]?.name || 'Romanized'}</span>
+                </button>
+
+                <AnimatePresence>
+                  {showInputMethodDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]"
+                    >
+                      {Object.values(INPUT_METHODS).map((method) => {
+                        const isActive = selectedInputMethod === method.key
+                        return (
+                          <button
+                            key={method.key}
+                            onClick={() => handleInputMethodChange(method.key)}
+                            className={`
+                              w-full flex items-center justify-between px-4 py-2.5 text-sm text-left
+                              transition-all duration-150
+                              ${isActive
+                                ? 'bg-yellow-400/20 text-yellow-400'
+                                : 'text-gray-300 hover:bg-gray-700/50'
+                              }
+                            `}
+                          >
+                            <span>{method.name}</span>
+                            {isActive && <Check className="w-4 h-4" />}
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         )}
 
@@ -566,7 +647,8 @@ const ModeSelector = () => {
         )}
       </div>
 
-      {/* Special Modes Row */}
+      {/* Special Modes Row — English-only features (hidden in Nepali mode) */}
+      {selectedLanguage !== 'nepali' && (
       <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
         {Object.entries(SPECIAL_MODES).map(([key, mode]) => {
           const Icon = mode.icon
@@ -587,6 +669,7 @@ const ModeSelector = () => {
           )
         })}
       </div>
+      )}
 
       {/* Typing Engine */}
       {selectedMode === 'custom' && !customTypingActive ? (
@@ -606,6 +689,7 @@ const ModeSelector = () => {
           mode={selectedMode}
           subMode={selectedSubMode}
           language={selectedLanguage}
+          inputMethod={selectedLanguage === 'nepali' ? selectedInputMethod : null}
           timeLimit={timeLimit}
           onRestart={handleRestart}
           showLiveStats={true}

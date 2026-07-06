@@ -206,6 +206,8 @@ const LeaderboardV2 = () => {
               .eq('mode', 'timed')
               .gte('duration_seconds', timeDuration - 1)
               .lte('duration_seconds', timeDuration + 1)
+              // Nepali practice runs are excluded from leaderboards (keep NULL/legacy rows).
+              .or('language.is.null,language.neq.nepali')
               .order('wpm', { ascending: false })
               .limit(FETCH_LIMIT),
           ])
@@ -253,6 +255,8 @@ const LeaderboardV2 = () => {
               .select('id, user_id, wpm, accuracy, errors, sub_mode, duration_seconds, created_at')
               .eq('mode', 'sentence')
               .eq('sub_mode', difficulty)
+              // Nepali practice runs are excluded from leaderboards (keep NULL/legacy rows).
+              .or('language.is.null,language.neq.nepali')
               .order('wpm', { ascending: false })
               .limit(FETCH_LIMIT),
           ])

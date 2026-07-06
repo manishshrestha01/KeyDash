@@ -35,8 +35,10 @@ export const useAppStore = create(
       lastMode: 'sentence',
       lastSubMode: 'medium',
       lastLanguage: 'english',
+      lastNepaliInputMethod: 'romanized', // 'romanized' | 'traditional'
       setLastMode: (mode, subMode) => set({ lastMode: mode, lastSubMode: subMode }),
       setLastLanguage: (language) => set({ lastLanguage: language }),
+      setLastNepaliInputMethod: (inputMethod) => set({ lastNepaliInputMethod: inputMethod }),
     }),
     {
       name: 'keydash-settings',
