@@ -186,21 +186,8 @@ const TypingEngine = ({
 
   const progressPercent = useMemo(() => {
     if (!text.length) return 0
-    if (mode !== 'ai_battle') {
-      return Math.min(100, (input.length / text.length) * 100)
-    }
-
-    const maxComparableChars = Math.min(input.length, text.length)
-    let contiguousCorrectChars = 0
-    while (
-      contiguousCorrectChars < maxComparableChars &&
-      input[contiguousCorrectChars] === text[contiguousCorrectChars]
-    ) {
-      contiguousCorrectChars += 1
-    }
-
-    return Math.min(100, (contiguousCorrectChars / text.length) * 100)
-  }, [input, mode, text])
+    return Math.min(100, (input.length / text.length) * 100)
+  }, [input, text])
 
   // Update refs
   useEffect(() => {
@@ -291,14 +278,6 @@ const TypingEngine = ({
     const mistakesCount = wrongIndicesRef.current.size
     const adjustedCorrect = Math.max(0, totalTyped - mistakesCount)
     const exactMatch = input === text
-    const maxComparableChars = Math.min(totalTyped, text.length)
-    let contiguousCorrectChars = 0
-    while (
-      contiguousCorrectChars < maxComparableChars &&
-      input[contiguousCorrectChars] === text[contiguousCorrectChars]
-    ) {
-      contiguousCorrectChars += 1
-    }
 
     setErrors(mistakesCount)
 
@@ -311,10 +290,10 @@ const TypingEngine = ({
     setRawWpm(Math.round(rawWpmVal))
     setAccuracy(parseFloat(accVal.toFixed(1)))
 
-    // Report progress for multiplayer/AI
+    // Report progress for multiplayer/AI — use totalTyped so the bar keeps
+    // moving even after a mistake (the user needs to see forward progress).
     if (onProgress && totalTyped > 0 && text.length > 0) {
-      const progressBase = mode === 'ai_battle' ? contiguousCorrectChars : totalTyped
-      const progress = Math.floor((progressBase / text.length) * 100)
+      const progress = Math.floor((totalTyped / text.length) * 100)
       onProgress(progress, Math.round(wpmVal), {
         rawWpm: Math.round(rawWpmVal),
         accuracy: parseFloat(accVal.toFixed(1)),
