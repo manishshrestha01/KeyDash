@@ -196,7 +196,7 @@ const LeaderboardV2 = () => {
           const [timedResult, historyResult] = await Promise.all([
             supabase
               .from('leaderboard_timed')
-              .select('id, user_id, wpm, accuracy, time, created_at')
+              .select('*')
               .eq('time', timeDuration)
               .order('wpm', { ascending: false })
               .limit(FETCH_LIMIT),
@@ -224,7 +224,7 @@ const LeaderboardV2 = () => {
                 ...entry,
                 wpm: Math.round(toNumber(entry.wpm, 0)),
                 accuracy: toNumber(entry.accuracy, 0),
-                errors: 0,
+                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
                 source: 'leaderboard_timed',
               }))
             )
@@ -246,7 +246,7 @@ const LeaderboardV2 = () => {
           const [sentenceResult, historyResult] = await Promise.all([
             supabase
               .from('leaderboard_sentence')
-              .select('id, user_id, wpm, accuracy, difficulty, time, created_at')
+              .select('*')
               .eq('difficulty', difficulty)
               .order('wpm', { ascending: false })
               .limit(FETCH_LIMIT),
@@ -273,7 +273,7 @@ const LeaderboardV2 = () => {
                 ...entry,
                 wpm: Math.round(toNumber(entry.wpm, 0)),
                 accuracy: toNumber(entry.accuracy, 0),
-                errors: 0,
+                errors: Math.max(0, Math.round(toNumber(entry.errors, 0))),
                 source: 'leaderboard_sentence',
               }))
             )
