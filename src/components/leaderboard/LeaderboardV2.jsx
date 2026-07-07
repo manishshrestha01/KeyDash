@@ -62,6 +62,7 @@ const getRankStyle = (rank) => {
 
 const FETCH_LIMIT = 400
 const CACHE_TTL_MS = 60 * 1000
+const POLL_INTERVAL_MS = 15 * 1000
 const PROFILE_BATCH_SIZE = 200
 
 const toNumber = (value, fallback = 0) => {
@@ -118,16 +119,32 @@ const LeaderboardV2 = () => {
   const leaderboardCacheRef = useRef(new Map())
   const activeFetchRef = useRef(0)
 
+  const pollRef = useRef(null)
+
+  const clearPoll = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }
+
   useEffect(() => {
     fetchLeaderboard()
+    clearPoll()
+    pollRef.current = setInterval(() => fetchLeaderboard(true), POLL_INTERVAL_MS)
+    return clearPoll
   }, [period, mode, timeDuration, difficulty, user?.id])
 
-  const fetchLeaderboard = async () => {
+  const leaderboardFetchingRef = useRef(false)
+
+  const fetchLeaderboard = async (skipCache = false) => {
+    if (leaderboardFetchingRef.current) return
+    leaderboardFetchingRef.current = true
     const fetchId = ++activeFetchRef.current
     const periodBounds = getPeriodBounds(period, new Date())
     const cacheKey = `${period}|${periodBounds.cacheKey}|${mode}|${timeDuration}|${difficulty}`
     const cached = leaderboardCacheRef.current.get(cacheKey)
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    if (!skipCache && cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       setLeaderboard(cached.rows)
       setPeriodLabel(periodBounds.label)
       if (user?.id) {
@@ -350,6 +367,7 @@ const LeaderboardV2 = () => {
     } catch (error) {
       console.error('Error fetching leaderboard:', error)
     } finally {
+      leaderboardFetchingRef.current = false
       if (fetchId === activeFetchRef.current) {
         setLoading(false)
       }

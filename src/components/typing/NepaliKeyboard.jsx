@@ -3,7 +3,7 @@ import { KEY_ROWS } from '../../assets/nepali/keyboardLayouts'
 import { formatNepali, INPUT_METHODS } from '../../utils/nepaliIme'
 
 /**
- * On-screen Nepali keyboard guide.
+ * On-screen Nepali keyboard guide — fully responsive.
  *
  * Each physical key shows the Devanagari it produces in the active layout, derived
  * live via formatNepali() so the guide never drifts from the real engine output.
@@ -13,10 +13,6 @@ import { formatNepali, INPUT_METHODS } from '../../utils/nepaliIme'
  * - inputMethod: 'traditional' | 'romanized'
  * - nextChar: the next Devanagari character the user needs to produce (for highlight)
  */
-const BASE_W = 9  // w-9  (mobile)
-const BASE_W_SM = 11 // sm:w-11
-const BASE_H = 9
-const BASE_H_SM = 11
 
 const NepaliKeyboard = ({ inputMethod, nextChar }) => {
   // Derive base/shift glyphs for every character key once per layout.
@@ -58,17 +54,20 @@ const NepaliKeyboard = ({ inputMethod, nextChar }) => {
 
   const layoutName = INPUT_METHODS[inputMethod]?.name || ''
 
+  const modFlex = (w) =>
+    w === 1.75 ? 'flex-[1.75]' : w === 2.25 ? 'flex-[2.25]' : w === 2.75 ? 'flex-[2.75]' : 'flex-[1.5]'
+
   return (
-    <div className="mt-6 select-none">
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <span className="text-xs sm:text-sm text-gray-500">
+    <div className="mt-4 sm:mt-6 select-none w-full max-w-2xl mx-auto px-1 sm:px-0">
+      <div className="flex items-center justify-center gap-2 mb-1.5 sm:mb-2">
+        <span className="text-[10px] sm:text-xs text-gray-500 text-center leading-tight">
           {layoutName} layout · the highlighted key types the next character
         </span>
       </div>
-      <div className="bg-[#1a1f2e] border border-gray-700/50 rounded-xl p-2 sm:p-3 overflow-x-auto">
-        <div className="flex flex-col gap-1 min-w-max mx-auto w-fit">
+      <div className="bg-[#1a1f2e] border border-gray-700/50 rounded-lg sm:rounded-xl p-1.5 sm:p-3">
+        <div className="flex flex-col gap-0.5 sm:gap-1">
           {rows.map((row, rowIdx) => (
-            <div key={rowIdx} className="flex justify-center gap-1">
+            <div key={rowIdx} className="flex gap-0.5 sm:gap-1 w-full">
               {row.map((key, ki) => {
                 if (key.type === 'mod') {
                   const isShift = key.label === 'Shift'
@@ -77,15 +76,15 @@ const NepaliKeyboard = ({ inputMethod, nextChar }) => {
                   return (
                     <div
                       key={`mod-${ki}`}
-                      style={{ width: `${key.w * BASE_W * 4}px` }}
                       className={`
-                        flex items-center justify-center rounded-md h-9 sm:h-11
-                        text-[10px] sm:text-xs font-semibold tracking-wide
-                        transition-colors select-none
+                        ${modFlex(key.w)}
+                        flex items-center justify-center rounded h-7 sm:h-10
+                        text-[8px] sm:text-[10px] font-semibold tracking-wide
+                        transition-colors select-none truncate px-0.5
                         ${highlightShift
                           ? 'bg-yellow-400/20 text-yellow-400 ring-1 ring-yellow-400/50'
                           : isCaps
-                            ? 'bg-gray-700/50 text-gray-500 border border-gray-700/60'
+                            ? 'bg-gray-700/50 text-gray-400 border border-gray-700/60'
                             : 'bg-gray-800/70 text-gray-400 border border-gray-700/60'
                         }
                       `}
@@ -101,19 +100,19 @@ const NepaliKeyboard = ({ inputMethod, nextChar }) => {
                   <div
                     key={key.base}
                     className={`
-                      flex flex-col items-center justify-center rounded-md
-                      w-9 h-9 sm:w-11 sm:h-11 text-center transition-colors shrink-0
+                      flex-1 min-w-0 flex flex-col items-center justify-center rounded
+                      h-7 sm:h-10 text-center transition-colors
                       ${highlighted
-                        ? 'bg-yellow-400 text-gray-900 ring-2 ring-yellow-300'
+                        ? 'bg-yellow-400 text-gray-900 ring-1 ring-yellow-300'
                         : 'bg-gray-800/70 text-gray-300 border border-gray-700/60'
                       }
                     `}
                     title={`${key.base}${key.shiftGlyph !== key.baseGlyph ? ` / Shift+${key.base}` : ''}`}
                   >
-                    <span className="text-[10px] sm:text-xs leading-none font-mono opacity-60">
+                    <span className="text-[7px] sm:text-[10px] leading-none font-mono opacity-50">
                       {key.base}
                     </span>
-                    <span className={`text-sm sm:text-base leading-none ${highlightShift ? 'font-bold' : ''}`}>
+                    <span className={`text-[10px] sm:text-sm leading-none ${highlightShift ? 'font-bold' : ''} truncate max-w-full px-0.5`}>
                       {key.baseGlyph}
                     </span>
                   </div>
@@ -122,11 +121,11 @@ const NepaliKeyboard = ({ inputMethod, nextChar }) => {
             </div>
           ))}
           {/* Spacebar row */}
-          <div className="flex justify-center mt-1">
+          <div className="flex mt-0.5 sm:mt-1">
             <div
               className={`
-                flex items-center justify-center rounded-md h-7 sm:h-8 w-40 sm:w-56
-                transition-colors select-none text-[10px] sm:text-xs
+                flex-1 min-w-0 flex items-center justify-center rounded
+                h-6 sm:h-8 transition-colors select-none text-[8px] sm:text-[10px]
                 ${nextChar === ' '
                   ? 'bg-yellow-400/20 text-yellow-400 ring-1 ring-yellow-400/50'
                   : 'bg-gray-800/70 border border-gray-700/60 text-gray-500'
