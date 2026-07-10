@@ -72,6 +72,7 @@ const MultiplayerLobby = () => {
   const [roomSentenceDifficulty, setRoomSentenceDifficulty] = useState('medium')
   const [roomTimedDuration, setRoomTimedDuration] = useState(60)
   const [roomCustomText, setRoomCustomText] = useState('')
+  const [roomName, setRoomName] = useState('')
   const [roomMaxPlayers, setRoomMaxPlayers] = useState(DEFAULT_ROOM_PLAYERS)
   const [roomMaxObservers, setRoomMaxObservers] = useState(DEFAULT_ROOM_OBSERVERS)
   const [liveTypingSnapshots, setLiveTypingSnapshots] = useState({})
@@ -943,6 +944,7 @@ const MultiplayerLobby = () => {
           race_text: nextRaceText,
           max_players: clampRoomSize(roomMaxPlayers),
           max_observers: clampObserverSize(roomMaxObservers),
+          room_name: roomName.trim() || null,
         })
         .eq('id', currentRoom.id)
         .eq('host_id', user.id)
@@ -960,6 +962,7 @@ const MultiplayerLobby = () => {
           race_text: nextRaceText,
           max_players: clampRoomSize(roomMaxPlayers),
           max_observers: clampObserverSize(roomMaxObservers),
+          room_name: roomName.trim() || null,
         })
       }
 
@@ -989,6 +992,7 @@ const MultiplayerLobby = () => {
     setRoom,
     status,
     user?.id,
+    roomName,
   ])
 
   // Join a room
@@ -1093,7 +1097,7 @@ const MultiplayerLobby = () => {
 
       // Set room and participants in store
       setRoom(room)
-      setIsHost(false)
+      setIsHost(room.host_id === user.id)
       setParticipants(participantsData || [])
       
       toast.success(joinAsObserver ? 'Joined room as observer!' : 'Joined room!')
@@ -1885,26 +1889,33 @@ const MultiplayerLobby = () => {
       <Toaster position="top-center" />
 
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <button
-          onClick={handleLeaveRoom}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors self-start"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Leave Room
-        </button>
-
-        {/* Room Code */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-          <span className="text-gray-400 text-sm sm:text-base">Room Code:</span>
+      <div className="mb-6 md:mb-10 relative">
+        <div className="flex items-center justify-between">
           <button
-            onClick={handleCopyCode}
-            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#252b3b] rounded-lg font-mono text-base sm:text-xl tracking-[0.2em] sm:tracking-widest"
+            onClick={handleLeaveRoom}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
-            {roomCode}
-            {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            <ArrowLeft className="w-5 h-5" />
+            Leave Room
           </button>
+
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-sm">Room Code:</span>
+            <button
+              onClick={handleCopyCode}
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#252b3b] rounded-lg font-mono text-base sm:text-xl tracking-[0.2em] sm:tracking-widest"
+            >
+              {roomCode}
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
+
+        {currentRoom?.room_name && (
+          <div className="text-center mt-2 sm:mt-0 sm:absolute sm:left-1/2 sm:-translate-x-1/2 text-yellow-300 font-semibold md:text-xl">
+            {currentRoom.room_name}
+          </div>
+        )}
       </div>
 
       {/* Countdown Overlay */}
@@ -2020,6 +2031,19 @@ const MultiplayerLobby = () => {
                     </p>
                   </div>
                 )}
+
+                <div>
+                  <label className="text-sm text-gray-300 mb-1 block">Room Name</label>
+                  <input
+                    type="text"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value.slice(0, 40))}
+                    placeholder="Enter a room name..."
+                    maxLength={40}
+                    className="w-full px-3 py-2 bg-[#252b3b] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400/50"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{roomName.length}/40</p>
+                </div>
 
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
