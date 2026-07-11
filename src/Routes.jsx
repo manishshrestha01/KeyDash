@@ -2,6 +2,7 @@ import { createBrowserRouter, createRoutesFromElements, Route, Navigate } from "
 import { RouterProvider } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Login from "./pages/auth/Login";
+import ResetPassword from "./pages/auth/ResetPassword";
 import ScorePage from "./modes/ScorePage";
 import Errors from "./pages/Errors";
 import Homes from "./pages/Homes";
@@ -18,12 +19,15 @@ import ProfileHub from "./components/profile/ProfileHub";
 import UserProfile from "./components/profile/UserProfileV2";
 import DailyChallenge from "./components/challenges/DailyChallenge";
 import LeaderboardV2 from "./components/leaderboard/LeaderboardV2";
+import FAQ from "./pages/FAQ";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
         <Route element={<MainLayout />}>
             <Route index element={<Homes />} />
             <Route path="/login" element={<Login/>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route path="/results" element={<ScorePage />} />
             <Route path="/results/:shareCode" element={<ScorePage />} />
             <Route path="/s/:shareCode" element={<ScorePage />} />

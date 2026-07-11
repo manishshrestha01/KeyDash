@@ -40,15 +40,45 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const fetchProfile = async (userId) => {
-    const { data } = await supabase
+    const { data: existingProfile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    
-    if (data) {
-      setProfile(data);
+
+    if (existingProfile) {
+      setProfile(existingProfile);
+      return;
     }
+
+    // No profile row yet — create one (handles Google OAuth and any edge case)
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    const email = authUser.email ?? '';
+    const defaultName =
+      authUser.user_metadata?.full_name ||
+      authUser.user_metadata?.name ||
+      email.split('@')[0] ||
+      'User';
+    const avatarUrl =
+      authUser.user_metadata?.avatar_url ||
+      authUser.user_metadata?.picture ||
+      null;
+
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email,
+        display_name: defaultName,
+        avatar_url: avatarUrl,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (newProfile) setProfile(newProfile);
   };
 
   const refreshProfile = async () => {
