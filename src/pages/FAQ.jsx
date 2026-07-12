@@ -274,17 +274,6 @@ const FAQ = () => {
               </button>
             ))}
 
-            {/* Contact card */}
-            <div className="mt-4 rounded-2xl border border-gray-800 bg-[#111824] p-5">
-              <p className="text-sm font-semibold text-white mb-1">Still need help?</p>
-              <p className="text-xs text-gray-500 mb-3">Our team usually replies within 3 business days.</p>
-              <a
-                href="mailto:contact@shresthamanish.info.np"
-                className="block text-center rounded-lg bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold py-2.5 transition"
-              >
-                📧 Email Support
-              </a>
-            </div>
           </aside>
 
           {/* Questions */}
@@ -314,6 +303,18 @@ const FAQ = () => {
               <Link to="/privacy-policy" className="inline-flex items-center gap-2 rounded-xl border border-gray-700 px-5 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/5 transition">
                 Privacy Policy
               </Link>
+            </div>
+
+            {/* Still need help */}
+            <div className="mt-6 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-[#1a1f2e] to-[#141824] p-8 text-center">
+              <p className="text-xl font-bold text-white mb-2">Still need help?</p>
+              <p className="text-gray-400 text-sm mb-5">Our team usually replies within 3 business days.</p>
+              <a
+                href="mailto:contact@shresthamanish.info.np"
+                className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 transition"
+              >
+                📧 Email Support
+              </a>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import Errors from "./pages/Errors";
 import Homes from "./pages/Homes";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import FAQ from "./pages/FAQ";
 
 // v2 Components
 import Dashboard from "./components/dashboard/Dashboard";
@@ -19,7 +20,6 @@ import ProfileHub from "./components/profile/ProfileHub";
 import UserProfile from "./components/profile/UserProfileV2";
 import DailyChallenge from "./components/challenges/DailyChallenge";
 import LeaderboardV2 from "./components/leaderboard/LeaderboardV2";
-import FAQ from "./pages/FAQ";
 
 const Routes = () => {
     const router = createBrowserRouter(createRoutesFromElements(
