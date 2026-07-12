@@ -83,6 +83,8 @@ const TypingEngine = ({
   const containerRef = useRef(null)
   const textDisplayRef = useRef(null)
   const measureRef = useRef(null)
+  const caretRef = useRef(null)
+  const caretRafRef = useRef(null)
   const inputRef = useRef(input)
   const typedRawRef = useRef(typedRaw)
   const startTimeRef = useRef(startTime)
@@ -628,21 +630,10 @@ const TypingEngine = ({
     if (char === '\n') displayChar = '↵'
 
     return (
-      <span key={idx} className={`relative ${charClass} transition-colors duration-75`}>
+      <span key={idx} data-idx={idx} className={`relative ${charClass} transition-colors duration-75`}>
         {isOpponentCaret && (
           <span
             className={`absolute top-0 h-full w-0.5 bg-purple-400/90 animate-pulse ${isCurrent ? 'left-1' : 'left-0'}`}
-          />
-        )}
-        {isCurrent && !isFinished && (
-          <span
-            className={`absolute left-0 top-0 h-full w-0.5 bg-yellow-400 ${getCaretClass()} ${
-              smoothCaret ? 'transition-all duration-75' : ''
-            }`}
-            style={{
-              transform: caretStyle === 'block' ? 'scaleX(8)' : 
-                        caretStyle === 'underline' ? 'translateY(100%) scaleY(0.15)' : 'none'
-            }}
           />
         )}
         {displayChar}
@@ -650,7 +641,30 @@ const TypingEngine = ({
     )
   }
 
- 
+  // Smooth caret: move the single caret element to the current char's pixel position
+  useLayoutEffect(() => {
+    if (caretRafRef.current) cancelAnimationFrame(caretRafRef.current)
+    caretRafRef.current = requestAnimationFrame(() => {
+      const caret = caretRef.current
+      const display = textDisplayRef.current
+      if (!caret || !display) return
+
+      const charEl = display.querySelector(`[data-idx="${currentIndex}"]`)
+      const containerEl = containerRef.current
+      if (!charEl || !containerEl) return
+
+      const containerRect = containerEl.getBoundingClientRect()
+      const charRect = charEl.getBoundingClientRect()
+
+      const x = charRect.left - containerRect.left
+      const y = charRect.top - containerRect.top
+      const h = charRect.height
+
+      caret.style.transform = `translate(${x}px, ${y}px)`
+      caret.style.height = `${h}px`
+    })
+  })
+
   useLayoutEffect(() => {
     const measure = () => {
       if (!textDisplayRef.current || !measureRef.current) return
@@ -674,6 +688,7 @@ const TypingEngine = ({
       if (intervalRef.current) clearInterval(intervalRef.current)
       if (caretIdleTimerRef.current) clearTimeout(caretIdleTimerRef.current)
       if (caretPopTimerRef.current) clearTimeout(caretPopTimerRef.current)
+      if (caretRafRef.current) cancelAnimationFrame(caretRafRef.current)
     }
   }, [])
 
@@ -738,6 +753,22 @@ const TypingEngine = ({
           ${isFinished ? 'opacity-70' : ''}
         `}
       >
+        {/* Smooth sliding caret */}
+        {!isFinished && (
+          <span
+            ref={caretRef}
+            className={`pointer-events-none absolute top-0 left-0 w-0.5 will-change-transform ${getCaretClass()}`}
+            style={{
+              backgroundColor: '#facc15',
+              transition: smoothCaret
+                ? 'transform 80ms cubic-bezier(0.25, 0.46, 0.45, 0.94), height 80ms ease'
+                : 'none',
+              ...(caretStyle === 'block' && { width: '0.6em', opacity: 0.35 }),
+              ...(caretStyle === 'underline' && { width: '0.7em', transform: 'translateY(90%)', height: '2px !important' }),
+            }}
+          />
+        )}
+
         {/* Hidden Textarea */}
         <textarea
           ref={textareaRef}
