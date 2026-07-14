@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "KeyDash v2 - Modern typing and coding practice platform with streaks, multiplayer, AI battles, and achievements",
+  "description": "Free online typing test platform with multiplayer races, AI battles, 1200+ achievements, coding practice, Nepali typing, and competitive leaderboards",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

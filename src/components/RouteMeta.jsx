@@ -13,6 +13,14 @@ const ROUTE_META_CONFIG = [
       "typing leaderboard, typing speed ranking, online typing leaderboard, fastest typists, wpm leaderboard",
   },
   {
+    path: "/faq",
+    title: "FAQ | KeyDash — Typing Test Questions & Answers",
+    description:
+      "Frequently asked questions about KeyDash — typing modes, accounts, leaderboards, multiplayer, AI battles, achievements, privacy, and more.",
+    keywords:
+      "keydash faq, typing test help, typing test questions, keydash support, typing test troubleshooting",
+  },
+  {
     path: "/users/:userId",
     title: "Typing Profile | KeyDash",
     description:

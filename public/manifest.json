@@ -1,0 +1,33 @@
+{
+  "name": "KeyDash — Free Online Typing Test with Multiplayer, AI Battles & Achievements",
+  "short_name": "KeyDash",
+  "description": "Free online typing test platform with multiplayer races, AI battles, 1200+ achievements, coding practice, and competitive leaderboards.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1a",
+  "theme_color": "#101826",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

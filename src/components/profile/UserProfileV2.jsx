@@ -16,6 +16,7 @@ import { useMultiplayerStore } from '../../store'
 import { generateRaceText, generateRoomCode } from '../multiplayer/multiplayerUtils'
 import { AchievementIcon } from '../../utils/achievementIcons'
 import { buildProfileLink } from '../../utils/socialLinks'
+import Meta from '../Meta'
 
 // Custom X (Twitter) icon
 const XIcon = ({ className }) => (
@@ -572,6 +573,14 @@ const UserProfileV2 = () => {
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white pb-12" id="profile-root" tabIndex={-1}>
       <Toaster position="top-center" />
+      <Meta
+        title={`${profile.display_name || 'Anonymous'} — Typing Profile | KeyDash`}
+        description={`${profile.display_name || 'Anonymous'}'s KeyDash typing profile. Best WPM: ${stats?.bestWpm ?? '--'}, Average WPM: ${stats?.avgWpm ?? '--'}, Accuracy: ${stats?.avgAccuracy ?? '--'}%, Tests completed: ${stats?.totalTests ?? '--'}.`}
+        url={`https://keydash.shresthamanish.info.np/users/${userId}`}
+        keywords={`typing profile, ${profile.display_name || 'anonymous'} typing stats, wpm, typing speed, typing accuracy, keydash profile`}
+        noIndex={!isProfilePublic}
+        noFollow={!isProfilePublic}
+      />
       {/* Header with gradient */}
       <div className="relative">
         <div className="h-48"></div>

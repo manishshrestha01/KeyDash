@@ -126,8 +126,8 @@ const PrivacyPolicy = () => {
   return (
     <section className="relative overflow-hidden min-h-[calc(100vh-80px)] bg-[#0a0f1a] text-slate-100">
       <Meta
-        title="Privacy Policy | KeyDash"
-        description="How KeyDash collects, uses, and protects your personal information."
+        title="Privacy Policy | KeyDash — How We Protect Your Data"
+        description="How KeyDash collects, uses, and protects your personal information. Read our plain-language privacy policy — no legalese."
         url="https://keydash.shresthamanish.info.np/privacy-policy"
       />
 

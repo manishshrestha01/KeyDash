@@ -129,8 +129,8 @@ const TermsOfService = () => {
   return (
     <section className="relative overflow-hidden min-h-[calc(100vh-80px)] bg-[#0a0f1a] text-slate-100">
       <Meta
-        title="Terms of Service | KeyDash"
-        description="Terms of Service for KeyDash — rules, guidelines, and policies for using the typing test platform."
+        title="Terms of Service | KeyDash — Usage Rules & Guidelines"
+        description="Terms of Service for KeyDash — rules, guidelines, and policies for using the free online typing test platform."
         url="https://keydash.shresthamanish.info.np/terms-of-service"
       />
 

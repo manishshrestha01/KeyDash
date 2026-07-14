@@ -6,9 +6,9 @@ const Leaderboards = () => {
   return (
     <div>
     <Meta
-      title="Leaderboard | KeyDash"
-      description="View the top players and their scores."
-      keywords="typing profile, real time score calculator, typing scores, typing achievements, KeyDash profile, KeyDash typing website, best typing website, typing speed, typing accuracy, best leaderboard, typing leaderboard, typing competition, typing speed leaderboard"
+      title="Typing Leaderboard | KeyDash — Top Speed Rankings"
+      description="View daily, weekly, monthly, and all-time typing speed rankings. See the fastest typists and compete for the top spot on KeyDash's leaderboard."
+      keywords="typing leaderboard, typing speed ranking, online typing leaderboard, fastest typists, wpm leaderboard, typing competition, typing speed leaderboard, best typing website"
       url="https://keydash.shresthamanish.info.np/leaderboard"
     />
     <Leaderboard />

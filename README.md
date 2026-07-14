@@ -1,6 +1,6 @@
-# KeyDash — Free Online Typing Test, Speed & Accuracy Trainer 🚀
+# KeyDash — Free Online Typing Test with Multiplayer, AI Battles & Achievements 🚀
 
-> **KeyDash** is a free online typing test and typing-practice platform that measures your **WPM (words per minute)** and accuracy in real time. Practice typing speed with coding snippets, multiplayer races, AI battles, and competitive leaderboards — a modern, open-source [Monkeytype](https://monkeytype.com/) alternative.
+> **KeyDash** is a free online typing test and practice platform with **multiplayer races**, **AI battles**, **1200+ achievements**, and **competitive leaderboards**. Track your WPM and accuracy in real time, practice with coding snippets in JavaScript, Python, Java, C, and C++, type in English or Nepali (Devanagari), and climb the rankings.
 
 <p align="center">
   <a href="https://keydash.shresthamanish.info.np/"><img src="public/logo.svg" alt="KeyDash — online typing speed test and WPM trainer" width="120" /></a>
@@ -19,7 +19,7 @@
   <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" />
 </p>
 
-**Keywords:** online typing test · typing speed test · WPM test · typing accuracy trainer · coding typing practice · multiplayer typing race · Nepali typing practice · free typing test · Monkeytype alternative
+**Keywords:** online typing test · typing speed test · WPM test · typing accuracy trainer · coding typing practice · multiplayer typing race · AI typing battle · typing achievements · Nepali typing practice · daily typing challenge · free typing test
 
 ## ✨ Features
 

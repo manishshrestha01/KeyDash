@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const SITE_URL = "https://keydash.shresthamanish.info.np";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/logo.svg`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 const toAbsoluteUrl = (value) => {
   if (!value) return null;
@@ -30,15 +30,16 @@ const Meta = ({
   url,
   keywords,
   image,
+  imageAlt,
   type = "website",
   twitterCard = "summary_large_image",
   noIndex = false,
   noFollow = false,
   structuredData = null,
 }) => {
-  const defaultTitle = "KeyDash | Online Typing Test, Speed & Accuracy Trainer";
+  const defaultTitle = "KeyDash | Free Online Typing Test with Multiplayer, AI Battles & Achievements";
   const defaultDescription =
-    "KeyDash is a free online typing test platform with real-time WPM, accuracy tracking, competitive leaderboards, coding mode, and multiplayer races.";
+    "KeyDash is a free online typing test platform with multiplayer races, AI battles, 1200+ achievements, coding practice, Nepali typing, and competitive leaderboards.";
   const runtimePathUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}${window.location.pathname}`
@@ -48,6 +49,7 @@ const Meta = ({
   const resolvedDescription = description || defaultDescription;
   const resolvedUrl = toCanonicalUrl(url || runtimePathUrl);
   const resolvedImage = toAbsoluteUrl(image || DEFAULT_OG_IMAGE) || DEFAULT_OG_IMAGE;
+  const resolvedImageAlt = imageAlt || resolvedTitle;
   const robotsContent = [
     noIndex ? "noindex" : "index",
     noFollow ? "nofollow" : "follow",
@@ -121,6 +123,7 @@ const Meta = ({
     upsertMeta("twitter:title", resolvedTitle);
     upsertMeta("twitter:description", resolvedDescription);
     upsertMeta("twitter:image", resolvedImage);
+    upsertMeta("twitter:image:alt", resolvedImageAlt);
 
     upsertPropertyMeta("og:title", resolvedTitle);
     upsertPropertyMeta("og:description", resolvedDescription);
@@ -128,6 +131,9 @@ const Meta = ({
     upsertPropertyMeta("og:type", type);
     upsertPropertyMeta("og:site_name", "KeyDash");
     upsertPropertyMeta("og:image", resolvedImage);
+    upsertPropertyMeta("og:image:width", "1200");
+    upsertPropertyMeta("og:image:height", "630");
+    upsertPropertyMeta("og:image:alt", resolvedImageAlt);
 
     let canonicalLink = document.head.querySelector('link[rel="canonical"]');
     if (!canonicalLink) {
@@ -153,6 +159,7 @@ const Meta = ({
     noIndex,
     resolvedDescription,
     resolvedImage,
+    resolvedImageAlt,
     resolvedStructuredData,
     resolvedTitle,
     resolvedUrl,

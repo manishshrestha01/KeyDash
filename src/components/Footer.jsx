@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer className="bg-[#0a0f1a] border-t border-gray-800/60 mt-auto">
       <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 mb-8">
 
           {/* Brand */}
           <div>
@@ -40,14 +40,33 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Legal & Help */}
+          {/* Modes */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Modes</p>
+            <ul className="space-y-2">
+              {[
+                { to: "/multiplayer", label: "Multiplayer Race" },
+                { to: "/ai-battle", label: "AI Battle" },
+                { to: "/custom", label: "Custom Text" },
+                { to: "/dashboard", label: "Dashboard" },
+              ].map((l) => (
+                <li key={l.to}>
+                  <Link to={l.to} className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal, Help & GitHub */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Help & Legal</p>
             <ul className="space-y-2">
               {[
-                { to: "/faq", label: "❓ FAQ" },
-                { to: "/privacy-policy", label: "🛡️ Privacy Policy" },
-                { to: "/terms-of-service", label: "⚖️ Terms of Service" },
+                { to: "/faq", label: "FAQ" },
+                { to: "/privacy-policy", label: "Privacy Policy" },
+                { to: "/terms-of-service", label: "Terms of Service" },
               ].map((l) => (
                 <li key={l.to}>
                   <Link to={l.to} className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">
@@ -57,10 +76,20 @@ const Footer = () => {
               ))}
               <li>
                 <a
-                  href="mailto:support@keydash.shresthamanish.info.np"
+                  href="https://github.com/manishshrestha01/keydash"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-gray-400 hover:text-yellow-400 text-sm transition-colors"
                 >
-                  📧 Contact Support
+                  GitHub
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:contact@shresthamanish.info.np"
+                  className="text-gray-400 hover:text-yellow-400 text-sm transition-colors"
+                >
+                  Contact Support
                 </a>
               </li>
             </ul>
@@ -70,12 +99,20 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="border-t border-gray-800/60 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-600 text-xs">
-            © {new Date().getFullYear()} KeyDash · All rights reserved
+            &copy; {new Date().getFullYear()} KeyDash &middot; All rights reserved
           </p>
           <div className="flex items-center gap-4">
             <Link to="/faq" className="text-gray-600 hover:text-yellow-400 text-xs transition-colors">FAQ</Link>
             <Link to="/privacy-policy" className="text-gray-600 hover:text-yellow-400 text-xs transition-colors">Privacy</Link>
             <Link to="/terms-of-service" className="text-gray-600 hover:text-yellow-400 text-xs transition-colors">Terms</Link>
+            <a
+              href="https://github.com/manishshrestha01/keydash"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-yellow-400 text-xs transition-colors"
+            >
+              GitHub
+            </a>
           </div>
         </div>
       </div>

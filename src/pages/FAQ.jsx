@@ -203,12 +203,29 @@ const FAQ = () => {
 
   const current = categories.find((c) => c.id === activeCategory);
 
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: categories.flatMap((cat) =>
+      cat.questions.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.a,
+        },
+      }))
+    ),
+  };
+
   return (
     <section className="relative overflow-hidden min-h-[calc(100vh-80px)] bg-[#0a0f1a] text-slate-100">
       <Meta
-        title="FAQ | KeyDash"
-        description="Frequently asked questions about KeyDash — typing modes, accounts, leaderboards, privacy, and more."
+        title="FAQ | KeyDash — Typing Test Questions & Answers"
+        description="Frequently asked questions about KeyDash — typing modes, accounts, leaderboards, multiplayer, AI battles, achievements, privacy, and more."
         url="https://keydash.shresthamanish.info.np/faq"
+        keywords="keydash faq, typing test help, typing test questions, keydash support, typing test troubleshooting, how to type faster, typing test accuracy"
+        structuredData={faqStructuredData}
       />
 
       {/* Background blobs */}

@@ -6,6 +6,8 @@ Disallow: /settings
 Disallow: /history
 Disallow: /results
 Disallow: /s/
+Disallow: /login
+Disallow: /reset-password
 Disallow: /multiplayer
 Disallow: /ai-battle
 Disallow: /achievements
