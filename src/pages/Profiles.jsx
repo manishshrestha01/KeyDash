@@ -7,9 +7,11 @@ const Profiles = () => {
     <div>
       <Meta
         title="Profile | KeyDash"
-       description="View your KeyDash typing profile with scores and achievements."
-        keywords="typing profile, real time score calculator, typing scores, typing achievements, KeyDash profile, KeyDash typing website, best typing website, typing speed, typing accuracy"
+        description="View your KeyDash typing profile with scores and achievements."
+        keywords="typing profile, typing scores, typing achievements, KeyDash profile"
         url="https://keydash.shresthamanish.info.np/profile"
+        noIndex
+        noFollow
       />
       <Profile />
     </div>

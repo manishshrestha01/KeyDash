@@ -46,6 +46,24 @@ export default async function handler(req, res) {
       )}% accuracy. Check it out on KeyDash.`
     : "View this shared typing result on KeyDash.";
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": escapeHtml(title),
+    "description": escapeHtml(description),
+    "url": appUrl,
+    "publisher": {
+      "@type": "Organization",
+      "name": "KeyDash",
+      "url": origin,
+      "logo": `${origin}/logo.svg`
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": appUrl
+    }
+  };
+
   const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -63,11 +81,15 @@ export default async function handler(req, res) {
     <meta property="og:image" content="${ogImageUrl}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${escapeHtml(title)}" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta name="twitter:image" content="${ogImageUrl}" />
+    <meta name="twitter:image:alt" content="${escapeHtml(title)}" />
+
+    <script type="application/ld+json">${JSON.stringify(structuredData)}</script>
 
     <meta http-equiv="refresh" content="0;url=${appUrl}" />
   </head>

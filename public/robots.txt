@@ -8,11 +8,41 @@ Disallow: /results
 Disallow: /s/
 Disallow: /login
 Disallow: /reset-password
-Disallow: /multiplayer
-Disallow: /ai-battle
-Disallow: /achievements
-Disallow: /custom
-Disallow: /daily
+
+# Allow AI search bots (drive citation traffic)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Block AI training crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
 
 Sitemap: https://keydash.shresthamanish.info.np/sitemap.xml
 Host: keydash.shresthamanish.info.np

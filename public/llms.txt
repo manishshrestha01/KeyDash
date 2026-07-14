@@ -1,0 +1,38 @@
+# KeyDash
+
+> Free online typing test platform with multiplayer races, AI battles, 1200+ achievements, and competitive leaderboards.
+
+## What is KeyDash?
+
+KeyDash is a free, open-source typing test and practice platform. It measures WPM (words per minute) and accuracy in real time. Users can practice in multiple modes, compete on leaderboards, race in multiplayer, and battle AI opponents.
+
+## Key Features
+
+- **Typing Modes**: Timed (15s/30s/60s/120s), Sentence (easy/medium/hard/extreme), Coding (JS/Python/Java/C/C++), Symbols, Custom text
+- **Languages**: English and Nepali (Devanagari script) with Romanized and Traditional input
+- **Multiplayer**: Real-time typing races with up to 50 players using Supabase Realtime
+- **AI Battles**: Race against AI opponents at Easy, Medium, Hard, or Pro difficulty
+- **Achievements**: 1200+ tiered achievements across speed, streak, coding, symbols, multiplayer, AI, and overall progress
+- **Leaderboards**: Daily, Weekly, Monthly, and All-time rankings
+- **Streaks**: Daily typing challenges with milestone rewards
+- **Social Sharing**: Generate and share result cards with WPM, accuracy, and stats
+- **User Profiles**: Public/private profiles with typing history and replay
+
+## Tech Stack
+
+- React 19, Tailwind CSS 4, Vite 6
+- Supabase (Auth, PostgreSQL, Realtime, Storage)
+- Zustand (state management), Framer Motion (animations)
+- Deployed on Vercel with Edge Functions for OG image generation
+
+## Links
+
+- Website: https://keydash.shresthamanish.info.np/
+- GitHub: https://github.com/manishshrestha01/keydash
+- FAQ: https://keydash.shresthamanish.info.np/faq
+- Privacy Policy: https://keydash.shresthamanish.info.np/privacy-policy
+- Terms of Service: https://keydash.shresthamanish.info.np/terms-of-service
+
+## Contact
+
+- Email: contact@shresthamanish.info.np

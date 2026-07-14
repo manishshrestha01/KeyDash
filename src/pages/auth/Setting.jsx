@@ -10,6 +10,8 @@ const Setting = () => {
         title="Settings | KeyDash"
         description="Manage your account settings and preferences on KeyDash."
         url="https://keydash.shresthamanish.info.np/settings"
+        noIndex
+        noFollow
       />
       <Settings />
     </section>

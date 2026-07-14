@@ -1,38 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+                            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
     <loc>https://keydash.shresthamanish.info.np/</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.00</priority>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
   </url>
-
   <url>
     <loc>https://keydash.shresthamanish.info.np/leaderboard</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.90</priority>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
   </url>
-
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/multiplayer</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/ai-battle</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/daily</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/custom</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/achievements</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
+  <url>
+    <loc>https://keydash.shresthamanish.info.np/dashboard</loc>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
+  </url>
   <url>
     <loc>https://keydash.shresthamanish.info.np/faq</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.80</priority>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
   </url>
-
   <url>
     <loc>https://keydash.shresthamanish.info.np/privacy-policy</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.40</priority>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
   </url>
-
   <url>
     <loc>https://keydash.shresthamanish.info.np/terms-of-service</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.40</priority>
+    <lastmod>2026-07-14T00:00:00+05:45</lastmod>
   </url>
-
 </urlset>
