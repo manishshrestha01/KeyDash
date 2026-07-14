@@ -1,8 +1,25 @@
-# KeyDash v2 🚀
+# KeyDash — Free Online Typing Test, Speed & Accuracy Trainer 🚀
 
-> A modern typing and coding practice platform that transforms typing from a simple speed test into a habit-driven, competitive learning platform.
+> **KeyDash** is a free online typing test and typing-practice platform that measures your **WPM (words per minute)** and accuracy in real time. Practice typing speed with coding snippets, multiplayer races, AI battles, and competitive leaderboards — a modern, open-source [Monkeytype](https://monkeytype.com/) alternative.
 
-![KeyDash Banner](public/logo.svg)
+<p align="center">
+  <a href="https://keydash.shresthamanish.info.np/"><img src="public/logo.svg" alt="KeyDash — online typing speed test and WPM trainer" width="120" /></a>
+</p>
+
+<p align="center">
+  <a href="https://keydash.shresthamanish.info.np/"><strong>🌐 Live Demo → keydash.shresthamanish.info.np</strong></a>
+</p>
+
+<p align="center">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
+  <img alt="Vite 6" src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" />
+  <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white" />
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase&logoColor=white" />
+  <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" />
+</p>
+
+**Keywords:** online typing test · typing speed test · WPM test · typing accuracy trainer · coding typing practice · multiplayer typing race · Nepali typing practice · free typing test · Monkeytype alternative
 
 ## ✨ Features
 
