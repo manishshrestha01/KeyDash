@@ -135,11 +135,7 @@ const LeaderboardV2 = () => {
     return clearPoll
   }, [period, mode, timeDuration, difficulty, user?.id])
 
-  const leaderboardFetchingRef = useRef(false)
-
   const fetchLeaderboard = async (skipCache = false) => {
-    if (leaderboardFetchingRef.current) return
-    leaderboardFetchingRef.current = true
     const fetchId = ++activeFetchRef.current
     const periodBounds = getPeriodBounds(period, new Date())
     const cacheKey = `${period}|${periodBounds.cacheKey}|${mode}|${timeDuration}|${difficulty}`
@@ -367,7 +363,6 @@ const LeaderboardV2 = () => {
     } catch (error) {
       console.error('Error fetching leaderboard:', error)
     } finally {
-      leaderboardFetchingRef.current = false
       if (fetchId === activeFetchRef.current) {
         setLoading(false)
       }
